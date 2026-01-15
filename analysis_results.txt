@@ -1,0 +1,26 @@
+Analyzing hostelv3...                                           
+
+   info - The private field _widgetOptions could be 'final' - lib\admin\admin_dashboard_screen.dart:19:23 - prefer_final_fields
+   info - The imported package 'intl' isn't a dependency of the importing package - lib\admin\tabs\activity_feed_tab.dart:3:8 - depend_on_referenced_packages
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\admin\tabs\activity_feed_tab.dart:104:38 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\admin\tabs\reports_tab.dart:101:26 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\admin\tabs\reports_tab.dart:103:45 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\admin\tabs\reports_tab.dart:124:32 - deprecated_member_use
+   info - Statements in an if should be enclosed in a block - lib\admin\tabs\reports_tab.dart:153:13 - curly_braces_in_flow_control_structures
+   info - Statements in an if should be enclosed in a block - lib\admin\tabs\reports_tab.dart:155:13 - curly_braces_in_flow_control_structures
+   info - Statements in an if should be enclosed in a block - lib\admin\tabs\reports_tab.dart:157:13 - curly_braces_in_flow_control_structures
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\admin\tabs\reports_tab.dart:201:36 - deprecated_member_use
+   info - 'value' is deprecated and shouldn't be used. Use initialValue instead. This will set the initial value for the form field. This feature was deprecated after v3.33.0-1.0.pre - lib\admin\tabs\staff_management_screen.dart:42:17 - deprecated_member_use
+   info - 'value' is deprecated and shouldn't be used. Use initialValue instead. This will set the initial value for the form field. This feature was deprecated after v3.33.0-1.0.pre - lib\admin\tabs\staff_management_screen.dart:51:17 - deprecated_member_use
+   info - Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check - lib\admin\tabs\staff_management_screen.dart:100:40 - use_build_context_synchronously
+   info - Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check - lib\admin\tabs\staff_management_screen.dart:107:21 - use_build_context_synchronously
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\admin\tabs\student_detail_screen.dart:230:33 - deprecated_member_use
+   info - The imported package 'intl' isn't a dependency of the importing package - lib\complaints\admin_complaints_screen.dart:2:8 - depend_on_referenced_packages
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\complaints\admin_complaints_screen.dart:132:42 - deprecated_member_use
+   info - 'value' is deprecated and shouldn't be used. Use initialValue instead. This will set the initial value for the form field. This feature was deprecated after v3.33.0-1.0.pre - lib\complaints\admin_complaints_screen.dart:208:21 - deprecated_member_use
+   info - 'value' is deprecated and shouldn't be used. Use initialValue instead. This will set the initial value for the form field. This feature was deprecated after v3.33.0-1.0.pre - lib\complaints\file_complaint_screen.dart:119:15 - deprecated_member_use
+   info - The imported package 'intl' isn't a dependency of the importing package - lib\complaints\student_complaints_screen.dart:3:8 - depend_on_referenced_packages
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\complaints\student_complaints_screen.dart:126:40 - deprecated_member_use
+   info - The private field _widgetOptions could be 'final' - lib\rector_dashboard.dart:17:23 - prefer_final_fields
+   info - The private field _widgetOptions could be 'final' - lib\warden_dashboard.dart:17:23 - prefer_final_fields
+

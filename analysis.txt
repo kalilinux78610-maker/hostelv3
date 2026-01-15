@@ -1,0 +1,22 @@
+Analyzing hostelv3...                                           
+
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\admin\tabs\student_directory_screen.dart:45:43 - deprecated_member_use
+   info - Statements in an if should be enclosed in a block - lib\admin\tabs\student_directory_screen.dart:173:23 - curly_braces_in_flow_control_structures
+   info - Statements in an if should be enclosed in a block - lib\admin\tabs\student_directory_screen.dart:176:23 - curly_braces_in_flow_control_structures
+   info - Don't invoke 'print' in production code - lib\login_screen.dart:140:9 - avoid_print
+   info - Don't invoke 'print' in production code - lib\repositories\notification_repository.dart:60:7 - avoid_print
+   info - Don't invoke 'print' in production code - lib\repositories\notification_repository.dart:72:7 - avoid_print
+   info - Don't invoke 'print' in production code - lib\repositories\notification_repository.dart:112:7 - avoid_print
+   info - Don't invoke 'print' in production code - lib\services\push_notification_service.dart:10:3 - avoid_print
+   info - Don't invoke 'print' in production code - lib\services\push_notification_service.dart:71:7 - avoid_print
+   info - Don't invoke 'print' in production code - lib\services\push_notification_service.dart:73:7 - avoid_print
+   info - Don't invoke 'print' in production code - lib\services\push_notification_service.dart:92:7 - avoid_print
+   info - Don't invoke 'print' in production code - lib\services\push_notification_service.dart:121:7 - avoid_print
+   info - Don't invoke 'print' in production code - lib\services\push_notification_service.dart:124:7 - avoid_print
+   info - Don't invoke 'print' in production code - lib\services\push_notification_service.dart:154:7 - avoid_print
+   info - Don't invoke 'print' in production code - lib\services\push_notification_service.dart:173:7 - avoid_print
+   info - Don't invoke 'print' in production code - lib\services\push_notification_service.dart:215:9 - avoid_print
+   info - Don't invoke 'print' in production code - lib\services\push_notification_service.dart:217:9 - avoid_print
+   info - Don't invoke 'print' in production code - lib\services\push_notification_service.dart:222:7 - avoid_print
+   info - Statements in an if should be enclosed in a block - lib\student_profile_screen.dart:144:21 - curly_braces_in_flow_control_structures
+

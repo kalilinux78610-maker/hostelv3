@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "412251493918",
+    "project_id": "hostel-v3",
+    "storage_bucket": "hostel-v3.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:412251493918:android:50db71be64c034c826c00f",
+        "android_client_info": {
+          "package_name": "com.example.hostelv3"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBLR34suc83zX-1UkHKme63q4c2mOZugiU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:412251493918:android:0589dafa855eb0dc26c00f",
+        "android_client_info": {
+          "package_name": "com.shreyansh.hostel"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBLR34suc83zX-1UkHKme63q4c2mOZugiU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -1,0 +1,12 @@
+Analyzing hostelv3...                                           
+
+   info - 'MaterialStateColor' is deprecated and shouldn't be used. Use WidgetStateColor instead. Moved to the Widgets layer to make code available outside of Material. This feature was deprecated after v3.19.0-0.3.pre - lib\apply_leave_screen.dart:62:32 - deprecated_member_use
+   info - 'MaterialState' is deprecated and shouldn't be used. Use WidgetState instead. Moved to the Widgets layer to make code available outside of Material. This feature was deprecated after v3.19.0-0.3.pre - lib\apply_leave_screen.dart:63:45 - deprecated_member_use
+   info - 'MaterialStateColor' is deprecated and shouldn't be used. Use WidgetStateColor instead. Moved to the Widgets layer to make code available outside of Material. This feature was deprecated after v3.19.0-0.3.pre - lib\apply_leave_screen.dart:67:36 - deprecated_member_use
+   info - 'MaterialState' is deprecated and shouldn't be used. Use WidgetState instead. Moved to the Widgets layer to make code available outside of Material. This feature was deprecated after v3.19.0-0.3.pre - lib\apply_leave_screen.dart:68:45 - deprecated_member_use
+   info - The local variable '_idController' starts with an underscore - lib\guard_scanner_screen.dart:57:33 - no_leading_underscores_for_local_identifiers
+   info - The local variable '_selectedWing' starts with an underscore - lib\guard_scanner_screen.dart:58:13 - no_leading_underscores_for_local_identifiers
+   info - The local variable '_wings' starts with an underscore - lib\guard_scanner_screen.dart:59:24 - no_leading_underscores_for_local_identifiers
+   info - The private field _isPasswordVisible could be 'final' - lib\login_screen.dart:22:8 - prefer_final_fields
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\login_screen.dart:198:38 - deprecated_member_use
+
