@@ -77,7 +77,7 @@ RbYJigAdLPMh5UgzOLHMynE=
 
     // 2. Setup Local Notifications (for foreground display)
     const AndroidInitializationSettings initializationSettingsAndroid =
-        AndroidInitializationSettings('@mipmap/ic_launcher');
+        AndroidInitializationSettings('app_icon');
 
     const InitializationSettings initializationSettings =
         InitializationSettings(android: initializationSettingsAndroid);
@@ -135,7 +135,7 @@ RbYJigAdLPMh5UgzOLHMynE=
           channelDescription: 'Notifications for Hostel v3',
           importance: Importance.max,
           priority: Priority.high,
-          icon: '@mipmap/ic_launcher',
+          icon: 'app_icon',
         );
     const NotificationDetails platformChannelSpecifics = NotificationDetails(
       android: androidDetails,

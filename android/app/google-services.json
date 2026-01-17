@@ -26,6 +26,25 @@
     },
     {
       "client_info": {
+        "mobilesdk_app_id": "1:412251493918:android:86c00087f2c24a4126c00f",
+        "android_client_info": {
+          "package_name": "com.rngpit.hostelv3"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBLR34suc83zX-1UkHKme63q4c2mOZugiU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
         "mobilesdk_app_id": "1:412251493918:android:0589dafa855eb0dc26c00f",
         "android_client_info": {
           "package_name": "com.shreyansh.hostel"

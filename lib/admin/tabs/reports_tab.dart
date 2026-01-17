@@ -356,7 +356,7 @@ class _ReportsTabState extends State<ReportsTab> {
                     fontSize: 16,
                   ),
                 ),
-                pw.Table.fromTextArray(
+                pw.TableHelper.fromTextArray(
                   context: context,
                   data: <List<String>>[
                     <String>['Email', 'Hostel', 'Out Time'],

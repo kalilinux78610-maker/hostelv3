@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'signup_screen.dart';
 import 'services/push_notification_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -51,6 +52,20 @@ class _LoginScreenState extends State<LoginScreen>
         );
 
     _animationController.forward();
+    _loadUserCredentials();
+  }
+
+  Future<void> _loadUserCredentials() async {
+    final prefs = await SharedPreferences.getInstance();
+    final rememberMe = prefs.getBool('remember_me') ?? false;
+
+    if (rememberMe) {
+      setState(() {
+        _rememberMe = true;
+        _emailController.text = prefs.getString('email') ?? '';
+        _passwordController.text = prefs.getString('password') ?? '';
+      });
+    }
   }
 
   @override
@@ -126,6 +141,18 @@ class _LoginScreenState extends State<LoginScreen>
         email: email,
         password: password,
       );
+
+      // Save/Clear Credentials based on Remember Me
+      final prefs = await SharedPreferences.getInstance();
+      if (_rememberMe) {
+        await prefs.setString('email', email);
+        await prefs.setString('password', password);
+        await prefs.setBool('remember_me', true);
+      } else {
+        await prefs.remove('email');
+        await prefs.remove('password');
+        await prefs.setBool('remember_me', false);
+      }
 
       // Save FCM Token
       try {

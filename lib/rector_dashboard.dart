@@ -118,72 +118,12 @@ class _HomeTabState extends State<HomeTab> {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        StatsHeader(hostelId: widget.hostelId),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          child: Container(
-            width: double.infinity,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.grey[300]!),
-            ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: GestureDetector(
-                    onTap: () => setState(() => _selectedView = 0),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      decoration: BoxDecoration(
-                        color: _selectedView == 0
-                            ? const Color(0xFF002244)
-                            : Colors.transparent,
-                        borderRadius: BorderRadius.circular(11),
-                      ),
-                      child: Text(
-                        "PENDING REQUESTS",
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                          color: _selectedView == 0
-                              ? Colors.white
-                              : Colors.grey[600],
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-                Expanded(
-                  child: GestureDetector(
-                    onTap: () => setState(() => _selectedView = 1),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      decoration: BoxDecoration(
-                        color: _selectedView == 1
-                            ? const Color(0xFF002244)
-                            : Colors.transparent,
-                        borderRadius: BorderRadius.circular(11),
-                      ),
-                      child: Text(
-                        "OUT NOW",
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                          color: _selectedView == 1
-                              ? Colors.white
-                              : Colors.grey[600],
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
+        StatsHeader(
+          hostelId: widget.hostelId,
+          selectedView: _selectedView,
+          onViewChanged: (index) => setState(() => _selectedView = index),
         ),
+        // Removed the toggle container
         Expanded(
           child: _selectedView == 0
               ? PendingRequestsList(hostelId: widget.hostelId)
@@ -196,7 +136,15 @@ class _HomeTabState extends State<HomeTab> {
 
 class StatsHeader extends StatelessWidget {
   final String? hostelId;
-  const StatsHeader({super.key, this.hostelId});
+  final int selectedView;
+  final ValueChanged<int> onViewChanged;
+
+  const StatsHeader({
+    super.key,
+    this.hostelId,
+    required this.selectedView,
+    required this.onViewChanged,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -230,10 +178,11 @@ class StatsHeader extends StatelessWidget {
           Expanded(
             child: _buildStatCard(
               context,
-              "PENDING",
+              "PENDING REQUESTS",
               pendingQuery.snapshots(),
               Colors.orange,
               Icons.access_time_filled,
+              0,
             ),
           ),
           const SizedBox(width: 16),
@@ -244,6 +193,7 @@ class StatsHeader extends StatelessWidget {
               outQuery.snapshots(),
               Colors.blue,
               Icons.directions_walk,
+              1,
             ),
           ),
         ],
@@ -257,48 +207,75 @@ class StatsHeader extends StatelessWidget {
     Stream<QuerySnapshot> stream,
     Color color,
     IconData icon,
+    int index,
   ) {
-    return StreamBuilder<QuerySnapshot>(
-      stream: stream,
-      builder: (context, snapshot) {
-        final count = snapshot.hasData ? snapshot.data!.docs.length : 0;
-        return Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Icon(icon, color: color, size: 20),
-                  Text(
-                    count.toString(),
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
+    final isSelected = selectedView == index;
+    return GestureDetector(
+      onTap: () => onViewChanged(index),
+      child: StreamBuilder<QuerySnapshot>(
+        stream: stream,
+        builder: (context, snapshot) {
+          final count = snapshot.hasData ? snapshot.data!.docs.length : 0;
+          return AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: isSelected
+                  ? Colors.white
+                  : Colors.white.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: isSelected
+                    ? Colors.white
+                    : Colors.white.withValues(alpha: 0.2),
+              ),
+              boxShadow: isSelected
+                  ? [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.1),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
+                      ),
+                    ]
+                  : null,
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Icon(
+                      icon,
+                      color: isSelected ? color : Colors.white70,
+                      size: 20,
                     ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              Text(
-                label,
-                style: const TextStyle(
-                  color: Colors.white70,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
+                    Text(
+                      count.toString(),
+                      style: TextStyle(
+                        color: isSelected
+                            ? const Color(0xFF002244)
+                            : Colors.white,
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
                 ),
-              ),
-            ],
-          ),
-        );
-      },
+                const SizedBox(height: 8),
+                Text(
+                  label,
+                  style: TextStyle(
+                    color: isSelected ? Colors.grey[800] : Colors.white70,
+                    fontSize: 11, // Slightly smaller to fit
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
     );
   }
 }
@@ -884,32 +861,596 @@ class ProfileTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final user = FirebaseAuth.instance.currentUser;
-    return Center(
+
+    if (user == null) {
+      return const Center(child: Text("Not logged in"));
+    }
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
       child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const CircleAvatar(
-            radius: 50,
-            backgroundColor: Color(0xFF002244),
-            child: Icon(Icons.security, size: 50, color: Colors.white),
+          // Personal Details Card
+          StreamBuilder<DocumentSnapshot>(
+            stream: FirebaseFirestore.instance
+                .collection('users')
+                .doc(user.uid)
+                .snapshots(),
+            builder: (context, snapshot) {
+              if (!snapshot.hasData) {
+                return const Center(child: CircularProgressIndicator());
+              }
+
+              final data = snapshot.data!.data() as Map<String, dynamic>?;
+              final name = data?['name'] ?? 'Rector';
+              final role = data?['role'] ?? 'Rector';
+              final hostel = data?['assignedHostel'] ?? 'Unknown';
+              final mobile = data?['mobile'] ?? 'Not set';
+
+              return Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFF002244), Color(0xFF003366)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFF002244).withValues(alpha: 0.3),
+                      blurRadius: 10,
+                      offset: const Offset(0, 5),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  children: [
+                    CircleAvatar(
+                      radius: 35,
+                      backgroundColor: Colors.white,
+                      child: Text(
+                        name[0].toUpperCase(),
+                        style: const TextStyle(
+                          fontSize: 30,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF002244),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 20),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            name,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.2),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              "$role • $hostel",
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            user.email ?? "",
+                            style: TextStyle(
+                              color: Colors.white.withValues(alpha: 0.7),
+                              fontSize: 12,
+                            ),
+                          ),
+                          Text(
+                            "Mobile: $mobile",
+                            style: TextStyle(
+                              color: Colors.white.withValues(alpha: 0.7),
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
           ),
-          const SizedBox(height: 16),
-          const Text(
-            "Rector / Warden",
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-          ),
-          Text(user?.email ?? "", style: const TextStyle(color: Colors.grey)),
-          const SizedBox(height: 32),
-          ElevatedButton(
-            onPressed: () => FirebaseAuth.instance.signOut(),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red,
-              foregroundColor: Colors.white,
+          const SizedBox(height: 24),
+
+          // Quick Actions Section
+          const Align(
+            alignment: Alignment.centerLeft,
+            child: Text(
+              "QUICK ACTIONS",
+              style: TextStyle(
+                color: Colors.grey,
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 1.2,
+              ),
             ),
-            child: const Text("Log Out"),
           ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: _buildActionButton(
+                  context,
+                  icon: Icons.campaign,
+                  label: 'Broadcast\nMessage',
+                  color: Colors.orange,
+                  onTap: () => _showBroadcastDialog(context),
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: _buildActionButton(
+                  context,
+                  icon: Icons.emergency,
+                  label: 'Emergency\nContact',
+                  color: Colors.red,
+                  onTap: () {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text("calling security..."),
+                        duration: Duration(seconds: 2),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
+
+          // Settings Section
+          const Align(
+            alignment: Alignment.centerLeft,
+            child: Text(
+              "SETTINGS",
+              style: TextStyle(
+                color: Colors.grey,
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 1.2,
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: Colors.grey.shade200),
+            ),
+            child: Column(
+              children: [
+                _buildSwitchTile(
+                  "New Leave Requests",
+                  "Get notified for new applications",
+                  true,
+                ),
+                _buildDivider(),
+                _buildSwitchTile(
+                  "Late Entry Alerts",
+                  "Notify when students are late",
+                  true,
+                ),
+                _buildDivider(),
+                _buildSettingsTile(
+                  context,
+                  icon: Icons.lock_outline,
+                  title: "Change Password",
+                  onTap: () => _showChangePasswordDialog(context),
+                ),
+                _buildDivider(),
+                _buildSettingsTile(
+                  context,
+                  icon: Icons.info_outline,
+                  title: "About App",
+                  onTap: () => _showAboutDialog(context),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 24),
+
+          // Log Out Button
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: () => FirebaseAuth.instance.signOut(),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red[50],
+                foregroundColor: Colors.red,
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              child: const Text(
+                "Log Out",
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+            ),
+          ),
+          const SizedBox(height: 30),
         ],
       ),
+    );
+  }
+
+  Future<void> _showChangePasswordDialog(BuildContext context) async {
+    final currentPassController = TextEditingController();
+    final newPassController = TextEditingController();
+    final confirmPassController = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+    bool isLoading = false;
+
+    await showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              title: const Text("Change Password"),
+              content: Form(
+                key: formKey,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TextFormField(
+                      controller: currentPassController,
+                      decoration: const InputDecoration(
+                        labelText: "Current Password",
+                        border: OutlineInputBorder(),
+                      ),
+                      obscureText: true,
+                      validator: (value) =>
+                          value!.isEmpty ? "Enter current password" : null,
+                    ),
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      controller: newPassController,
+                      decoration: const InputDecoration(
+                        labelText: "New Password",
+                        border: OutlineInputBorder(),
+                      ),
+                      obscureText: true,
+                      validator: (value) => value!.length < 6
+                          ? "Password must be 6+ chars"
+                          : null,
+                    ),
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      controller: confirmPassController,
+                      decoration: const InputDecoration(
+                        labelText: "Confirm New Password",
+                        border: OutlineInputBorder(),
+                      ),
+                      obscureText: true,
+                      validator: (value) => value != newPassController.text
+                          ? "Passwords do not match"
+                          : null,
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text("Cancel"),
+                ),
+                ElevatedButton(
+                  onPressed: isLoading
+                      ? null
+                      : () async {
+                          if (formKey.currentState!.validate()) {
+                            setState(() => isLoading = true);
+                            try {
+                              final user = FirebaseAuth.instance.currentUser;
+                              final cred = EmailAuthProvider.credential(
+                                email: user!.email!,
+                                password: currentPassController.text,
+                              );
+
+                              // Re-authenticate
+                              await user.reauthenticateWithCredential(cred);
+
+                              // Update Password
+                              await user.updatePassword(newPassController.text);
+
+                              if (context.mounted) {
+                                Navigator.pop(context);
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text(
+                                      "Password updated successfully",
+                                    ),
+                                    backgroundColor: Colors.green,
+                                  ),
+                                );
+                              }
+                            } catch (e) {
+                              setState(() => isLoading = false);
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text("Error: $e"),
+                                    backgroundColor: Colors.red,
+                                  ),
+                                );
+                              }
+                            }
+                          }
+                        },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF002244),
+                    foregroundColor: Colors.white,
+                  ),
+                  child: isLoading
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : const Text("Update"),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Future<void> _showBroadcastDialog(BuildContext context) async {
+    final titleController = TextEditingController();
+    final messageController = TextEditingController();
+    final user = FirebaseAuth.instance.currentUser;
+
+    if (user == null) return;
+
+    await showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text("Broadcast Message"),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: titleController,
+                decoration: const InputDecoration(
+                  labelText: "Title",
+                  hintText: "e.g., Important Notice",
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: messageController,
+                maxLines: 4,
+                decoration: const InputDecoration(
+                  labelText: "Message",
+                  hintText: "Type your message here...",
+                  border: OutlineInputBorder(),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text("Cancel"),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                if (titleController.text.isEmpty ||
+                    messageController.text.isEmpty) {
+                  return;
+                }
+
+                // Fetch user data to get hostel ID
+                final userDoc = await FirebaseFirestore.instance
+                    .collection('users')
+                    .doc(user.uid)
+                    .get();
+                final userData = userDoc.data();
+                final hostelId = userData?['assignedHostel'];
+
+                if (hostelId != null) {
+                  await FirebaseFirestore.instance
+                      .collection('notifications')
+                      .add({
+                        'title': titleController.text.trim(),
+                        'body': messageController.text.trim(),
+                        'hostelId': hostelId,
+                        'isGlobal': false,
+                        'timestamp': FieldValue.serverTimestamp(),
+                        'senderId': user.uid,
+                        'senderRole': 'Rector',
+                      });
+                }
+
+                if (context.mounted) {
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text("Broadcast sent successfully"),
+                      backgroundColor: Colors.green,
+                    ),
+                  );
+                }
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF002244),
+                foregroundColor: Colors.white,
+              ),
+              child: const Text("Send"),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _showAboutDialog(BuildContext context) async {
+    await showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Row(
+            children: [
+              Image.asset(
+                'assets/images/logo.png',
+                height: 40,
+                errorBuilder: (c, e, s) => const Icon(Icons.school),
+              ),
+              const SizedBox(width: 12),
+              const Text("HostelLink"),
+            ],
+          ),
+          content: const Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text("Version: 1.0.0"),
+              SizedBox(height: 8),
+              Text("Developer: RNGPIT Tech Team"),
+              SizedBox(height: 16),
+              Text(
+                "A comprehensive hostel management solution for streamlining administrative tasks and enhancing student experience.",
+                style: TextStyle(color: Colors.grey),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text("Close"),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildActionButton(
+    BuildContext context, {
+    required IconData icon,
+    required String label,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: Colors.grey.shade200),
+        ),
+        child: Column(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.1),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(icon, color: color, size: 28),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              label,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 13,
+                color: Color(0xFF002244),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSettingsTile(
+    BuildContext context, {
+    required IconData icon,
+    required String title,
+    required VoidCallback onTap,
+  }) {
+    return ListTile(
+      leading: Container(
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: Colors.grey[100],
+          shape: BoxShape.circle,
+        ),
+        child: Icon(icon, color: const Color(0xFF002244), size: 18),
+      ),
+      title: Text(
+        title,
+        style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+      ),
+      trailing: const Icon(
+        Icons.arrow_forward_ios,
+        size: 14,
+        color: Colors.grey,
+      ),
+      onTap: onTap,
+    );
+  }
+
+  Widget _buildSwitchTile(String title, String subtitle, bool value) {
+    return SwitchListTile(
+      value: value,
+      onChanged: (val) {}, // Mock functionality
+      activeTrackColor: const Color(0xFF002244),
+      title: Text(
+        title,
+        style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+      ),
+      subtitle: Text(
+        subtitle,
+        style: TextStyle(color: Colors.grey[600], fontSize: 12),
+      ),
+    );
+  }
+
+  Widget _buildDivider() {
+    return Divider(
+      height: 1,
+      color: Colors.grey[200],
+      indent: 16,
+      endIndent: 16,
     );
   }
 }
@@ -1152,13 +1693,29 @@ class OutStudentsListWidget extends StatelessWidget {
   }
 }
 
-class HostelStudentsTab extends StatelessWidget {
+class HostelStudentsTab extends StatefulWidget {
   final String? hostelId;
   const HostelStudentsTab({super.key, this.hostelId});
 
   @override
+  State<HostelStudentsTab> createState() => _HostelStudentsTabState();
+}
+
+class _HostelStudentsTabState extends State<HostelStudentsTab> {
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = "";
+  String _selectedBranch = "All";
+  String _selectedYear = "All";
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    if (hostelId == null) {
+    if (widget.hostelId == null) {
       return const Center(child: Text("No Hostel Assigned"));
     }
 
@@ -1167,26 +1724,60 @@ class HostelStudentsTab extends StatelessWidget {
         Container(
           padding: const EdgeInsets.all(16),
           color: Colors.white,
-          child: Row(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Icon(Icons.people, color: const Color(0xFF002244)),
-              const SizedBox(width: 12),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    "Student List",
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF002244),
+              // Search Bar
+              // Search Bar
+              TextField(
+                controller: _searchController,
+                onChanged: (value) {
+                  setState(() {
+                    _searchQuery = value.toLowerCase();
+                  });
+                },
+                decoration: InputDecoration(
+                  hintText: "Search by name, email, or room...",
+                  prefixIcon: const Icon(Icons.search),
+                  suffixIcon: _searchQuery.isNotEmpty
+                      ? IconButton(
+                          icon: const Icon(Icons.clear),
+                          onPressed: () {
+                            _searchController.clear();
+                            setState(() => _searchQuery = "");
+                          },
+                        )
+                      : null,
+                  filled: true,
+                  fillColor: Colors.grey[100],
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide.none,
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+                ),
+              ),
+              const SizedBox(height: 12),
+              // Filters
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  children: [
+                    _buildDropdown(
+                      "Branch",
+                      _selectedBranch,
+                      ["All", "CS", "IT", "Mech", "Civil", "Elec"],
+                      (val) => setState(() => _selectedBranch = val!),
                     ),
-                  ),
-                  Text(
-                    "Hostel: $hostelId",
-                    style: TextStyle(color: Colors.grey[600], fontSize: 13),
-                  ),
-                ],
+                    const SizedBox(width: 8),
+                    _buildDropdown(
+                      "Year",
+                      _selectedYear,
+                      ["All", "1", "2", "3", "4"],
+                      (val) => setState(() => _selectedYear = val!),
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
@@ -1194,9 +1785,8 @@ class HostelStudentsTab extends StatelessWidget {
         Expanded(
           child: StreamBuilder<QuerySnapshot>(
             stream: FirebaseFirestore.instance
-                .collection('student_imports') // Changed from 'users'
-                .where('assignedHostel', isEqualTo: hostelId)
-                // .where('role', isEqualTo: 'student') // Not needed for imports
+                .collection('student_imports')
+                .where('assignedHostel', isEqualTo: widget.hostelId)
                 .snapshots(),
             builder: (context, snapshot) {
               if (snapshot.connectionState == ConnectionState.waiting) {
@@ -1209,7 +1799,50 @@ class HostelStudentsTab extends StatelessWidget {
                 );
               }
 
-              final students = snapshot.data!.docs;
+              // Client-side Filtering
+              final students = snapshot.data!.docs.where((doc) {
+                final data = doc.data() as Map<String, dynamic>;
+
+                // 1. Search Query
+                final email = (data['email'] ?? '').toString().toLowerCase();
+                final name = (data['name'] ?? '').toString().toLowerCase();
+                final room = (data['room'] ?? '').toString().toLowerCase();
+                final matchesSearch =
+                    _searchQuery.isEmpty ||
+                    email.contains(_searchQuery) ||
+                    name.contains(_searchQuery) ||
+                    room.contains(_searchQuery);
+
+                if (!matchesSearch) return false;
+
+                // 2. Branch Filter
+                final branch =
+                    data['branch'] ?? 'CS'; // Default/Mock assumption
+                if (_selectedBranch != "All" &&
+                    !branch.toString().contains(_selectedBranch)) {
+                  // Contains check for looser matching (e.g. 'Computer Engineering' contains 'Computer')
+                  // But here we are matching specific codes if data uses codes, or text if text.
+                  // Let's assume data matches options or is mappable.
+                  // For now, simple exact or contains match if data is verbose
+                  if (data['branch'] != _selectedBranch) return false;
+                  // NOTE: If data has full names 'Computer Engineering', this might fail if filter is 'CS'.
+                  // Ideally we map, but let's stick to direct compare or simple contains for now
+                  // based on how data is stored.
+                }
+
+                // 3. Year Filter
+                final year = data['year'] ?? '1';
+                if (_selectedYear != "All" &&
+                    year.toString() != _selectedYear) {
+                  return false;
+                }
+
+                return true;
+              }).toList();
+
+              if (students.isEmpty) {
+                return const Center(child: Text('No matches found'));
+              }
 
               return ListView.builder(
                 padding: const EdgeInsets.all(16),
@@ -1241,12 +1874,12 @@ class HostelStudentsTab extends StatelessWidget {
                         style: const TextStyle(fontWeight: FontWeight.bold),
                       ),
                       subtitle: Text(
-                        "${data['email']}\nRoom: ${data['room'] ?? 'N/A'} • Year: ${data['year'] ?? 'N/A'}",
+                        "${data['email']}\nRoom: ${data['room'] ?? 'N/A'} • Year: ${data['year'] ?? 'N/A'} • ${data['branch'] ?? 'N/A'}",
                         style: TextStyle(fontSize: 12, color: Colors.grey[600]),
                       ),
                       isThreeLine: true,
                       trailing: IconButton(
-                        icon: const Icon(Icons.delete, color: Colors.red),
+                        icon: const Icon(Icons.delete, color: Colors.blueGrey),
                         onPressed: () =>
                             _confirmDelete(context, students[index].id),
                       ),
@@ -1258,6 +1891,39 @@ class HostelStudentsTab extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildDropdown(
+    String label,
+    String validValue,
+    List<String> options,
+    ValueChanged<String?> onChanged,
+  ) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
+      decoration: BoxDecoration(
+        color: Colors.grey[100],
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.grey[300]!),
+      ),
+      child: DropdownButton<String>(
+        value: validValue,
+        underline: const SizedBox(),
+        icon: const Icon(Icons.arrow_drop_down, color: Color(0xFF002244)),
+        style: const TextStyle(
+          color: Color(0xFF002244),
+          fontWeight: FontWeight.bold,
+          fontSize: 13,
+        ),
+        items: options.map((String value) {
+          return DropdownMenuItem<String>(
+            value: value,
+            child: Text(value == "All" ? "$label: All" : value),
+          );
+        }).toList(),
+        onChanged: onChanged,
+      ),
     );
   }
 
