@@ -27,33 +27,35 @@ class PushNotificationService {
   static const String _clientEmail =
       'firebase-adminsdk-fbsvc@hostel-v3.iam.gserviceaccount.com';
   static const String _privateKey = '''-----BEGIN PRIVATE KEY-----
-MIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQDmWIQQq0uWigKn
-TtSNeef0+ClOJguK4jCGzQrfeAdVT54SIWnRKExpuBeRJDepYSLssYXTPb6UhyAl
-y79debcMPc8RYHYy6V0I7m6jKwmY54GWZoO/Y3j9lKxZTaSGQFpnQcRnN6Ur1ws8
-wFUCO2bAVbbT7u/SiaW99Rrc5osvojDAjLyrUgQ44LXK18YBpUczhN4jRl6q7jO4
-8VO8eZxE39s7fAlVGp03MWCJuUwJSep/Mjkp3PUuCqmyM1rYnZJ5fcwvQ7ICQNAh
-Ebgpo/fnhgTbbauqxLdg355PBfp2sk0Zd+SjZVaUtp9H+4aTlFsWpY6JCg+l6ESQ
-wm9/NuBVAgMBAAECggEABmKXFpczpd1MLDMaipQXLUqLv+d8vmwoCDSQLphMgRLk
-liq9nNdPIZxsGtE0Mcpy22N4YDNVSxdhJBW9HOw4z2q53gjHKKt2Br9alcSlpCAW
-uYKR+FuGM7v2oxXB5Rl3krvXTpJ+Tkl3EvIJ6TaYUeXjsYWYDu/924F7LdBo303E
-MWZ2VBa2tgaICZPdz/YE0TAXfo3TjrDSx3dfTeeL90NhduEfgzH+iR6tMyMOX65Y
-6fBNHjeVaoAXdzgtbE/63UCs+puSLSRO69CVRDVlsecBePKPoAk10NsepyR/NfmI
-x9PkbHB73/JHKgza3HjhVlLOdqu1kNPaELeBjsshgQKBgQD2KRnO/N49tIxbRBly
-/xsSkJOKBTaXIsyO8hsg+3F62uowQ/QaNt/hNm+wUCrGgv4ZvsDBOuubmXTGm5cE
-Anc9wjCVyqOUPhs9QhCr+PngR2wmj9W0DWn+Fm75iOdfnG75M8stDS3c9Sf/U7mK
-WRvknu7dKdTlQyVZby+Zt6NExQKBgQDvjZYaIjvD+F1E/2Hf25OVmwRlsCXXPdx7
-HkczCzjn/kv+op2sj2ieEL6LDIViSQlQAcBr1drCyXOyJWkMdQA2GqqPpdb2rbg2
-gYE5XClOrpBTu6pMvRWB2puNQC4OVqKTTlQXdTVFJC+VeuDPyxaZVugXSCq0ULZM
-SLcPI0OGUQKBgHJCWaxuS2ow6AVk8rsiFprjaNhj2xcEHBct4dHJZL815gZJRID2
-f6y169nXHEPQgcnJdQc8JiivbjjR96Lw0hBkltCwooUo3tPsWni4tKOaA2VS1ksg
-/tXl69T/6wXCQvCBTgm3WFZ7pPkrD7Bb9EqGSzF1PVC9fhSpO1sKlkpRAoGASRrM
-U+1ej8+bpxLIq6g2wdEs5lt7MNSQFIKI9+rU0ven+W1m8OJS6unxPD319qiTTvc5
-4a7Bs/AGfrcr98E870X0ByJ1F5KsRPYAmaCmenyLTwJWVlTd22L7VX/gjj+iHZIp
-137NYuxIGTYGpWM04lbDPVeosJ5xA5atRtFcKgECgYEAsI5v66YNTyhPpVgYLvtn
-H+U3Qy9tYJzwDDo0Mm1grTmXSiRqvrOK5IwKjixn9Idgj+fQocWKSqFzKJ42Lp7q
-g2CHuagku8i0P2ONu7QU+xHk/TF8H1ejAia32REXjMQW8pw5EZy/7v00lxI+ocuU
-RbYJigAdLPMh5UgzOLHMynE=
+MIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQCvMf4jhp6wUjxw
+bnF39gYbscLW3PCjorf5m8tljVczRnqNB9v6cMKI+yd84FFp9vAAGIrOJhleri2W
+FayZ300e0JwNVKvHy6Y+zvawMxpZENnMjfR56ixFsYHajWtxIlZG/3QxRXt3reqr
+budjY4iGw9/Vm9RLzUAYgw9B7hWTSgKjxKVSJw+bruFwGPswiY9CKkW6ygPpxolS
+TBo1xyXSjgbL03hhQv1kH3EUFXPIZNs83woDgjNcWkf06Rqh+a8C/29Mg6lvkJnA
+HGuY3rodpPf5PFfVnynIdN6CKWhHhat8s9r+XsvZ7+qjgjOEF2VejC7W/+Z0KP52
+aZgtejrfAgMBAAECggEAL3BoEpKXUcNS3lbpnsQdr04ZJjk5Z/Xdv1cyYlM9c4L4
+GEwygsQZySHI9YWARiM5paz/mQa0A/FCIsvHqvrOVTPDrdBpm3ZHk+ZS4i9USR3I
+/BzMQF7qkgyYzudQWpgjqKHvgo//+M49JyKmwUDobSWI7Lx/Ze80Fe8XKJEhgnor
+LPGXGWV+2VJMJjDG7cRYeey+yVcWsvrasXjZaND1WdtIIIWBaQFPbfLwero++ryq
+AqZ28sI2I3hy05Sqk8OfXlhT70RtG9clyll6SB7GEtvw7b2GdWkdg0lkpGdFrFUc
+Ga8dYlLVr7fV9Z+jzs5dnaJoCojXrNDpOl4oZVwXQQKBgQDbfzip8TdI9oHMbNPC
+RCyE1/NYfd3malhZHSejU5HkS+4I0R9DMhRpyjLKwMqsyyYmDx30xu0XrIS5rKoz
+mu2Xv0kWdKzY4CcJNDIrE3ypqWwd7fl/qsFwGcGznAl73P0ar2qVHcqUM2uSVBx8
+UUQoq+2xrPtTtnCEJnK3J8lwDwKBgQDMVLBkWvStXAVVDmTMdl74YPblEl44/gmd
+z1xWUKWD2Aj0UR6kZlXz48ARXpdpS0PGWvUx1vq1385PTH6ElGrD8Q6SNLUGKZ7N
+FZr1dH1a5XbbWM6+KJ8wzgUFQCSRR5ycea+JT72tTJfwmLcHDaIKAWmUbwwDjkBW
+1dgy4Y+4MQKBgH6xnD9bYBHZV2prln8XYqr7CxcU77RDxeMKFQsM/bTMrwSf0G+0
+xFubvl2RkmrSh56IMz5KZCe6CJIzu7o1vtZMLx+rEOnN2DpTynFauiYkCKft6Ils
+QmM2Orw1YLQCBoYUomyX2YpZc8nuitKnBbSEKJrZwee78o4UszpM2NS5AoGAeBNY
+qVDuMqY+F/Lid2kkfE/3Jzy5FELtgcim2a6A5c7hzDmTiUb+QdnYOBzfW6g4RuuS
+5dwQ7yp7ggxQ2Tai20zgpDjHHLz+rkSBELeJJw5r35D7xbH3guW++4vrMVjlButX
+pZivvZSiQWhtPn7bd4fG9MyhQcGpu53ldFkrbTECgYEAqNlCwIJ0hGRT3fSYJHxz
+xgfEQDbSucu/eVZv/w4tpTn+MUJblQBeyt57Wablzdnz89b1u3pcryT4wuI3tFJP
+AyDcuwiFxC9ToJVjsB5L+2jaCII+YR+R5yc3vCsfraIbkVUGknUMdyRdhlwo7B62
+s6UDRq7nykEUKEw83j0m3mg=
 -----END PRIVATE KEY-----''';
+
+  static const String _clientId = '114924344665199922669';
 
   // Scopes required for FCM V1
   static const List<String> _scopes = [
@@ -158,10 +160,18 @@ RbYJigAdLPMh5UgzOLHMynE=
 
     try {
       final accountCredentials = ServiceAccountCredentials.fromJson({
-        "client_email": _clientEmail,
-        "private_key": _privateKey,
+        "type": "service_account",
         "project_id": _projectId,
-        // Other fields are optional for this usage
+        "private_key_id": "393ed3c3e525680b33ace78a02fd7369bcae1c27",
+        "private_key": _privateKey,
+        "client_email": _clientEmail,
+        "client_id": _clientId,
+        "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+        "token_uri": "https://oauth2.googleapis.com/token",
+        "auth_provider_x509_cert_url":
+            "https://www.googleapis.com/oauth2/v1/certs",
+        "client_x509_cert_url":
+            "https://www.googleapis.com/robot/v1/metadata/x509/firebase-adminsdk-fbsvc%40hostel-v3.iam.gserviceaccount.com",
       });
 
       final authClient = await clientViaServiceAccount(

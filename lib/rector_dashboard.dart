@@ -31,9 +31,12 @@ class _RectorDashboardState extends State<RectorDashboard> {
             .collection('users')
             .doc(user.uid)
             .get();
-        if (mounted) {
+        final data = doc.data();
+        if (mounted && data != null) {
           setState(() {
-            _assignedHostel = doc.data()?['assignedHostel'];
+            // Normalize to UpperCase to match "BH1" format
+            String? rawHostel = data['assignedHostel'];
+            _assignedHostel = rawHostel?.toUpperCase();
             _isLoading = false;
           });
         }
@@ -215,6 +218,30 @@ class StatsHeader extends StatelessWidget {
       child: StreamBuilder<QuerySnapshot>(
         stream: stream,
         builder: (context, snapshot) {
+          if (snapshot.hasError) {
+            return Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.red.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: Colors.red),
+              ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.error, color: Colors.red),
+                  const SizedBox(height: 4),
+                  Text(
+                    "Error",
+                    style: TextStyle(
+                      color: Colors.red,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }
           final count = snapshot.hasData ? snapshot.data!.docs.length : 0;
           return AnimatedContainer(
             duration: const Duration(milliseconds: 200),
