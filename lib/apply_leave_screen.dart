@@ -143,12 +143,12 @@ class _ApplyLeaveScreenState extends State<ApplyLeaveScreen> {
           .add({
             'uid': user.uid,
             'email': user.email,
-            'name': userData['name'] ?? 'Unknown', // Add Name
-            'hostelId':
-                userData['assignedHostel'], // Critical for Rector filtering
-            'room': userData['room'], // Useful for Warden
-            'parentContact':
-                userData['parentContact'], // Useful for verification
+            'name': userData['name'] ?? 'Unknown',
+            'hostelId': userData['assignedHostel'],
+            'room': userData['room'],
+            'parentContact': userData['parentContact'],
+            'category': userData['category'] ?? 'Degree',
+            'branch': userData['branch'] ?? 'Unknown',
             'type': _leaveType,
             'startDate': Timestamp.fromDate(startDateTime),
             'endDate': Timestamp.fromDate(endDateTime),

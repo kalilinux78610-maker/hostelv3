@@ -19,6 +19,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
   final _parentPhoneController = TextEditingController();
 
   String? _selectedHostel;
+  String? _selectedCategory;
   String? _selectedBranch;
   String? _selectedYear;
   bool _isLoading = false;
@@ -32,14 +33,29 @@ class _SignUpScreenState extends State<SignUpScreen> {
     'Girls Hostel 2',
   ];
 
-  final List<String> _branches = [
-    'Computer Engineering',
-    'Information Technology',
-    'Mechanical Engineering',
-    'Civil Engineering',
-    'Electrical Engineering',
-    'Chemical Engineering',
-  ];
+  final List<String> _categories = ['Degree', 'Diploma'];
+
+  final Map<String, List<String>> _branchesByCategory = {
+    'Degree': [
+      'IT & MSC-IT',
+      'B.VOC',
+      'CSE',
+      'BBA & MBA',
+      'Chemical',
+      'Electrical',
+      'Pharmacy',
+      'Civil Engineering',
+    ],
+    'Diploma': [
+      'Electrical Engineering',
+      'Chemical Engineering',
+      'Information Technology',
+      'Computer Engineering',
+      'Mechanical Engineering',
+    ],
+  };
+
+  List<String> get _branches => _branchesByCategory[_selectedCategory] ?? [];
 
   final List<String> _years = ['1', '2', '3', '4'];
 
@@ -109,15 +125,17 @@ class _SignUpScreenState extends State<SignUpScreen> {
           assignedHostel = importData['assignedHostel']; // Use imported scope
 
           extraData = {
+            'category': importData['category'] ?? _selectedCategory,
             'branch': importData['branch'] ?? _selectedBranch,
             'year': importData['year'] ?? _selectedYear,
             'hostel': importData['hostel'] ?? _selectedHostel,
-            'room': importData['room'], // Auto-assign room if imported
-            'name': importData['name'], // Ensure name matches official record
-            'isVerified': true, // Auto-verify imported students
+            'room': importData['room'],
+            'name': importData['name'],
+            'isVerified': true,
           };
         } else {
           extraData = {
+            'category': _selectedCategory,
             'branch': _selectedBranch,
             'year': _selectedYear,
             'hostel': _selectedHostel,
@@ -302,7 +320,24 @@ class _SignUpScreenState extends State<SignUpScreen> {
                     const SizedBox(height: 16),
                     DropdownButtonFormField<String>(
                       decoration: _inputDecoration(
-                        'Select Branch',
+                        'Category (Degree/Diploma)',
+                        Icons.category,
+                      ),
+                      items: _categories
+                          .map(
+                            (c) => DropdownMenuItem(value: c, child: Text(c)),
+                          )
+                          .toList(),
+                      onChanged: (v) => setState(() {
+                        _selectedCategory = v;
+                        _selectedBranch = null;
+                      }),
+                    ),
+                    const SizedBox(height: 16),
+                    DropdownButtonFormField<String>(
+                      key: ValueKey(_selectedCategory),
+                      decoration: _inputDecoration(
+                        'Select Branch/Department',
                         Icons.school,
                       ),
                       items: _branches
