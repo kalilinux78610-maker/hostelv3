@@ -40,10 +40,17 @@ class _GuardProfileScreenState extends State<GuardProfileScreen> {
   }
 
   Future<void> _pickImage() async {
-    final pickedFile = await ImagePicker().pickImage(source: ImageSource.gallery);
-    if (pickedFile != null) {
-      final bytes = await pickedFile.readAsBytes();
-      setState(() => _imageBytes = bytes);
+    try {
+      final pickedFile = await ImagePicker().pickImage(source: ImageSource.gallery);
+      if (pickedFile != null) {
+        final bytes = await pickedFile.readAsBytes();
+        setState(() => _imageBytes = bytes);
+      }
+    } catch(e) {
+      debugPrint("Error logging image: $e");
+      if (mounted) {
+         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Cannot open gallery. Error: $e")));
+      }
     }
   }
 
@@ -99,26 +106,29 @@ class _GuardProfileScreenState extends State<GuardProfileScreen> {
           children: [
             // 1. FULL WIDTH BANNER (Fixed constraints here)
             Stack(
-              alignment: Alignment.center,
+              alignment: Alignment.bottomCenter,
               clipBehavior: Clip.none,
               children: [
-                ClipPath(
-                  clipper: HeaderClipper(),
-                  child: Container(
-                    height: isWeb ? 300 : 200, // Taller on web
-                    width: double.infinity,
-                    decoration: const BoxDecoration(
-                      image: DecorationImage(
-                        image: AssetImage('assets/images/building.jpg'),
-                        fit: BoxFit.cover,
-                      ),
-                    ),
+                Padding(
+                  padding: EdgeInsets.only(bottom: isWeb ? 70 : 60),
+                  child: ClipPath(
+                    clipper: HeaderClipper(),
                     child: Container(
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                          colors: [Colors.black.withValues(alpha: 0.4), Colors.transparent],
+                      height: isWeb ? 300 : 200, // Taller on web
+                      width: double.infinity,
+                      decoration: const BoxDecoration(
+                        image: DecorationImage(
+                          image: AssetImage('assets/images/building.jpg'),
+                          fit: BoxFit.cover,
+                        ),
+                      ),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            colors: [Colors.black.withValues(alpha: 0.4), Colors.transparent],
+                          ),
                         ),
                       ),
                     ),
@@ -126,7 +136,7 @@ class _GuardProfileScreenState extends State<GuardProfileScreen> {
                 ),
                 // Floating Avatar
                 Positioned(
-                  bottom: isWeb ? -60 : -50,
+                  bottom: 0,
                   child: Stack(
                     alignment: Alignment.bottomRight,
                     children: [
@@ -159,7 +169,7 @@ class _GuardProfileScreenState extends State<GuardProfileScreen> {
               ],
             ),
 
-            const SizedBox(height: 80),
+            const SizedBox(height: 20),
 
             // 2. CONSTRAINED CONTENT BELOW
             Center(
