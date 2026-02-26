@@ -5,7 +5,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'apply_leave_screen.dart';
 import 'gate_pass_screen.dart';
 import 'complaints/student_complaints_screen.dart';
-import 'student_profile_screen.dart';
+import 'student_profile_design_v2.dart';
 import 'notification_screen.dart';
 
 class StudentDashboard extends StatelessWidget {
@@ -68,13 +68,18 @@ class StudentDashboard extends StatelessWidget {
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              const CircleAvatar(
+                              CircleAvatar(
                                 radius: 24,
-                                backgroundImage: AssetImage(
-                                  'assets/images/student_profile.png',
-                                ),
                                 backgroundColor: Colors.white24,
-                                child: Icon(Icons.person, color: Colors.white),
+                                backgroundImage: userData?['photoUrl'] != null
+                                    ? NetworkImage(userData!['photoUrl'])
+                                    : null,
+                                child: userData?['photoUrl'] == null
+                                    ? const Icon(
+                                        Icons.person,
+                                        color: Colors.white,
+                                      )
+                                    : null,
                               ),
                               const Text(
                                 "Hostel Mate",
@@ -235,7 +240,7 @@ class StudentDashboard extends StatelessWidget {
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => const StudentProfileScreen(),
+                  builder: (context) => const StudentProfileDesignV2(),
                 ),
               );
             } else if (item['label'] == 'Log Out') {

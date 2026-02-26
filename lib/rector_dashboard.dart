@@ -68,39 +68,50 @@ class _RectorDashboardState extends State<RectorDashboard> {
     }
 
     return Scaffold(
-      backgroundColor: Colors.grey[100],
-      appBar: AppBar(
-        title: Text(
-          _assignedHostel != null
-              ? 'Rector Dashboard ($_assignedHostel)'
-              : 'Rector Dashboard',
-        ),
-        backgroundColor: _primaryColor,
-        foregroundColor: Colors.white,
-        automaticallyImplyLeading: false,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.logout),
-            onPressed: () => FirebaseAuth.instance.signOut(),
-          ),
-        ],
-      ),
+      backgroundColor: Colors.white,
       body: _widgetOptions.elementAt(_selectedIndex),
-      bottomNavigationBar: BottomNavigationBar(
-        type: BottomNavigationBarType.fixed,
-        items: const <BottomNavigationBarItem>[
-          BottomNavigationBarItem(icon: Icon(Icons.dashboard), label: 'Home'),
-          BottomNavigationBarItem(icon: Icon(Icons.people), label: 'Students'),
-          BottomNavigationBarItem(icon: Icon(Icons.history), label: 'History'),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.report_problem),
-            label: 'Complaints',
-          ),
-          BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
-        ],
-        currentIndex: _selectedIndex,
-        selectedItemColor: _primaryColor,
-        onTap: _onItemTapped,
+      bottomNavigationBar: Container(
+        decoration: BoxDecoration(
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.1),
+              blurRadius: 10,
+              offset: const Offset(0, -5),
+            ),
+          ],
+        ),
+        child: BottomNavigationBar(
+          type: BottomNavigationBarType.fixed,
+          backgroundColor: Colors.white,
+          selectedItemColor: _primaryColor,
+          unselectedItemColor: Colors.grey,
+          showUnselectedLabels: true,
+          elevation: 0,
+          items: const <BottomNavigationBarItem>[
+            BottomNavigationBarItem(
+              icon: Icon(Icons.dashboard_rounded),
+              label: 'Home',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.people_rounded),
+              label: 'Students',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.history_rounded),
+              label: 'History',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.report_problem_rounded),
+              label: 'Complaints',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.person_rounded),
+              label: 'Profile',
+            ),
+          ],
+          currentIndex: _selectedIndex,
+          onTap: _onItemTapped,
+        ),
       ),
     );
   }
@@ -121,83 +132,112 @@ class _HomeTabState extends State<HomeTab> {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        StatsHeader(
-          hostelId: widget.hostelId,
-          selectedView: _selectedView,
-          onViewChanged: (index) => setState(() => _selectedView = index),
-        ),
-        // Removed the toggle container
+        _buildCustomHeader(),
         Expanded(
-          child: _selectedView == 0
-              ? PendingRequestsList(hostelId: widget.hostelId)
-              : OutStudentsListWidget(hostelId: widget.hostelId),
+          child: Container(
+            color: Colors.grey[50], // Light grey background for the list
+            child: _selectedView == 0
+                ? PendingRequestsList(hostelId: widget.hostelId)
+                : OutStudentsListWidget(hostelId: widget.hostelId),
+          ),
         ),
       ],
     );
   }
-}
 
-class StatsHeader extends StatelessWidget {
-  final String? hostelId;
-  final int selectedView;
-  final ValueChanged<int> onViewChanged;
-
-  const StatsHeader({
-    super.key,
-    this.hostelId,
-    required this.selectedView,
-    required this.onViewChanged,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    Query pendingQuery = FirebaseFirestore.instance
-        .collection('leave_requests')
-        .where('wardenStatus', isEqualTo: 'approved')
-        .where('rectorStatus', isEqualTo: 'pending')
-        .where('status', isEqualTo: 'pending');
-
-    Query outQuery = FirebaseFirestore.instance
-        .collection('leave_requests')
-        .where('actualOutTime', isNull: false)
-        .where('actualInTime', isNull: true);
-
-    if (hostelId != null) {
-      pendingQuery = pendingQuery.where('hostelId', isEqualTo: hostelId);
-      outQuery = outQuery.where('hostelId', isEqualTo: hostelId);
-    }
-
+  Widget _buildCustomHeader() {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.only(top: 50, left: 20, right: 20, bottom: 20),
       decoration: const BoxDecoration(
         color: Color(0xFF002244),
         borderRadius: BorderRadius.only(
-          bottomLeft: Radius.circular(24),
-          bottomRight: Radius.circular(24),
+          bottomLeft: Radius.circular(30),
+          bottomRight: Radius.circular(30),
         ),
       ),
-      child: Row(
+      child: Column(
         children: [
-          Expanded(
-            child: _buildStatCard(
-              context,
-              "PENDING REQUESTS",
-              pendingQuery.snapshots(),
-              Colors.orange,
-              Icons.access_time_filled,
-              0,
-            ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    "Welcome Back,",
+                    style: TextStyle(color: Colors.white70, fontSize: 14),
+                  ),
+                  const SizedBox(height: 4),
+                  const Text(
+                    "Rector",
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  if (widget.hostelId != null)
+                    Text(
+                      widget.hostelId!,
+                      style: const TextStyle(
+                        color: Colors.orange,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                ],
+              ),
+              Container(
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(color: Colors.white, width: 2),
+                ),
+                child: const CircleAvatar(
+                  radius: 25,
+                  backgroundColor: Colors.white24,
+                  child: Icon(Icons.person, color: Colors.white),
+                ),
+              ),
+            ],
           ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: _buildStatCard(
-              context,
-              "OUT NOW",
-              outQuery.snapshots(),
-              Colors.blue,
-              Icons.directions_walk,
-              1,
-            ),
+          const SizedBox(height: 24),
+          Row(
+            children: [
+              Expanded(
+                child: _buildStatCard(
+                  "PENDING",
+                  FirebaseFirestore.instance
+                      .collection('leave_requests')
+                      .where('wardenStatus', isEqualTo: 'approved')
+                      .where('rectorStatus', isEqualTo: 'pending')
+                      .where('status', isEqualTo: 'pending')
+                      .where(
+                        widget.hostelId != null ? 'hostelId' : 'status',
+                        isEqualTo: widget.hostelId ?? 'pending',
+                      ), // Hacky way to handle optional filter
+                  Colors.orange,
+                  Icons.access_time_filled_rounded,
+                  0,
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: _buildStatCard(
+                  "OUT NOW",
+                  FirebaseFirestore.instance
+                      .collection('leave_requests')
+                      .where('actualOutTime', isNull: false)
+                      .where('actualInTime', isNull: true)
+                      .where(
+                        widget.hostelId != null ? 'hostelId' : 'actualOutTime',
+                        isEqualTo: widget.hostelId ?? false,
+                      ), // Hacky way to handle optional filter
+                  Colors.blue,
+                  Icons.directions_walk_rounded,
+                  1,
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -205,104 +245,78 @@ class StatsHeader extends StatelessWidget {
   }
 
   Widget _buildStatCard(
-    BuildContext context,
     String label,
-    Stream<QuerySnapshot> stream,
+    Query query,
     Color color,
     IconData icon,
     int index,
   ) {
-    final isSelected = selectedView == index;
-    return GestureDetector(
-      onTap: () => onViewChanged(index),
-      child: StreamBuilder<QuerySnapshot>(
-        stream: stream,
-        builder: (context, snapshot) {
-          if (snapshot.hasError) {
-            return Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: Colors.red.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: Colors.red),
-              ),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(Icons.error, color: Colors.red),
-                  const SizedBox(height: 4),
-                  Text(
-                    "Error",
-                    style: TextStyle(
-                      color: Colors.red,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ],
-              ),
-            );
-          }
-          final count = snapshot.hasData ? snapshot.data!.docs.length : 0;
-          return AnimatedContainer(
+    return StreamBuilder<QuerySnapshot>(
+      stream: query.snapshots(),
+      builder: (context, snapshot) {
+        final count = snapshot.hasData ? snapshot.data!.docs.length : 0;
+        final isSelected = _selectedView == index;
+
+        return GestureDetector(
+          onTap: () => setState(() => _selectedView = index),
+          child: AnimatedContainer(
             duration: const Duration(milliseconds: 200),
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
               color: isSelected
                   ? Colors.white
                   : Colors.white.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                color: isSelected
-                    ? Colors.white
-                    : Colors.white.withValues(alpha: 0.2),
-              ),
+              borderRadius: BorderRadius.circular(20),
               boxShadow: isSelected
                   ? [
                       BoxShadow(
                         color: Colors.black.withValues(alpha: 0.1),
                         blurRadius: 10,
-                        offset: const Offset(0, 4),
+                        offset: const Offset(0, 5),
                       ),
                     ]
-                  : null,
+                  : [],
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Icon(
-                      icon,
-                      color: isSelected ? color : Colors.white70,
-                      size: 20,
-                    ),
-                    Text(
-                      count.toString(),
-                      style: TextStyle(
-                        color: isSelected
-                            ? const Color(0xFF002244)
-                            : Colors.white,
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ],
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: isSelected
+                        ? color.withValues(alpha: 0.1)
+                        : Colors.white24,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    icon,
+                    color: isSelected ? color : Colors.white,
+                    size: 20,
+                  ),
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 12),
+                Text(
+                  count.toString(),
+                  style: TextStyle(
+                    color: isSelected ? const Color(0xFF002244) : Colors.white,
+                    fontSize: 28,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 4),
                 Text(
                   label,
                   style: TextStyle(
-                    color: isSelected ? Colors.grey[800] : Colors.white70,
-                    fontSize: 11, // Slightly smaller to fit
-                    fontWeight: FontWeight.w600,
+                    color: isSelected ? Colors.grey[600] : Colors.white70,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
                   ),
                 ),
               ],
             ),
-          );
-        },
-      ),
+          ),
+        );
+      },
     );
   }
 }
@@ -419,32 +433,57 @@ class PendingRequestsList extends StatelessWidget {
             final difference = startDate.difference(now).inHours;
             final isUrgent = difference <= 24;
 
-            return Card(
-              margin: const EdgeInsets.only(bottom: 12),
-              elevation: 0,
-              color: Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-                side: BorderSide(color: Colors.grey[200]!),
+            return Container(
+              margin: const EdgeInsets.only(bottom: 16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.05),
+                    blurRadius: 15,
+                    offset: const Offset(0, 5),
+                  ),
+                ],
               ),
               child: Padding(
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.all(20),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(
                       children: [
-                        CircleAvatar(
-                          backgroundColor: Colors.blue[50],
-                          child: Text(
-                            (data['email'] ?? 'U')[0].toUpperCase(),
-                            style: const TextStyle(
-                              color: Color(0xFF002244),
-                              fontWeight: FontWeight.bold,
+                        Container(
+                          padding: const EdgeInsets.all(3),
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: const Color(
+                                0xFF002244,
+                              ).withValues(alpha: 0.1),
                             ),
                           ),
+                          child: CircleAvatar(
+                            radius: 24,
+                            backgroundColor: const Color(
+                              0xFF002244,
+                            ).withValues(alpha: 0.05),
+                            backgroundImage: data['photoUrl'] != null
+                                ? NetworkImage(data['photoUrl'])
+                                : null,
+                            child: data['photoUrl'] == null
+                                ? Text(
+                                    (data['email'] ?? 'U')[0].toUpperCase(),
+                                    style: const TextStyle(
+                                      color: Color(0xFF002244),
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 18,
+                                    ),
+                                  )
+                                : null,
+                          ),
                         ),
-                        const SizedBox(width: 12),
+                        const SizedBox(width: 16),
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -453,15 +492,28 @@ class PendingRequestsList extends StatelessWidget {
                                 data['email'] ?? 'Unknown',
                                 style: const TextStyle(
                                   fontWeight: FontWeight.bold,
-                                  fontSize: 15,
+                                  fontSize: 16,
+                                  color: Color(0xFF002244),
                                 ),
                               ),
-                              Text(
-                                _formatDate(data['createdAt']),
-                                style: TextStyle(
-                                  color: Colors.grey[600],
-                                  fontSize: 12,
-                                ),
+                              const SizedBox(height: 4),
+                              Row(
+                                children: [
+                                  Icon(
+                                    Icons.access_time,
+                                    size: 14,
+                                    color: Colors.grey[500],
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    _formatDate(data['createdAt']),
+                                    style: TextStyle(
+                                      color: Colors.grey[600],
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ],
                               ),
                             ],
                           ),
@@ -469,35 +521,53 @@ class PendingRequestsList extends StatelessWidget {
                         if (isUrgent) const BlinkingUrgentBadge(),
                       ],
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 20),
                     Container(
-                      padding: const EdgeInsets.all(12),
+                      padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
                         color: Colors.grey[50],
-                        borderRadius: BorderRadius.circular(8),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: Colors.grey[100]!),
                       ),
                       child: Column(
                         children: [
-                          _buildDateRow("From:", startDate),
-                          const SizedBox(height: 4),
-                          _buildDateRow("To:", endDate),
-                          const Divider(height: 12),
+                          _buildDateRow(
+                            "From",
+                            startDate,
+                            Icons.calendar_today_outlined,
+                          ),
+                          const Padding(
+                            padding: EdgeInsets.symmetric(vertical: 8),
+                            child: Divider(height: 1),
+                          ),
+                          _buildDateRow(
+                            "To",
+                            endDate,
+                            Icons.event_available_outlined,
+                          ),
+                          const Padding(
+                            padding: EdgeInsets.symmetric(vertical: 8),
+                            child: Divider(height: 1),
+                          ),
                           Row(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Text(
-                                "Reason: ",
-                                style: TextStyle(
+                              const Padding(
+                                padding: EdgeInsets.only(top: 2),
+                                child: Icon(
+                                  Icons.format_quote_rounded,
+                                  size: 16,
                                   color: Colors.grey,
-                                  fontSize: 12,
                                 ),
                               ),
+                              const SizedBox(width: 8),
                               Expanded(
                                 child: Text(
                                   data['reason'] ?? 'N/A',
-                                  style: const TextStyle(
-                                    fontSize: 13,
-                                    fontStyle: FontStyle.italic,
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    color: Colors.grey[800],
+                                    height: 1.4,
                                   ),
                                 ),
                               ),
@@ -506,28 +576,56 @@ class PendingRequestsList extends StatelessWidget {
                         ],
                       ),
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 20),
                     Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
                       children: [
-                        TextButton(
-                          onPressed: () =>
-                              _updateStatus(context, doc.id, data, 'rejected'),
-                          style: TextButton.styleFrom(
-                            foregroundColor: Colors.red,
+                        Expanded(
+                          child: OutlinedButton(
+                            onPressed: () => _updateStatus(
+                              context,
+                              doc.id,
+                              data,
+                              'rejected',
+                            ),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: Colors.red,
+                              side: BorderSide(
+                                color: Colors.red.withValues(alpha: 0.5),
+                              ),
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                            child: const Text(
+                              "Reject",
+                              style: TextStyle(fontWeight: FontWeight.bold),
+                            ),
                           ),
-                          child: const Text("REJECT"),
                         ),
-                        const SizedBox(width: 8),
-                        ElevatedButton(
-                          onPressed: () =>
-                              _updateStatus(context, doc.id, data, 'approved'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF002244),
-                            foregroundColor: Colors.white,
-                            elevation: 0,
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: ElevatedButton(
+                            onPressed: () => _updateStatus(
+                              context,
+                              doc.id,
+                              data,
+                              'approved',
+                            ),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF002244),
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              elevation: 0,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                            child: const Text(
+                              "Approve",
+                              style: TextStyle(fontWeight: FontWeight.bold),
+                            ),
                           ),
-                          child: const Text("APPROVE"),
                         ),
                       ],
                     ),
@@ -541,19 +639,29 @@ class PendingRequestsList extends StatelessWidget {
     );
   }
 
-  Widget _buildDateRow(String label, DateTime date) {
+  Widget _buildDateRow(String label, DateTime date, IconData icon) {
     return Row(
       children: [
+        Icon(icon, size: 16, color: Colors.grey),
+        const SizedBox(width: 8),
         SizedBox(
           width: 40,
           child: Text(
             label,
-            style: const TextStyle(color: Colors.grey, fontSize: 12),
+            style: const TextStyle(
+              color: Colors.grey,
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
+            ),
           ),
         ),
         Text(
           "${date.day}/${date.month} ${date.hour}:${date.minute.toString().padLeft(2, '0')}",
-          style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 13),
+          style: const TextStyle(
+            fontWeight: FontWeight.w600,
+            fontSize: 14,
+            color: Color(0xFF002244),
+          ),
         ),
       ],
     );
@@ -1616,15 +1724,20 @@ class OutStudentsListWidget extends StatelessWidget {
                           backgroundColor: isOverdue
                               ? Colors.red[50]
                               : Colors.blue[50],
-                          child: Text(
-                            (data['email'] ?? 'U')[0].toUpperCase(),
-                            style: TextStyle(
-                              color: isOverdue
-                                  ? Colors.red
-                                  : const Color(0xFF002244),
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
+                          backgroundImage: data['photoUrl'] != null
+                              ? NetworkImage(data['photoUrl'])
+                              : null,
+                          child: data['photoUrl'] == null
+                              ? Text(
+                                  (data['email'] ?? 'U')[0].toUpperCase(),
+                                  style: TextStyle(
+                                    color: isOverdue
+                                        ? Colors.red
+                                        : const Color(0xFF002244),
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                )
+                              : null,
                         ),
                         const SizedBox(width: 12),
                         Expanded(
@@ -1887,14 +2000,19 @@ class _HostelStudentsTabState extends State<HostelStudentsTab> {
                     child: ListTile(
                       leading: CircleAvatar(
                         backgroundColor: Colors.blue[50],
-                        child: Text(
-                          (data['name'] ?? (data['email'] ?? 'S'))[0]
-                              .toUpperCase(),
-                          style: const TextStyle(
-                            color: Color(0xFF002244),
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
+                        backgroundImage: data['photoUrl'] != null
+                            ? NetworkImage(data['photoUrl'])
+                            : null,
+                        child: data['photoUrl'] == null
+                            ? Text(
+                                (data['name'] ?? (data['email'] ?? 'S'))[0]
+                                    .toUpperCase(),
+                                style: const TextStyle(
+                                  color: Color(0xFF002244),
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              )
+                            : null,
                       ),
                       title: Text(
                         data['name'] ?? 'Unknown',

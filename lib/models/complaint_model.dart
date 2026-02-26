@@ -28,7 +28,7 @@ class Complaint {
   });
 
   Map<String, dynamic> toMap() {
-    return {
+    final map = <String, dynamic>{
       'id': id,
       'uid': uid,
       'userEmail': userEmail,
@@ -37,10 +37,19 @@ class Complaint {
       'category': category,
       'status': status,
       'createdAt': Timestamp.fromDate(createdAt),
-      'resolvedAt': resolvedAt != null ? Timestamp.fromDate(resolvedAt!) : null,
-      'adminComment': adminComment,
-      'hostelId': hostelId,
     };
+
+    if (resolvedAt != null) {
+      map['resolvedAt'] = Timestamp.fromDate(resolvedAt!);
+    }
+    if (adminComment != null) {
+      map['adminComment'] = adminComment;
+    }
+    if (hostelId != null) {
+      map['hostelId'] = hostelId;
+    }
+
+    return map;
   }
 
   factory Complaint.fromMap(Map<String, dynamic> map) {

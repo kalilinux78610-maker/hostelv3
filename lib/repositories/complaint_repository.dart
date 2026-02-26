@@ -7,10 +7,14 @@ class ComplaintRepository {
   // Add a new complaint
   Future<void> addComplaint(Complaint complaint) async {
     try {
+      final complaintMap = complaint.toMap();
+      complaintMap['createdAt'] =
+          FieldValue.serverTimestamp(); // Enforce server timestamp for security rules
+
       await _firestore
           .collection('complaints')
           .doc(complaint.id)
-          .set(complaint.toMap());
+          .set(complaintMap);
     } catch (e) {
       throw Exception('Failed to add complaint: $e');
     }
