@@ -128,10 +128,7 @@ class WardenHomeTab extends StatelessWidget {
                     children: [
                       Text(
                         "Warden",
-                        style: TextStyle(
-                          color: Colors.white70,
-                          fontSize: 16,
-                        ),
+                        style: TextStyle(color: Colors.white70, fontSize: 16),
                       ),
                       Text(
                         "Dashboard",
@@ -166,9 +163,8 @@ class WardenHomeTab extends StatelessWidget {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (context) => const NotificationScreen(
-                                userRole: 'warden',
-                              ),
+                              builder: (context) =>
+                                  const NotificationScreen(userRole: 'warden'),
                             ),
                           );
                         },
@@ -196,9 +192,7 @@ class WardenHomeTab extends StatelessWidget {
               bottom: -35,
               left: 0,
               right: 0,
-              child: Center(
-                child: _buildPendingCard(),
-              ),
+              child: Center(child: _buildPendingCard()),
             ),
           ],
         ),
@@ -222,9 +216,10 @@ class WardenHomeTab extends StatelessWidget {
                           final result = await Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (context) => const WardenDepartmentScreen(
-                                category: 'Degree',
-                              ),
+                              builder: (context) =>
+                                  const WardenDepartmentScreen(
+                                    category: 'Degree',
+                                  ),
                             ),
                           );
                           if (result is int && onTabChange != null) {
@@ -243,9 +238,10 @@ class WardenHomeTab extends StatelessWidget {
                           final result = await Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (context) => const WardenDepartmentScreen(
-                                category: 'Diploma',
-                              ),
+                              builder: (context) =>
+                                  const WardenDepartmentScreen(
+                                    category: 'Diploma',
+                                  ),
                             ),
                           );
                           if (result is int && onTabChange != null) {
@@ -361,8 +357,7 @@ class _CategoryCard extends StatelessWidget {
           .where('category', isEqualTo: category)
           .snapshots(),
       builder: (context, snapshot) {
-        final hasRequests =
-            snapshot.hasData && snapshot.data!.docs.isNotEmpty;
+        final hasRequests = snapshot.hasData && snapshot.data!.docs.isNotEmpty;
 
         return GestureDetector(
           onTap: onTap,
@@ -455,8 +450,9 @@ class WardenDepartmentScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final departments =
-        category == 'Degree' ? _degreeDepartments : _diplomaDepartments;
+    final departments = category == 'Degree'
+        ? _degreeDepartments
+        : _diplomaDepartments;
 
     return Scaffold(
       backgroundColor: const Color(0xFFF5F5F5),
@@ -502,10 +498,7 @@ class WardenDepartmentScreen extends StatelessWidget {
                     children: [
                       const Text(
                         "Warden",
-                        style: TextStyle(
-                          color: Colors.white70,
-                          fontSize: 14,
-                        ),
+                        style: TextStyle(color: Colors.white70, fontSize: 14),
                       ),
                       Text(
                         category,
@@ -539,9 +532,8 @@ class WardenDepartmentScreen extends StatelessWidget {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (context) => const NotificationScreen(
-                          userRole: 'warden',
-                        ),
+                        builder: (context) =>
+                            const NotificationScreen(userRole: 'warden'),
                       ),
                     );
                   },
@@ -593,6 +585,7 @@ class WardenDepartmentScreen extends StatelessWidget {
                           ),
                         ),
                       );
+                      if (!context.mounted) return;
                       if (result is int) {
                         Navigator.pop(context, result);
                       }
@@ -609,7 +602,7 @@ class WardenDepartmentScreen extends StatelessWidget {
           color: Colors.white,
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.08),
+              color: Colors.black.withValues(alpha: 0.08),
               blurRadius: 20,
               offset: const Offset(0, -5),
             ),
@@ -678,8 +671,7 @@ class _DepartmentCard extends StatelessWidget {
           .where('branch', isEqualTo: name)
           .snapshots(),
       builder: (context, snapshot) {
-        final hasRequests =
-            snapshot.hasData && snapshot.data!.docs.isNotEmpty;
+        final hasRequests = snapshot.hasData && snapshot.data!.docs.isNotEmpty;
 
         return GestureDetector(
           onTap: onTap,
@@ -905,9 +897,7 @@ class WardenDeptRequestsScreen extends StatelessWidget {
                   .snapshots(),
               builder: (context, snapshot) {
                 if (snapshot.hasError) {
-                  return Center(
-                    child: Text('Error: ${snapshot.error}'),
-                  );
+                  return Center(child: Text('Error: ${snapshot.error}'));
                 }
 
                 if (snapshot.connectionState == ConnectionState.waiting) {
@@ -919,8 +909,7 @@ class WardenDeptRequestsScreen extends StatelessWidget {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.done_all,
-                            size: 64, color: Colors.grey[300]),
+                        Icon(Icons.done_all, size: 64, color: Colors.grey[300]),
                         const SizedBox(height: 16),
                         Text(
                           "No pending requests",
@@ -948,8 +937,7 @@ class WardenDeptRequestsScreen extends StatelessWidget {
                   itemBuilder: (context, index) {
                     final doc = snapshot.data!.docs[index];
                     final data = doc.data() as Map<String, dynamic>;
-                    final startDate =
-                        (data['startDate'] as Timestamp).toDate();
+                    final startDate = (data['startDate'] as Timestamp).toDate();
                     final endDate = (data['endDate'] as Timestamp).toDate();
 
                     return Container(
@@ -975,8 +963,9 @@ class WardenDeptRequestsScreen extends StatelessWidget {
                               children: [
                                 CircleAvatar(
                                   radius: 24,
-                                  backgroundColor:
-                                      _primaryColor.withValues(alpha: 0.1),
+                                  backgroundColor: _primaryColor.withValues(
+                                    alpha: 0.1,
+                                  ),
                                   child: Text(
                                     (data['name'] ?? 'S')[0].toUpperCase(),
                                     style: const TextStyle(
@@ -1044,17 +1033,21 @@ class WardenDeptRequestsScreen extends StatelessWidget {
                               child: Column(
                                 children: [
                                   _buildDateRow(
-                                      Icons.logout, "From:", startDate),
+                                    Icons.logout,
+                                    "From:",
+                                    startDate,
+                                  ),
                                   const SizedBox(height: 8),
-                                  _buildDateRow(
-                                      Icons.login, "To:", endDate),
+                                  _buildDateRow(Icons.login, "To:", endDate),
                                   if (data['room'] != null) ...[
                                     const Divider(height: 16),
                                     Row(
                                       children: [
-                                        Icon(Icons.room,
-                                            size: 16,
-                                            color: Colors.grey[500]),
+                                        Icon(
+                                          Icons.room,
+                                          size: 16,
+                                          color: Colors.grey[500],
+                                        ),
                                         const SizedBox(width: 8),
                                         Text(
                                           "Room: ${data['room']}",
@@ -1076,8 +1069,11 @@ class WardenDeptRequestsScreen extends StatelessWidget {
                             Row(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Icon(Icons.notes,
-                                    size: 16, color: Colors.grey[400]),
+                                Icon(
+                                  Icons.notes,
+                                  size: 16,
+                                  color: Colors.grey[400],
+                                ),
                                 const SizedBox(width: 8),
                                 Expanded(
                                   child: Text(
@@ -1108,13 +1104,15 @@ class WardenDeptRequestsScreen extends StatelessWidget {
                                     style: OutlinedButton.styleFrom(
                                       foregroundColor: Colors.red,
                                       side: const BorderSide(
-                                          color: Colors.red, width: 1.5),
+                                        color: Colors.red,
+                                        width: 1.5,
+                                      ),
                                       shape: RoundedRectangleBorder(
-                                        borderRadius:
-                                            BorderRadius.circular(12),
+                                        borderRadius: BorderRadius.circular(12),
                                       ),
                                       padding: const EdgeInsets.symmetric(
-                                          vertical: 12),
+                                        vertical: 12,
+                                      ),
                                     ),
                                     child: const Text(
                                       "REJECT",
@@ -1139,11 +1137,11 @@ class WardenDeptRequestsScreen extends StatelessWidget {
                                       foregroundColor: Colors.white,
                                       elevation: 0,
                                       shape: RoundedRectangleBorder(
-                                        borderRadius:
-                                            BorderRadius.circular(12),
+                                        borderRadius: BorderRadius.circular(12),
                                       ),
                                       padding: const EdgeInsets.symmetric(
-                                          vertical: 12),
+                                        vertical: 12,
+                                      ),
                                     ),
                                     child: const Text(
                                       "APPROVE",
@@ -1218,13 +1216,7 @@ class WardenDeptRequestsScreen extends StatelessWidget {
       children: [
         Icon(icon, size: 16, color: Colors.grey[500]),
         const SizedBox(width: 8),
-        Text(
-          label,
-          style: TextStyle(
-            color: Colors.grey[500],
-            fontSize: 13,
-          ),
-        ),
+        Text(label, style: TextStyle(color: Colors.grey[500], fontSize: 13)),
         const SizedBox(width: 8),
         Text(
           "${date.day}/${date.month}/${date.year}  ${date.hour}:${date.minute.toString().padLeft(2, '0')}",
@@ -1252,7 +1244,7 @@ class WardenProfileTab extends StatefulWidget {
 class _WardenProfileTabState extends State<WardenProfileTab> {
   final User? user = FirebaseAuth.instance.currentUser;
   static const Color _primaryColor = Color(0xFF002244);
-  
+
   bool _isEditing = false;
   Uint8List? _imageBytes;
   final TextEditingController _nameController = TextEditingController();
@@ -1268,21 +1260,27 @@ class _WardenProfileTabState extends State<WardenProfileTab> {
   Future<void> _loadUserProfile() async {
     if (user != null) {
       // Use on-device listener to instantly reflect backend updates without needing a restart
-      FirebaseFirestore.instance.collection('users').doc(user!.uid).snapshots().listen((doc) {
-        if (doc.exists && mounted) {
-          setState(() {
-            _nameController.text = doc.data()?['name'] ?? "Warden";
-            _phoneController.text = doc.data()?['phone'] ?? "";
-            _profileImageUrl = doc.data()?['profileImageUrl'];
+      FirebaseFirestore.instance
+          .collection('users')
+          .doc(user!.uid)
+          .snapshots()
+          .listen((doc) {
+            if (doc.exists && mounted) {
+              setState(() {
+                _nameController.text = doc.data()?['name'] ?? "Warden";
+                _phoneController.text = doc.data()?['phone'] ?? "";
+                _profileImageUrl = doc.data()?['profileImageUrl'];
+              });
+            }
           });
-        }
-      });
     }
   }
 
   Future<void> _pickImage() async {
     try {
-      final pickedFile = await ImagePicker().pickImage(source: ImageSource.gallery);
+      final pickedFile = await ImagePicker().pickImage(
+        source: ImageSource.gallery,
+      );
       if (pickedFile != null) {
         final bytes = await pickedFile.readAsBytes();
         setState(() => _imageBytes = bytes);
@@ -1290,18 +1288,26 @@ class _WardenProfileTabState extends State<WardenProfileTab> {
     } catch (e) {
       debugPrint("Error picking image: $e");
       if (mounted) {
-         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Cannot open gallery. Error: $e")));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Cannot open gallery. Error: $e")),
+        );
       }
     }
   }
 
   Future<void> _saveProfile() async {
     if (user == null) return;
-    
+
     if (_imageBytes != null) {
       try {
-        final ref = FirebaseStorage.instance.ref().child('user_profiles').child('${user!.uid}_${DateTime.now().millisecondsSinceEpoch}.jpg');
-        final uploadTask = ref.putData(_imageBytes!, SettableMetadata(contentType: 'image/jpeg'));
+        final ref = FirebaseStorage.instance
+            .ref()
+            .child('user_profiles')
+            .child('${user!.uid}_${DateTime.now().millisecondsSinceEpoch}.jpg');
+        final uploadTask = ref.putData(
+          _imageBytes!,
+          SettableMetadata(contentType: 'image/jpeg'),
+        );
         final snapshot = await uploadTask.whenComplete(() {});
         _profileImageUrl = await snapshot.ref.getDownloadURL();
       } catch (e) {
@@ -1310,14 +1316,19 @@ class _WardenProfileTabState extends State<WardenProfileTab> {
     }
 
     try {
-      await FirebaseFirestore.instance.collection('users').doc(user!.uid).update({
-        'name': _nameController.text,
-        'phone': _phoneController.text,
-        if (_profileImageUrl != null) 'profileImageUrl': _profileImageUrl,
-      });
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user!.uid)
+          .update({
+            'name': _nameController.text,
+            'phone': _phoneController.text,
+            if (_profileImageUrl != null) 'profileImageUrl': _profileImageUrl,
+          });
       setState(() => _isEditing = false);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Profile Updated")));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text("Profile Updated")));
       }
     } catch (e) {
       debugPrint("Update failed: $e");
@@ -1328,6 +1339,8 @@ class _WardenProfileTabState extends State<WardenProfileTab> {
   Widget build(BuildContext context) {
     double screenWidth = MediaQuery.of(context).size.width;
     bool isWeb = screenWidth > 900;
+
+    final user = FirebaseAuth.instance.currentUser;
 
     return Scaffold(
       backgroundColor: const Color(0xFFEFEFEF),
@@ -1344,7 +1357,7 @@ class _WardenProfileTabState extends State<WardenProfileTab> {
                   child: ClipPath(
                     clipper: WardenHeaderClipper(),
                     child: Container(
-                      height: isWeb ? 300 : 200, 
+                      height: isWeb ? 300 : 200,
                       width: double.infinity,
                       decoration: const BoxDecoration(
                         image: DecorationImage(
@@ -1357,7 +1370,10 @@ class _WardenProfileTabState extends State<WardenProfileTab> {
                           gradient: LinearGradient(
                             begin: Alignment.topCenter,
                             end: Alignment.bottomCenter,
-                            colors: [Colors.black.withValues(alpha: 0.4), Colors.transparent],
+                            colors: [
+                              Colors.black.withValues(alpha: 0.4),
+                              Colors.transparent,
+                            ],
                           ),
                         ),
                       ),
@@ -1373,18 +1389,34 @@ class _WardenProfileTabState extends State<WardenProfileTab> {
                       Container(
                         padding: const EdgeInsets.all(4),
                         decoration: const BoxDecoration(
-                          color: Colors.white, 
-                          shape: BoxShape.circle, 
-                          boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 10, spreadRadius: 2)]
+                          color: Colors.white,
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black12,
+                              blurRadius: 10,
+                              spreadRadius: 2,
+                            ),
+                          ],
                         ),
                         child: CircleAvatar(
                           radius: isWeb ? 70 : 60,
                           backgroundColor: _primaryColor,
-                          backgroundImage: _imageBytes != null 
+                          backgroundImage: _imageBytes != null
                               ? MemoryImage(_imageBytes!) as ImageProvider
-                              : (_profileImageUrl != null && _profileImageUrl!.isNotEmpty ? NetworkImage(_profileImageUrl!) : null),
-                          child: (_imageBytes == null && (_profileImageUrl == null || _profileImageUrl!.isEmpty))
-                              ? Icon(Icons.person, size: isWeb ? 80 : 70, color: Colors.white)
+                              : (_profileImageUrl != null &&
+                                        _profileImageUrl!.isNotEmpty
+                                    ? NetworkImage(_profileImageUrl!)
+                                    : null),
+                          child:
+                              (_imageBytes == null &&
+                                  (_profileImageUrl == null ||
+                                      _profileImageUrl!.isEmpty))
+                              ? Icon(
+                                  Icons.person,
+                                  size: isWeb ? 80 : 70,
+                                  color: Colors.white,
+                                )
                               : null,
                         ),
                       ),
@@ -1393,8 +1425,15 @@ class _WardenProfileTabState extends State<WardenProfileTab> {
                           onTap: _pickImage,
                           child: Container(
                             padding: const EdgeInsets.all(10),
-                            decoration: const BoxDecoration(color: Colors.blue, shape: BoxShape.circle),
-                            child: const Icon(Icons.camera_alt, color: Colors.white, size: 20),
+                            decoration: const BoxDecoration(
+                              color: Colors.blue,
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(
+                              Icons.camera_alt,
+                              color: Colors.white,
+                              size: 20,
+                            ),
                           ),
                         ),
                     ],
@@ -1415,15 +1454,32 @@ class _WardenProfileTabState extends State<WardenProfileTab> {
                     children: [
                       // Role Badge
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-                        decoration: BoxDecoration(color: _primaryColor, borderRadius: BorderRadius.circular(20)),
-                        child: const Text("WARDEN", style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold, letterSpacing: 1)),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 6,
+                        ),
+                        decoration: BoxDecoration(
+                          color: _primaryColor,
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: const Text(
+                          "WARDEN",
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 1,
+                          ),
+                        ),
                       ),
                       const SizedBox(height: 10),
-                      
+
                       // Online Status
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 4,
+                        ),
                         decoration: BoxDecoration(
                           color: Colors.green.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(20),
@@ -1437,26 +1493,46 @@ class _WardenProfileTabState extends State<WardenProfileTab> {
                           ),
                         ),
                       ),
-                      
+
                       const SizedBox(height: 30),
 
                       // Info Card
                       Card(
                         elevation: 4,
                         shadowColor: Colors.black12,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
                         color: Colors.white,
                         child: Padding(
                           padding: const EdgeInsets.all(32.0),
                           child: Column(
                             children: [
-                              _buildInfoTile(Icons.person, "Full Name", _nameController, _isEditing),
+                              _buildInfoTile(
+                                Icons.person,
+                                "Full Name",
+                                _nameController,
+                                _isEditing,
+                              ),
                               const Divider(height: 40),
-                              _buildStaticTile(Icons.email, "Email Address", user?.email ?? "warden@hostel.com"),
+                              _buildStaticTile(
+                                Icons.email,
+                                "Email Address",
+                                user?.email ?? "warden@hostel.com",
+                              ),
                               const Divider(height: 40),
-                              _buildInfoTile(Icons.phone, "Phone Number", _phoneController, _isEditing),
+                              _buildInfoTile(
+                                Icons.phone,
+                                "Phone Number",
+                                _phoneController,
+                                _isEditing,
+                              ),
                               const Divider(height: 40),
-                              _buildStaticTile(Icons.badge, "Employee ID", "W-${user?.uid.substring(0, 5).toUpperCase() ?? 'XXXXX'}"),
+                              _buildStaticTile(
+                                Icons.badge,
+                                "Employee ID",
+                                "W-${user?.uid.substring(0, 5).toUpperCase() ?? 'XXXXX'}",
+                              ),
                             ],
                           ),
                         ),
@@ -1471,7 +1547,13 @@ class _WardenProfileTabState extends State<WardenProfileTab> {
                             child: SizedBox(
                               height: 55,
                               child: ElevatedButton.icon(
-                                style: ElevatedButton.styleFrom(backgroundColor: _primaryColor, foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: _primaryColor,
+                                  foregroundColor: Colors.white,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                ),
                                 onPressed: () {
                                   if (_isEditing) {
                                     _saveProfile();
@@ -1479,8 +1561,16 @@ class _WardenProfileTabState extends State<WardenProfileTab> {
                                     setState(() => _isEditing = true);
                                   }
                                 },
-                                icon: Icon(_isEditing ? Icons.save : Icons.edit),
-                                label: Text(_isEditing ? "SAVE CHANGES" : "EDIT PROFILE", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                                icon: Icon(
+                                  _isEditing ? Icons.save : Icons.edit,
+                                ),
+                                label: Text(
+                                  _isEditing ? "SAVE CHANGES" : "EDIT PROFILE",
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 16,
+                                  ),
+                                ),
                               ),
                             ),
                           ),
@@ -1490,15 +1580,32 @@ class _WardenProfileTabState extends State<WardenProfileTab> {
                               child: SizedBox(
                                 height: 55,
                                 child: OutlinedButton.icon(
-                                  style: OutlinedButton.styleFrom(side: const BorderSide(color: Color(0xFFC62828)), foregroundColor: const Color(0xFFC62828), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+                                  style: OutlinedButton.styleFrom(
+                                    side: const BorderSide(
+                                      color: Color(0xFFC62828),
+                                    ),
+                                    foregroundColor: const Color(0xFFC62828),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                  ),
                                   onPressed: () async {
                                     await FirebaseAuth.instance.signOut();
                                     if (context.mounted) {
-                                      Navigator.popUntil(context, (route) => route.isFirst);
+                                      Navigator.popUntil(
+                                        context,
+                                        (route) => route.isFirst,
+                                      );
                                     }
                                   },
                                   icon: const Icon(Icons.logout),
-                                  label: const Text("LOGOUT", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                                  label: const Text(
+                                    "LOGOUT",
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 16,
+                                    ),
+                                  ),
                                 ),
                               ),
                             ),
@@ -1517,20 +1624,59 @@ class _WardenProfileTabState extends State<WardenProfileTab> {
     );
   }
 
-  Widget _buildInfoTile(IconData icon, String title, TextEditingController controller, bool editable) {
+  Widget _buildInfoTile(
+    IconData icon,
+    String title,
+    TextEditingController controller,
+    bool editable,
+  ) {
     return Row(
       children: [
-        Container(padding: const EdgeInsets.all(12), decoration: BoxDecoration(color: _primaryColor.withValues(alpha: 0.05), borderRadius: BorderRadius.circular(12)), child: Icon(icon, color: _primaryColor, size: 24)),
+        Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: _primaryColor.withValues(alpha: 0.05),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Icon(icon, color: _primaryColor, size: 24),
+        ),
         const SizedBox(width: 16),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(title, style: const TextStyle(color: Colors.grey, fontSize: 12, fontWeight: FontWeight.w500)),
+              Text(
+                title,
+                style: const TextStyle(
+                  color: Colors.grey,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
               const SizedBox(height: 4),
               editable
-                  ? TextField(controller: controller, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: _primaryColor), decoration: const InputDecoration(isDense: true, border: InputBorder.none, contentPadding: EdgeInsets.zero))
-                  : Text(controller.text, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: _primaryColor), overflow: TextOverflow.ellipsis),
+                  ? TextField(
+                      controller: controller,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 18,
+                        color: _primaryColor,
+                      ),
+                      decoration: const InputDecoration(
+                        isDense: true,
+                        border: InputBorder.none,
+                        contentPadding: EdgeInsets.zero,
+                      ),
+                    )
+                  : Text(
+                      controller.text,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 18,
+                        color: _primaryColor,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
             ],
           ),
         ),
@@ -1542,21 +1688,36 @@ class _WardenProfileTabState extends State<WardenProfileTab> {
     return Row(
       children: [
         Container(
-          padding: const EdgeInsets.all(12), 
+          padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: _primaryColor.withValues(alpha: 0.05), 
-            borderRadius: BorderRadius.circular(12)
-          ), 
-          child: Icon(icon, color: _primaryColor, size: 24)
+            color: _primaryColor.withValues(alpha: 0.05),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Icon(icon, color: _primaryColor, size: 24),
         ),
         const SizedBox(width: 16),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(title, style: const TextStyle(color: Colors.grey, fontSize: 12, fontWeight: FontWeight.w500)),
+              Text(
+                title,
+                style: const TextStyle(
+                  color: Colors.grey,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
               const SizedBox(height: 4),
-              Text(value, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: _primaryColor), overflow: TextOverflow.ellipsis),
+              Text(
+                value,
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 18,
+                  color: _primaryColor,
+                ),
+                overflow: TextOverflow.ellipsis,
+              ),
             ],
           ),
         ),
@@ -1572,11 +1733,17 @@ class WardenHeaderClipper extends CustomClipper<Path> {
     path.lineTo(0, size.height - 40);
     var controlPoint = Offset(size.width / 2, size.height);
     var endPoint = Offset(size.width, size.height - 40);
-    path.quadraticBezierTo(controlPoint.dx, controlPoint.dy, endPoint.dx, endPoint.dy);
+    path.quadraticBezierTo(
+      controlPoint.dx,
+      controlPoint.dy,
+      endPoint.dx,
+      endPoint.dy,
+    );
     path.lineTo(size.width, 0);
     path.close();
     return path;
   }
+
   @override
   bool shouldReclip(CustomClipper<Path> oldClipper) => false;
 }

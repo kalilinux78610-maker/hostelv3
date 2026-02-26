@@ -28,7 +28,10 @@ class _GuardProfileScreenState extends State<GuardProfileScreen> {
 
   Future<void> _loadUserProfile() async {
     if (user != null) {
-      final doc = await FirebaseFirestore.instance.collection('users').doc(user!.uid).get();
+      final doc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user!.uid)
+          .get();
       if (doc.exists) {
         setState(() {
           _nameController.text = doc.data()?['name'] ?? "Guard Name";
@@ -41,15 +44,22 @@ class _GuardProfileScreenState extends State<GuardProfileScreen> {
 
   Future<void> _pickImage() async {
     try {
-      final pickedFile = await ImagePicker().pickImage(source: ImageSource.gallery);
+      final pickedFile = await ImagePicker().pickImage(
+        source: ImageSource.gallery,
+        imageQuality: 50,
+        maxWidth: 512,
+        maxHeight: 512,
+      );
       if (pickedFile != null) {
         final bytes = await pickedFile.readAsBytes();
         setState(() => _imageBytes = bytes);
       }
-    } catch(e) {
+    } catch (e) {
       debugPrint("Error logging image: $e");
       if (mounted) {
-         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Cannot open gallery. Error: $e")));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Cannot open gallery. Error: $e")),
+        );
       }
     }
   }
@@ -60,8 +70,14 @@ class _GuardProfileScreenState extends State<GuardProfileScreen> {
     }
     if (_imageBytes != null) {
       try {
-        final ref = FirebaseStorage.instance.ref().child('user_profiles').child('${user!.uid}_${DateTime.now().millisecondsSinceEpoch}.jpg');
-        final uploadTask = ref.putData(_imageBytes!, SettableMetadata(contentType: 'image/jpeg'));
+        final ref = FirebaseStorage.instance
+            .ref()
+            .child('user_profiles')
+            .child('${user!.uid}_${DateTime.now().millisecondsSinceEpoch}.jpg');
+        final uploadTask = ref.putData(
+          _imageBytes!,
+          SettableMetadata(contentType: 'image/jpeg'),
+        );
         final snapshot = await uploadTask.whenComplete(() {});
         _profileImageUrl = await snapshot.ref.getDownloadURL();
       } catch (e) {
@@ -70,14 +86,19 @@ class _GuardProfileScreenState extends State<GuardProfileScreen> {
     }
 
     try {
-      await FirebaseFirestore.instance.collection('users').doc(user!.uid).update({
-        'name': _nameController.text,
-        'phone': _phoneController.text,
-        if (_profileImageUrl != null) 'profileImageUrl': _profileImageUrl,
-      });
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user!.uid)
+          .update({
+            'name': _nameController.text,
+            'phone': _phoneController.text,
+            if (_profileImageUrl != null) 'profileImageUrl': _profileImageUrl,
+          });
       setState(() => _isEditing = false);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Profile Updated")));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text("Profile Updated")));
       }
     } catch (e) {
       debugPrint("Update failed: $e");
@@ -92,7 +113,10 @@ class _GuardProfileScreenState extends State<GuardProfileScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFEFEFEF),
       appBar: AppBar(
-        title: const Text("My Profile", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        title: const Text(
+          "My Profile",
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+        ),
         backgroundColor: const Color(0xFF002244),
         elevation: 0,
         centerTitle: true,
@@ -127,7 +151,10 @@ class _GuardProfileScreenState extends State<GuardProfileScreen> {
                           gradient: LinearGradient(
                             begin: Alignment.topCenter,
                             end: Alignment.bottomCenter,
-                            colors: [Colors.black.withValues(alpha: 0.4), Colors.transparent],
+                            colors: [
+                              Colors.black.withValues(alpha: 0.4),
+                              Colors.transparent,
+                            ],
                           ),
                         ),
                       ),
@@ -142,15 +169,32 @@ class _GuardProfileScreenState extends State<GuardProfileScreen> {
                     children: [
                       Container(
                         padding: const EdgeInsets.all(4),
-                        decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle, boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 10, spreadRadius: 2)]),
+                        decoration: const BoxDecoration(
+                          color: Colors.white,
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black12,
+                              blurRadius: 10,
+                              spreadRadius: 2,
+                            ),
+                          ],
+                        ),
                         child: CircleAvatar(
                           radius: isWeb ? 70 : 60,
                           backgroundColor: const Color(0xFF002244),
                           backgroundImage: _imageBytes != null
                               ? MemoryImage(_imageBytes!) as ImageProvider
-                              : (_profileImageUrl != null ? NetworkImage(_profileImageUrl!) : null),
-                          child: (_imageBytes == null && _profileImageUrl == null)
-                              ? Icon(Icons.person, size: isWeb ? 80 : 70, color: Colors.white)
+                              : (_profileImageUrl != null
+                                    ? NetworkImage(_profileImageUrl!)
+                                    : null),
+                          child:
+                              (_imageBytes == null && _profileImageUrl == null)
+                              ? Icon(
+                                  Icons.person,
+                                  size: isWeb ? 80 : 70,
+                                  color: Colors.white,
+                                )
                               : null,
                         ),
                       ),
@@ -159,8 +203,15 @@ class _GuardProfileScreenState extends State<GuardProfileScreen> {
                           onTap: _pickImage,
                           child: Container(
                             padding: const EdgeInsets.all(10),
-                            decoration: const BoxDecoration(color: Colors.blue, shape: BoxShape.circle),
-                            child: const Icon(Icons.camera_alt, color: Colors.white, size: 20),
+                            decoration: const BoxDecoration(
+                              color: Colors.blue,
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(
+                              Icons.camera_alt,
+                              color: Colors.white,
+                              size: 20,
+                            ),
                           ),
                         ),
                     ],
@@ -181,9 +232,23 @@ class _GuardProfileScreenState extends State<GuardProfileScreen> {
                     children: [
                       // Role Badge
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-                        decoration: BoxDecoration(color: const Color(0xFF002244), borderRadius: BorderRadius.circular(20)),
-                        child: const Text("SECURITY GUARD", style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold, letterSpacing: 1)),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 6,
+                        ),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF002244),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: const Text(
+                          "SECURITY GUARD",
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 1,
+                          ),
+                        ),
                       ),
                       const SizedBox(height: 30),
 
@@ -191,21 +256,45 @@ class _GuardProfileScreenState extends State<GuardProfileScreen> {
                       Card(
                         elevation: 4,
                         shadowColor: Colors.black12,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
                         color: Colors.white,
                         child: Padding(
                           padding: const EdgeInsets.all(32.0),
                           child: Column(
                             children: [
-                              _buildInfoTile(Icons.person, "Full Name", _nameController, _isEditing),
+                              _buildInfoTile(
+                                Icons.person,
+                                "Full Name",
+                                _nameController,
+                                _isEditing,
+                              ),
                               const Divider(height: 40),
-                              _buildStaticTile(Icons.email, "Email Address", user?.email ?? "guard@rngpit.com"),
+                              _buildStaticTile(
+                                Icons.email,
+                                "Email Address",
+                                user?.email ?? "guard@rngpit.com",
+                              ),
                               const Divider(height: 40),
-                              _buildInfoTile(Icons.phone, "Phone Number", _phoneController, _isEditing),
+                              _buildInfoTile(
+                                Icons.phone,
+                                "Phone Number",
+                                _phoneController,
+                                _isEditing,
+                              ),
                               const Divider(height: 40),
-                              _buildStaticTile(Icons.badge, "Employee ID", "G-${user?.uid.substring(0, 5).toUpperCase() ?? 'YYHQN'}"),
+                              _buildStaticTile(
+                                Icons.badge,
+                                "Employee ID",
+                                "G-${user?.uid.substring(0, 5).toUpperCase() ?? 'YYHQN'}",
+                              ),
                               const Divider(height: 40),
-                              _buildStaticTile(Icons.access_time_filled, "Shift Time", "Morning (8AM - 8PM)"),
+                              _buildStaticTile(
+                                Icons.access_time_filled,
+                                "Shift Time",
+                                "Morning (8AM - 8PM)",
+                              ),
                             ],
                           ),
                         ),
@@ -220,7 +309,13 @@ class _GuardProfileScreenState extends State<GuardProfileScreen> {
                             child: SizedBox(
                               height: 55,
                               child: ElevatedButton.icon(
-                                style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF002244), foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: const Color(0xFF002244),
+                                  foregroundColor: Colors.white,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                ),
                                 onPressed: () {
                                   if (_isEditing) {
                                     _saveProfile();
@@ -228,8 +323,16 @@ class _GuardProfileScreenState extends State<GuardProfileScreen> {
                                     setState(() => _isEditing = true);
                                   }
                                 },
-                                icon: Icon(_isEditing ? Icons.save : Icons.edit),
-                                label: Text(_isEditing ? "SAVE CHANGES" : "EDIT PROFILE", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                                icon: Icon(
+                                  _isEditing ? Icons.save : Icons.edit,
+                                ),
+                                label: Text(
+                                  _isEditing ? "SAVE CHANGES" : "EDIT PROFILE",
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 16,
+                                  ),
+                                ),
                               ),
                             ),
                           ),
@@ -239,15 +342,32 @@ class _GuardProfileScreenState extends State<GuardProfileScreen> {
                               child: SizedBox(
                                 height: 55,
                                 child: OutlinedButton.icon(
-                                  style: OutlinedButton.styleFrom(side: const BorderSide(color: Color(0xFFC62828)), foregroundColor: const Color(0xFFC62828), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+                                  style: OutlinedButton.styleFrom(
+                                    side: const BorderSide(
+                                      color: Color(0xFFC62828),
+                                    ),
+                                    foregroundColor: const Color(0xFFC62828),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                  ),
                                   onPressed: () async {
                                     await FirebaseAuth.instance.signOut();
                                     if (context.mounted) {
-                                      Navigator.popUntil(context, (route) => route.isFirst);
+                                      Navigator.popUntil(
+                                        context,
+                                        (route) => route.isFirst,
+                                      );
                                     }
                                   },
                                   icon: const Icon(Icons.logout),
-                                  label: const Text("LOGOUT", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                                  label: const Text(
+                                    "LOGOUT",
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 16,
+                                    ),
+                                  ),
                                 ),
                               ),
                             ),
@@ -266,20 +386,58 @@ class _GuardProfileScreenState extends State<GuardProfileScreen> {
     );
   }
 
-  Widget _buildInfoTile(IconData icon, String title, TextEditingController controller, bool editable) {
+  Widget _buildInfoTile(
+    IconData icon,
+    String title,
+    TextEditingController controller,
+    bool editable,
+  ) {
     return Row(
       children: [
-        Container(padding: const EdgeInsets.all(12), decoration: BoxDecoration(color: const Color(0xFF002244).withValues(alpha: 0.05), borderRadius: BorderRadius.circular(12)), child: Icon(icon, color: const Color(0xFF002244), size: 24)),
+        Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: const Color(0xFF002244).withValues(alpha: 0.05),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Icon(icon, color: const Color(0xFF002244), size: 24),
+        ),
         const SizedBox(width: 16),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(title, style: const TextStyle(color: Colors.grey, fontSize: 12, fontWeight: FontWeight.w500)),
+              Text(
+                title,
+                style: const TextStyle(
+                  color: Colors.grey,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
               const SizedBox(height: 4),
               editable
-                  ? TextField(controller: controller, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Color(0xFF002244)), decoration: const InputDecoration(isDense: true, border: InputBorder.none, contentPadding: EdgeInsets.zero))
-                  : Text(controller.text, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Color(0xFF002244))),
+                  ? TextField(
+                      controller: controller,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 18,
+                        color: Color(0xFF002244),
+                      ),
+                      decoration: const InputDecoration(
+                        isDense: true,
+                        border: InputBorder.none,
+                        contentPadding: EdgeInsets.zero,
+                      ),
+                    )
+                  : Text(
+                      controller.text,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 18,
+                        color: Color(0xFF002244),
+                      ),
+                    ),
             ],
           ),
         ),
@@ -290,15 +448,37 @@ class _GuardProfileScreenState extends State<GuardProfileScreen> {
   Widget _buildStaticTile(IconData icon, String title, String value) {
     return Row(
       children: [
-        Container(padding: const EdgeInsets.all(12), decoration: BoxDecoration(color: const Color(0xFF002244).withValues(alpha: 0.05), borderRadius: BorderRadius.circular(12)), child: Icon(icon, color: const Color(0xFF002244), size: 24)),
+        Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: const Color(0xFF002244).withValues(alpha: 0.05),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Icon(icon, color: const Color(0xFF002244), size: 24),
+        ),
         const SizedBox(width: 16),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(title, style: const TextStyle(color: Colors.grey, fontSize: 12, fontWeight: FontWeight.w500)),
+              Text(
+                title,
+                style: const TextStyle(
+                  color: Colors.grey,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
               const SizedBox(height: 4),
-              Text(value, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Color(0xFF002244)), overflow: TextOverflow.ellipsis),
+              Text(
+                value,
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 18,
+                  color: Color(0xFF002244),
+                ),
+                overflow: TextOverflow.ellipsis,
+              ),
             ],
           ),
         ),
@@ -314,11 +494,17 @@ class HeaderClipper extends CustomClipper<Path> {
     path.lineTo(0, size.height - 40);
     var controlPoint = Offset(size.width / 2, size.height);
     var endPoint = Offset(size.width, size.height - 40);
-    path.quadraticBezierTo(controlPoint.dx, controlPoint.dy, endPoint.dx, endPoint.dy);
+    path.quadraticBezierTo(
+      controlPoint.dx,
+      controlPoint.dy,
+      endPoint.dx,
+      endPoint.dy,
+    );
     path.lineTo(size.width, 0);
     path.close();
     return path;
   }
+
   @override
   bool shouldReclip(CustomClipper<Path> oldClipper) => false;
 }

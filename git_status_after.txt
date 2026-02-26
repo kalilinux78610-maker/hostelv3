@@ -1,0 +1,34 @@
+On branch main
+Your branch is up to date with 'origin/main'.
+
+Changes to be committed:
+  (use "git restore --staged <file>..." to unstage)
+	modified:   android/gradle/wrapper/gradle-wrapper.properties
+	modified:   android/settings.gradle.kts
+	modified:   lib/models/complaint_model.dart
+	modified:   lib/repositories/complaint_repository.dart
+	modified:   lib/student_dashboard.dart
+	modified:   lib/student_profile_screen.dart
+	modified:   pubspec.lock
+
+Unmerged paths:
+  (use "git restore --staged <file>..." to unstage)
+  (use "git add <file>..." to mark resolution)
+	both modified:   lib/rector_dashboard.dart
+	both modified:   macos/Flutter/GeneratedPluginRegistrant.swift
+	both modified:   pubspec.yaml
+
+Changes not staged for commit:
+  (use "git add <file>..." to update what will be committed)
+  (use "git restore <file>..." to discard changes in working directory)
+	modified:   pubspec.lock
+
+Untracked files:
+  (use "git add <file>..." to include in what will be committed)
+	.vscode/
+	git_status_after.txt
+	git_status_output.txt
+	lib/app_config.dart
+	lib/repositories/storage_repository.dart
+	lib/student_profile_design_v2.dart
+

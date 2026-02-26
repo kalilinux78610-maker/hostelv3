@@ -57,7 +57,12 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
   Future<void> _pickAndUploadImage() async {
     try {
       final ImagePicker picker = ImagePicker();
-      final XFile? image = await picker.pickImage(source: ImageSource.gallery);
+      final XFile? image = await picker.pickImage(
+        source: ImageSource.gallery,
+        imageQuality: 50,
+        maxWidth: 512,
+        maxHeight: 512,
+      );
 
       if (image == null) return;
 
