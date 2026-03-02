@@ -29,7 +29,7 @@ class NotificationRepository {
       // 2. Send Push Notification (FCM)
       List<String> tokens = [];
 
-      if (['warden', 'rector', 'student'].contains(receiverUid)) {
+      if (['warden', 'rector', 'student', 'hod'].contains(receiverUid)) {
         // Broadcast to role
         // Note: For 'student', we usually don't broadcast to ALL students in this app context,
         // but 'warden' or 'rector' might be valid broadcast targets.
@@ -99,6 +99,7 @@ class NotificationRepository {
     if (role == 'warden') targetIds.add('warden');
     if (role == 'rector') targetIds.add('rector');
     if (role == 'guard') targetIds.add('guard');
+    if (role == 'hod') targetIds.add('hod');
 
     return query.where('receiverUid', whereIn: targetIds).snapshots();
   }

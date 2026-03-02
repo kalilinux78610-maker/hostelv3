@@ -7,6 +7,7 @@ import 'student_dashboard.dart';
 import 'guard_dashboard_screen.dart';
 import 'admin/admin_dashboard_screen.dart';
 import 'mess/mess_manager_dashboard.dart';
+import 'hod_dashboard.dart';
 
 class RoleChecker extends StatelessWidget {
   final String uid;
@@ -33,16 +34,21 @@ class RoleChecker extends StatelessWidget {
           return _errorScreen("Firebase Error", "${snapshot.error}");
         }
 
-        if (snapshot.hasData && snapshot.data != null && snapshot.data!.exists) {
+        if (snapshot.hasData &&
+            snapshot.data != null &&
+            snapshot.data!.exists) {
           final data = snapshot.data!.data() as Map<String, dynamic>?;
-          if (data == null) return _errorScreen("Data Error", "User data is empty");
-          
+          if (data == null) {
+            return _errorScreen("Data Error", "User data is empty");
+          }
+
           String role = data['role'] ?? 'student';
 
           // Dashboard Routing
           if (role == 'admin') return const AdminDashboardScreen();
           if (role == 'mess_manager') return const MessManagerDashboard();
           if (role == 'warden') return const WardenDashboard();
+          if (role == 'hod') return const HodDashboardScreen();
           if (role == 'guard') return const GuardDashboardScreen();
           if (role == 'rector') return const RectorDashboard();
 
@@ -51,7 +57,10 @@ class RoleChecker extends StatelessWidget {
 
         // If user doc doesn't exist, we must log out to clear the stale session
         debugPrint("RoleChecker: User document not found for UID: $uid");
-        return _errorScreen("User Not Found", "Your user profile does not exist in the database.");
+        return _errorScreen(
+          "User Not Found",
+          "Your user profile does not exist in the database.",
+        );
       },
     );
   }
@@ -65,9 +74,19 @@ class RoleChecker extends StatelessWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(Icons.error_outline, size: 80, color: Colors.redAccent),
+              const Icon(
+                Icons.error_outline,
+                size: 80,
+                color: Colors.redAccent,
+              ),
               const SizedBox(height: 24),
-              Text(title, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+              Text(
+                title,
+                style: const TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
               const SizedBox(height: 12),
               Text(
                 message,

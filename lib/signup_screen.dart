@@ -99,6 +99,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
           role = 'rector';
         } else if (staffRole.contains('warden')) {
           role = 'warden';
+        } else if (staffRole.contains('hod')) {
+          role = 'hod';
         } else if (staffRole.contains('guard')) {
           role = 'guard';
         } else if (staffRole.contains('mess')) {
@@ -107,8 +109,14 @@ class _SignUpScreenState extends State<SignUpScreen> {
           role = staffRole;
         }
 
-        // Override hostel from staff assignment
+        // Override hostel and branch from staff assignment
         assignedHostel = staffData['assignedHostel'];
+        if (staffData.containsKey('assignedCategory')) {
+          extraData['category'] = staffData['assignedCategory'];
+        }
+        if (staffData.containsKey('assignedBranch')) {
+          extraData['branch'] = staffData['assignedBranch'];
+        }
 
         // Link Staff Doc to User
         await staffDoc.reference.update({'uid': uid});

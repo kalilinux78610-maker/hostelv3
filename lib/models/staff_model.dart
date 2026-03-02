@@ -6,6 +6,8 @@ class StaffMember {
   final bool isActive;
   final String? assignedShift; // 'Day', 'Night'
   final String? assignedHostel; // 'BH1', 'GH1', etc.
+  final String? assignedCategory; // 'Degree', 'Diploma' for HOD
+  final String? assignedBranch; // e.g. 'IT & MSC-IT' for HOD
   final String? email;
 
   StaffMember({
@@ -16,6 +18,8 @@ class StaffMember {
     this.isActive = true,
     this.assignedShift,
     this.assignedHostel,
+    this.assignedCategory,
+    this.assignedBranch,
     this.email,
   });
 
@@ -28,6 +32,8 @@ class StaffMember {
       'isActive': isActive,
       'assignedShift': assignedShift,
       'assignedHostel': assignedHostel,
+      'assignedCategory': assignedCategory,
+      'assignedBranch': assignedBranch,
       'email': email,
     };
   }
@@ -41,6 +47,8 @@ class StaffMember {
       isActive: map['isActive'] ?? true,
       assignedShift: map['assignedShift'],
       assignedHostel: map['assignedHostel'],
+      assignedCategory: map['assignedCategory'],
+      assignedBranch: map['assignedBranch'],
       email: map['email'],
     );
   }

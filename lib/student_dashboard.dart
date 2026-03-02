@@ -152,7 +152,8 @@ class StudentDashboard extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const SizedBox(height: 20),
-                      // Status card removed
+                      _buildRecentPassStatus(user.uid),
+                      const SizedBox(height: 20),
                       _buildGrid(context),
                       const SizedBox(height: 30),
                     ],
@@ -162,6 +163,166 @@ class StudentDashboard extends StatelessWidget {
             ],
           );
         },
+      ),
+    );
+  }
+
+  Widget _buildRecentPassStatus(String uid) {
+    return StreamBuilder<QuerySnapshot>(
+      stream: FirebaseFirestore.instance
+          .collection('leave_requests')
+          .where('uid', isEqualTo: uid)
+          .orderBy('createdAt', descending: true)
+          .limit(1)
+          .snapshots(),
+      builder: (context, snapshot) {
+        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+          return const SizedBox.shrink(); // Hide if no requests ever
+        }
+
+        final doc = snapshot.data!.docs.first;
+        final data = doc.data() as Map<String, dynamic>;
+
+        final type = data['type'] ?? 'Leave';
+        final status = data['status'] ?? 'pending';
+        final hodStatus = data['hodStatus'] ?? 'pending';
+        final wardenStatus = data['wardenStatus'] ?? 'pending';
+        final rectorStatus = data['rectorStatus'] ?? 'pending';
+
+        // Determine current stage & color
+        String displayStatus = 'Pending HOD Approval';
+        Color statusColor = Colors.orange;
+        IconData statusIcon = Icons.hourglass_empty;
+
+        if (status == 'rejected') {
+          displayStatus = 'Rejected';
+          statusColor = Colors.red;
+          statusIcon = Icons.cancel;
+        } else if (status == 'approved') {
+          displayStatus = 'Approved';
+          statusColor = Colors.green;
+          statusIcon = Icons.check_circle;
+        } else {
+          if (hodStatus == 'approved' && wardenStatus == 'pending') {
+            displayStatus = 'Pending Warden Approval';
+          } else if (wardenStatus == 'approved' && rectorStatus == 'pending') {
+            displayStatus = 'Pending Rector Approval';
+          }
+        }
+
+        return Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.05),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+            ],
+            border: Border.all(color: statusColor.withValues(alpha: 0.3)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    "Recent $type Request",
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 15,
+                      color: Color(0xFF002244),
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: statusColor.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(statusIcon, size: 14, color: statusColor),
+                        const SizedBox(width: 4),
+                        Text(
+                          displayStatus,
+                          style: TextStyle(
+                            color: statusColor,
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              // Simple progress indicator idea
+              Row(
+                children: [
+                  _buildStatusDot(
+                    'HOD',
+                    hodStatus == 'approved',
+                    status == 'rejected',
+                  ),
+                  _buildStatusLine(hodStatus == 'approved'),
+                  _buildStatusDot(
+                    'Warden',
+                    wardenStatus == 'approved',
+                    status == 'rejected',
+                  ),
+                  _buildStatusLine(wardenStatus == 'approved'),
+                  _buildStatusDot(
+                    'Rector',
+                    rectorStatus == 'approved',
+                    status == 'rejected',
+                  ),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildStatusDot(String label, bool isApproved, bool isRejected) {
+    Color color = Colors.grey[300]!;
+    if (isApproved) color = Colors.green;
+    if (isRejected && !isApproved) color = Colors.red;
+
+    return Column(
+      children: [
+        CircleAvatar(radius: 8, backgroundColor: color),
+        const SizedBox(height: 4),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 10,
+            color: Colors.grey[600],
+            fontWeight: isApproved ? FontWeight.bold : FontWeight.normal,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildStatusLine(bool isApproved) {
+    return Expanded(
+      child: Container(
+        height: 2,
+        margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 12),
+        color: isApproved ? Colors.green : Colors.grey[300],
       ),
     );
   }
