@@ -36,11 +36,27 @@ class StudentProfileDesignV2 extends StatelessWidget {
           final parentContact = data?['parentContact'] ?? "N/A";
           final address = data?['address'] ?? "N/A";
 
-          return CustomScrollView(
-            slivers: [
-              _buildSliverAppBar(name, email, photoUrl),
-              SliverToBoxAdapter(
-                child: Padding(
+          return SingleChildScrollView(
+            child: Column(
+              children: [
+                _buildHeader(name, email, photoUrl),
+                Text(
+                  name,
+                  style: const TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF002244),
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  email,
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.grey,
+                  ),
+                ),
+                Padding(
                   padding: const EdgeInsets.all(20.0),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -118,67 +134,69 @@ class StudentProfileDesignV2 extends StatelessWidget {
                           ),
                         ),
                       ),
+                      const SizedBox(height: 16),
+                      SizedBox(
+                        width: double.infinity,
+                        height: 54,
+                        child: ElevatedButton.icon(
+                          onPressed: () async {
+                            await FirebaseAuth.instance.signOut();
+                          },
+                          icon: const Icon(Icons.logout),
+                          label: const Text(
+                            "Log Out",
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.redAccent,
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            elevation: 4,
+                          ),
+                        ),
+                      ),
                       const SizedBox(height: 40),
                     ],
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           );
         },
       ),
     );
   }
 
-  Widget _buildSliverAppBar(String name, String email, String? photoUrl) {
-    return SliverAppBar(
-      expandedHeight: 280,
-      pinned: true,
-      backgroundColor: const Color(0xFF002244),
-      flexibleSpace: FlexibleSpaceBar(
-        background: Stack(
-          alignment: Alignment.center,
-          children: [
-            // Background Pattern or Gradient
-            Container(
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [Color(0xFF003366), Color(0xFF002244)],
-                ),
+  Widget _buildHeader(String name, String email, String? photoUrl) {
+    return SizedBox(
+      height: 220,
+      child: Stack(
+        alignment: Alignment.topCenter,
+        clipBehavior: Clip.none,
+        children: [
+          Container(
+            height: 160,
+            width: double.infinity,
+            decoration: const BoxDecoration(
+              color: Color(0xFF002244),
+              borderRadius: BorderRadius.vertical(
+                bottom: Radius.circular(36),
               ),
             ),
-            Positioned(
-              top: 80, // Adjust for status bar
-              child: Column(
-                children: [
-                  ProfileAvatarWidget(
-                    photoUrl: photoUrl,
-                    uid: FirebaseAuth.instance.currentUser?.uid,
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    name,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    email,
-                    style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.8),
-                      fontSize: 14,
-                    ),
-                  ),
-                ],
-              ),
+          ),
+          Positioned(
+            top: 106, // 160 height - 54 (radius 50 + border 4)
+            child: ProfileAvatarWidget(
+              photoUrl: photoUrl,
+              uid: FirebaseAuth.instance.currentUser?.uid,
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

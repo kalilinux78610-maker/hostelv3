@@ -34,6 +34,7 @@ class _StudentComplaintsScreenState extends State<StudentComplaintsScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.grey[100],
       appBar: AppBar(
         title: const Text('Complaints'),
         backgroundColor: const Color(0xFF002244),
