@@ -154,6 +154,7 @@ class _ApplyLeaveScreenState extends State<ApplyLeaveScreen> {
             'endDate': Timestamp.fromDate(endDateTime),
             'reason': _reasonController.text.trim(),
             'status': 'pending',
+            'hodStatus': 'pending',
             'wardenStatus': 'pending',
             'rectorStatus': 'pending',
             'createdAt': FieldValue.serverTimestamp(),

@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import 'repositories/notification_repository.dart';
 import 'notification_screen.dart';
+import 'hod_profile_screen.dart';
 
 class HodDashboardScreen extends StatefulWidget {
   const HodDashboardScreen({super.key});
@@ -16,6 +17,7 @@ class _HodDashboardScreenState extends State<HodDashboardScreen> {
   static const Color _primaryColor = Color(0xFF002244);
   String? _category;
   String? _branch;
+  String? _photoUrl;
   bool _isLoading = true;
 
   @override
@@ -37,6 +39,7 @@ class _HodDashboardScreenState extends State<HodDashboardScreen> {
           setState(() {
             _category = data?['category'];
             _branch = data?['branch'];
+            _photoUrl = data?['photoUrl'];
           });
         }
       }
@@ -576,6 +579,19 @@ class _HodDashboardScreenState extends State<HodDashboardScreen> {
               const Text("Category or Branch not assigned to your profile."),
               const SizedBox(height: 24),
               ElevatedButton(
+                onPressed: () async {
+                  final result = await Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const HodProfileScreen()),
+                  );
+                  if (result == true) {
+                    _loadHodProfile();
+                  }
+                },
+                child: const Text("Setup Profile"),
+              ),
+              const SizedBox(height: 12),
+              OutlinedButton(
                 onPressed: () => FirebaseAuth.instance.signOut(),
                 child: const Text("Logout"),
               ),
@@ -586,105 +602,202 @@ class _HodDashboardScreenState extends State<HodDashboardScreen> {
     }
 
     return DefaultTabController(
-      length: 3,
+      length: 2,
       child: Scaffold(
-        backgroundColor: const Color(0xFFF5F5F5),
+        backgroundColor: const Color(0xFFF8F9FA), // Slightly lighter background
         body: Column(
           children: [
-            // Header
+            // Enhanced Header Section
             Container(
               width: double.infinity,
               padding: EdgeInsets.only(
-                top: MediaQuery.of(context).padding.top + 16,
+                top: MediaQuery.of(context).padding.top + 20,
+                bottom: 20,
               ),
-              decoration: const BoxDecoration(
+              decoration: BoxDecoration(
                 color: _primaryColor,
-                borderRadius: BorderRadius.only(
-                  bottomLeft: Radius.circular(36),
-                  bottomRight: Radius.circular(36),
+                borderRadius: const BorderRadius.only(
+                  bottomLeft: Radius.circular(32),
+                  bottomRight: Radius.circular(32),
                 ),
+                boxShadow: [
+                  BoxShadow(
+                    color: _primaryColor.withValues(alpha: 0.3),
+                    blurRadius: 15,
+                    offset: const Offset(0, 8),
+                  ),
+                ],
               ),
               child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  // Top Navbar (Profile & Icons)
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 24),
                     child: Row(
                       children: [
+                        GestureDetector(
+                          onTap: () async {
+                            final result = await Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (context) => const HodProfileScreen()),
+                            );
+                            if (result == true) {
+                              _loadHodProfile();
+                            }
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.all(2),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              shape: BoxShape.circle,
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.orange.withValues(alpha: 0.5),
+                                  blurRadius: 8,
+                                  spreadRadius: 1,
+                                ),
+                              ],
+                            ),
+                            child: CircleAvatar(
+                              radius: 20,
+                              backgroundColor: Colors.white,
+                              backgroundImage: _photoUrl != null ? NetworkImage(_photoUrl!) : null,
+                              child: _photoUrl == null ? const Icon(Icons.person, color: _primaryColor) : null,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 16),
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(
-                                "HOD • $_category • $_branch",
-                                style: const TextStyle(
+                              const Text(
+                                "Welcome back,",
+                                style: TextStyle(
                                   color: Colors.white70,
-                                  fontSize: 13,
+                                  fontSize: 12,
+                                  letterSpacing: 0.5,
                                 ),
                               ),
-                              const Text(
-                                "Dashboard",
-                                style: TextStyle(
+                              Text(
+                                "Professor • $_branch",
+                                style: const TextStyle(
                                   color: Colors.white,
-                                  fontSize: 22,
+                                  fontSize: 18,
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
                             ],
                           ),
                         ),
-                        GestureDetector(
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) =>
-                                    const NotificationScreen(userRole: 'hod'),
+                        Row(
+                          children: [
+                            GestureDetector(
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => const NotificationScreen(userRole: 'hod'),
+                                  ),
+                                );
+                              },
+                              child: Container(
+                                padding: const EdgeInsets.all(10),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withValues(alpha: 0.1),
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
+                                ),
+                                child: const Icon(Icons.notifications_none, color: Colors.white, size: 20),
                               ),
-                            );
-                          },
-                          child: Container(
-                            padding: const EdgeInsets.all(10),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: 0.15),
-                              shape: BoxShape.circle,
                             ),
-                            child: const Icon(
-                              Icons.notifications,
-                              color: Colors.white,
-                              size: 22,
+                            const SizedBox(width: 10),
+                            GestureDetector(
+                              onTap: () => FirebaseAuth.instance.signOut(),
+                              child: Container(
+                                padding: const EdgeInsets.all(10),
+                                decoration: BoxDecoration(
+                                  color: Colors.redAccent.withValues(alpha: 0.1),
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(color: Colors.redAccent.withValues(alpha: 0.3)),
+                                ),
+                                child: const Icon(Icons.power_settings_new, color: Colors.redAccent, size: 20),
+                              ),
                             ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  const SizedBox(height: 24),
+
+                  // Quick Stats Row (StreamBuilder to get live count)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: _buildStatCard(
+                            label: "Pending Reqs",
+                            icon: Icons.hourglass_empty,
+                            color: Colors.orange,
+                            query: FirebaseFirestore.instance
+                                .collection('leave_requests')
+                                .where('hodStatus', isEqualTo: 'pending')
+                                .where('category', isEqualTo: _category)
+                                .where('branch', isEqualTo: _branch),
                           ),
                         ),
                         const SizedBox(width: 12),
-                        GestureDetector(
-                          onTap: () => FirebaseAuth.instance.signOut(),
-                          child: Container(
-                            padding: const EdgeInsets.all(10),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: 0.15),
-                              shape: BoxShape.circle,
-                            ),
-                            child: const Icon(
-                              Icons.logout,
-                              color: Colors.white,
-                              size: 22,
-                            ),
+                        Expanded(
+                          child: _buildStatCard(
+                            label: "Gate Passes",
+                            icon: Icons.directions_run,
+                            color: Colors.green,
+                            query: FirebaseFirestore.instance
+                                .collection('leave_requests')
+                                .where('status', isEqualTo: 'approved')
+                                .where('category', isEqualTo: _category)
+                                .where('branch', isEqualTo: _branch),
                           ),
                         ),
                       ],
                     ),
                   ),
-                  const SizedBox(height: 16),
-                  const TabBar(
-                    indicatorColor: Colors.white,
-                    indicatorWeight: 3,
-                    labelColor: Colors.white,
-                    unselectedLabelColor: Colors.white54,
-                    tabs: [
-                      Tab(text: "Reqs"),
-                      Tab(text: "Gate Passes"),
-                      Tab(text: "Complaints"),
-                    ],
+
+                  const SizedBox(height: 24),
+
+                  // Custom TabBar
+                  Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 24),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.2),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: TabBar(
+                      indicatorSize: TabBarIndicatorSize.tab,
+                      indicator: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(20),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.1),
+                            blurRadius: 4,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      labelColor: _primaryColor,
+                      unselectedLabelColor: Colors.white70,
+                      labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                      padding: const EdgeInsets.all(4),
+                      tabs: const [
+                        Tab(text: "Requests"),
+                        Tab(text: "Passes"),
+                      ],
+                    ),
                   ),
                 ],
               ),
@@ -696,12 +809,75 @@ class _HodDashboardScreenState extends State<HodDashboardScreen> {
                 children: [
                   _buildLeavesTab(),
                   _buildGatePassesTab(),
-                  _buildComplaintsTab(),
                 ],
               ),
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  // Helper widget for Stat Cards
+  Widget _buildStatCard({
+    required String label,
+    required IconData icon,
+    required Color color,
+    required Query query,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(icon, color: color, size: 20),
+              ),
+              StreamBuilder<QuerySnapshot>(
+                stream: query.snapshots(),
+                builder: (context, snapshot) {
+                  if (snapshot.hasData) {
+                    return Text(
+                      "${snapshot.data!.docs.length}",
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    );
+                  }
+                  return const SizedBox(
+                    width: 24,
+                    height: 24,
+                    child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white54),
+                  );
+                },
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Text(
+            label,
+            style: const TextStyle(
+              color: Colors.white60,
+              fontSize: 13,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
       ),
     );
   }
