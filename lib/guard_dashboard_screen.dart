@@ -2,6 +2,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'guard_scanner_screen.dart';
 import 'guard_profile_screen.dart';
+import 'guard_history_screen.dart';
+import 'guard_details_screen.dart';
 
 class GuardDashboardScreen extends StatefulWidget {
   const GuardDashboardScreen({super.key});
@@ -143,12 +145,12 @@ class _GuardDashboardScreenState extends State<GuardDashboardScreen> {
                             _buildMenuCard(
                               icon: Icons.history,
                               title: "History",
-                              onTap: () {},
+                              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const GuardHistoryScreen())),
                             ),
                             _buildMenuCard(
                               icon: Icons.apartment,
                               title: "Details",
-                              onTap: () {},
+                              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const GuardDetailsScreen())),
                             ),
                           ],
                         ),

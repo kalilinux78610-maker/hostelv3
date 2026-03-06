@@ -36,11 +36,46 @@ class _HodDashboardScreenState extends State<HodDashboardScreen> {
             .get();
         if (doc.exists) {
           final data = doc.data();
+          
+          bool needsUpdate = false;
+          String? currentCategory = data?['category'];
+          String? currentBranch = data?['branch'];
+
+          // Category Mapping First
+          if (currentCategory == 'BTech' || currentCategory == 'MTech' || currentCategory == 'BCA' || currentCategory == 'MCA') {
+            currentCategory = 'Degree';
+          }
+
+          // Branch Mapping Based on Category
+          if (currentCategory == 'Degree') {
+            if (currentBranch == 'Information Technology') currentBranch = 'IT & MSC-IT';
+            else if (currentBranch == 'Computer Science') currentBranch = 'CSE';
+            else if (currentBranch == 'Civil') currentBranch = 'Civil Engineering';
+          } else if (currentCategory == 'Diploma') {
+             if (currentBranch == 'Computer Science') currentBranch = 'Computer Engineering';
+             if (currentBranch == 'Mechanical') currentBranch = 'Mechanical Engineering';
+             if (currentBranch == 'Electrical') currentBranch = 'Electrical Engineering';
+          }
+
+          if (currentBranch != data?['branch'] || currentCategory != data?['category']) {
+            needsUpdate = true;
+          }
+
           setState(() {
-            _category = data?['category'];
-            _branch = data?['branch'];
+            _category = currentCategory;
+            _branch = currentBranch;
             _photoUrl = data?['photoUrl'];
           });
+
+          if (needsUpdate && user.uid != null) {
+            await FirebaseFirestore.instance
+                .collection('users')
+                .doc(user.uid)
+                .update({
+                  'branch': currentBranch,
+                  'category': currentCategory,
+                });
+          }
         }
       }
     } catch (e) {

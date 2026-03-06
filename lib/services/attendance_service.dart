@@ -26,18 +26,21 @@ class AttendanceService {
     final startOfToday = DateTime(date.year, date.month, date.day);
     final endOfToday = DateTime(date.year, date.month, date.day, 23, 59, 59);
 
+    // Fetch all approved leaves for this hostel, then filter dates locally to avoid complex index requirements
     final leavesSnapshot = await _firestore
         .collection('leave_requests')
         .where('hostelId', isEqualTo: hostelId)
         .where('status', isEqualTo: 'approved')
-        .where('startDate', isLessThanOrEqualTo: Timestamp.fromDate(endOfToday))
         .get();
-
-    // Filter leaves locally because we can't do complex range comparisons easily on multiple fields in Firestore without indexes
+    
+    // Filter leaves locally: Must be approved AND today must be between (or on) startDate and endDate
     final activeLeaves = leavesSnapshot.docs.where((doc) {
       final data = doc.data();
+      final startDate = (data['startDate'] as Timestamp).toDate();
       final endDate = (data['endDate'] as Timestamp).toDate();
-      return endDate.isAfter(startOfToday);
+      
+      // Student is "on leave" if today is after the start and before the end
+      return startDate.isBefore(endOfToday) && endDate.isAfter(startOfToday);
     }).toList();
 
     // 3. Map students to AttendanceRecords

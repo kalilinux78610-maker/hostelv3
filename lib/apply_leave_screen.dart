@@ -154,17 +154,17 @@ class _ApplyLeaveScreenState extends State<ApplyLeaveScreen> {
             'endDate': Timestamp.fromDate(endDateTime),
             'reason': _reasonController.text.trim(),
             'status': 'pending',
-            'hodStatus': 'pending',
-            'wardenStatus': 'pending',
+            'hodStatus': 'pending', // First step
+            'wardenStatus': 'waiting_for_hod', // Wait for HOD
             'rectorStatus': 'pending',
             'createdAt': FieldValue.serverTimestamp(),
           });
 
-      // Send Notification to Warden
+      // Send Notification to HOD (since they are first)
       await NotificationRepository().sendNotification(
         title: "New Leave Request",
         message: "${userData['name'] ?? 'Student'} has requested leave.",
-        receiverUid: 'warden',
+        receiverUid: 'hod', // Change to notify HOD
         type: 'leave_request',
         relatedRequestId: requestRef.id,
       );

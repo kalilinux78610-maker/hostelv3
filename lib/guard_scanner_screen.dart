@@ -207,6 +207,25 @@ class _GuardScannerScreenState extends State<GuardScannerScreen>
     });
 
     try {
+      // 1. Try to fetch as a Leave Request ID (for Gate Pass QR codes)
+      final passDoc = await FirebaseFirestore.instance
+          .collection('leave_requests')
+          .doc(scannedValue.trim())
+          .get();
+
+      if (passDoc.exists) {
+        final passData = passDoc.data() as Map<String, dynamic>;
+        final studentName = passData['name'] ?? 'Unknown';
+        final status = passData['status'];
+        final docId = passDoc.id;
+
+        if (mounted) {
+          await _showVerificationDialog(docId, passData, studentName, status);
+        }
+        return;
+      }
+
+      // 2. Fallback: Try to fetch as Enrollment Number (for Student ID card scans)
       final userQuery = await FirebaseFirestore.instance
           .collection('users')
           .where('enrollment', isEqualTo: scannedValue.trim())
@@ -214,7 +233,7 @@ class _GuardScannerScreenState extends State<GuardScannerScreen>
           .get();
 
       if (userQuery.docs.isEmpty) {
-        _showErrorAndResume("Student not found: $scannedValue");
+        _showErrorAndResume("Student or Pass not found: $scannedValue");
         return;
       }
 
@@ -222,7 +241,8 @@ class _GuardScannerScreenState extends State<GuardScannerScreen>
       final studentName = userDoc['name'] ?? 'Unknown';
       final uid = userDoc.id;
 
-      final passQuery = await FirebaseFirestore.instance
+      // For UID scans, find their most recent active pass
+      final userPassQuery = await FirebaseFirestore.instance
           .collection('leave_requests')
           .where('userId', isEqualTo: uid)
           .where('status', whereIn: ['approved', 'out'])
@@ -230,15 +250,15 @@ class _GuardScannerScreenState extends State<GuardScannerScreen>
           .limit(1)
           .get();
 
-      if (passQuery.docs.isEmpty) {
+      if (userPassQuery.docs.isEmpty) {
         _showErrorAndResume("No active pass for $studentName");
         return;
       }
 
-      final passDoc = passQuery.docs.first;
-      final passData = passDoc.data();
+      final passDocFromUser = userPassQuery.docs.first;
+      final passData = passDocFromUser.data();
       final status = passData['status'];
-      final docId = passDoc.id;
+      final docId = passDocFromUser.id;
 
       if (mounted) {
         await _showVerificationDialog(docId, passData, studentName, status);

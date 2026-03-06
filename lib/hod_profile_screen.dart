@@ -25,18 +25,22 @@ class _HodProfileScreenState extends State<HodProfileScreen> {
   String? _branch;
   String? _photoUrl;
   
-  // Sample Data for Dropdowns
-  final List<String> _categories = ['BTech', 'MTech', 'MBA', 'BBA', 'BCA', 'MCA', 'Diploma', 'PhD'];
+  // Sample Data for Dropdowns to match signup_screen.dart
+  final List<String> _categories = ['Degree', 'Diploma'];
   final List<String> _branches = [
-    'Computer Science', 
-    'Information Technology', 
-    'Mechanical', 
-    'Civil', 
+    'IT & MSC-IT',
+    'B.VOC',
+    'CSE',
+    'BBA & MBA',
+    'Chemical',
     'Electrical',
-    'Electronics & Communication',
-    'General',
-    'Arts',
-    'Commerce'
+    'Pharmacy',
+    'Civil Engineering',
+    'Electrical Engineering',
+    'Chemical Engineering',
+    'Information Technology',
+    'Computer Engineering',
+    'Mechanical Engineering',
   ];
 
   @override
