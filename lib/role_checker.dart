@@ -42,7 +42,10 @@ class RoleChecker extends StatelessWidget {
             return _errorScreen("Data Error", "User data is empty");
           }
 
-          String role = data['role'] ?? 'student';
+          String role = (data['role'] ?? 'student')
+              .toString()
+              .toLowerCase()
+              .trim();
 
           // Dashboard Routing
           if (role == 'admin') return const AdminDashboardScreen();

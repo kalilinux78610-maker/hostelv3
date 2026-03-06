@@ -9,19 +9,22 @@ import 'services/push_notification_service.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-  
-  // Set auth persistence to LOCAL on web (keeps user logged in)
+
+  // Set auth persistence to NONE so users must log in every time
   if (kIsWeb) {
-    await FirebaseAuth.instance.setPersistence(Persistence.LOCAL);
+    await FirebaseAuth.instance.setPersistence(Persistence.NONE);
+  } else {
+    // Optionally set for mobile as well if needed
+    // await FirebaseAuth.instance.setPersistence(Persistence.NONE);
   }
-  
+
   // Push notifications (may fail on web, so wrap in try-catch)
   try {
     await PushNotificationService().initialize();
   } catch (e) {
     debugPrint("Push notification init failed: $e");
   }
-  
+
   runApp(const MyApp());
 }
 

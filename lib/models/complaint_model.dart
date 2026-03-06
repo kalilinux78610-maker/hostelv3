@@ -12,6 +12,8 @@ class Complaint {
   final DateTime? resolvedAt;
   final String? adminComment;
   final String? hostelId;
+  final String? userCategory;
+  final String? userBranch;
 
   Complaint({
     required this.id,
@@ -25,6 +27,8 @@ class Complaint {
     this.resolvedAt,
     this.adminComment,
     this.hostelId,
+    this.userCategory,
+    this.userBranch,
   });
 
   Map<String, dynamic> toMap() {
@@ -48,6 +52,12 @@ class Complaint {
     if (hostelId != null) {
       map['hostelId'] = hostelId;
     }
+    if (userCategory != null) {
+      map['userCategory'] = userCategory;
+    }
+    if (userBranch != null) {
+      map['userBranch'] = userBranch;
+    }
 
     return map;
   }
@@ -65,6 +75,8 @@ class Complaint {
       resolvedAt: (map['resolvedAt'] as Timestamp?)?.toDate(),
       adminComment: map['adminComment'],
       hostelId: map['hostelId'],
+      userCategory: map['userCategory'],
+      userBranch: map['userBranch'],
     );
   }
 }

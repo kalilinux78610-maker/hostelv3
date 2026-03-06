@@ -204,7 +204,7 @@ class _StaffManagementScreenState extends State<StaffManagementScreen> {
                     name: nameController.text.trim(),
                     role: role,
                     mobile: mobileController.text.trim(),
-                    email: emailController.text.trim(),
+                    email: emailController.text.trim().toLowerCase(),
                     isActive: true, // Default active
                     assignedShift: shift,
                     assignedHostel: hostel,

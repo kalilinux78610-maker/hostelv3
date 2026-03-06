@@ -65,7 +65,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
     setState(() => _isLoading = true);
 
     try {
-      final email = _emailController.text.trim();
+      final email = _emailController.text.trim().toLowerCase();
       final password = _passwordController.text.trim();
       final name = _nameController.text.trim();
 

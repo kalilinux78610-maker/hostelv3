@@ -3,7 +3,6 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'signup_screen.dart';
 import 'services/push_notification_service.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -24,7 +23,6 @@ class _LoginScreenState extends State<LoginScreen>
 
   bool _isLoading = false;
   final bool _isPasswordVisible = false;
-  bool _rememberMe = false;
   String? _emailError;
   String? _passwordError;
 
@@ -56,16 +54,7 @@ class _LoginScreenState extends State<LoginScreen>
   }
 
   Future<void> _loadUserCredentials() async {
-    final prefs = await SharedPreferences.getInstance();
-    final rememberMe = prefs.getBool('remember_me') ?? false;
-
-    if (rememberMe) {
-      setState(() {
-        _rememberMe = true;
-        _emailController.text = prefs.getString('email') ?? '';
-        _passwordController.text = prefs.getString('password') ?? '';
-      });
-    }
+    // Intentionally left empty to remove 'Remember Me'
   }
 
   @override
@@ -77,7 +66,7 @@ class _LoginScreenState extends State<LoginScreen>
   }
 
   Future<void> _resetPassword() async {
-    final email = _emailController.text.trim();
+    final email = _emailController.text.trim().toLowerCase();
     if (email.isEmpty) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -115,7 +104,7 @@ class _LoginScreenState extends State<LoginScreen>
   }
 
   Future<void> _login() async {
-    final email = _emailController.text.trim();
+    final email = _emailController.text.trim().toLowerCase();
     final password = _passwordController.text.trim();
 
     setState(() {
@@ -143,16 +132,7 @@ class _LoginScreenState extends State<LoginScreen>
       );
 
       // Save/Clear Credentials based on Remember Me
-      final prefs = await SharedPreferences.getInstance();
-      if (_rememberMe) {
-        await prefs.setString('email', email);
-        await prefs.setString('password', password);
-        await prefs.setBool('remember_me', true);
-      } else {
-        await prefs.remove('email');
-        await prefs.remove('password');
-        await prefs.setBool('remember_me', false);
-      }
+      // "Remember Me" logic removed based on user request
 
       // Save FCM Token
       try {
@@ -429,34 +409,7 @@ class _LoginScreenState extends State<LoginScreen>
                                           ),
                                         ),
                                       ),
-                                      Row(
-                                        children: [
-                                          SizedBox(
-                                            width: 20,
-                                            height: 20,
-                                            child: Checkbox(
-                                              value: _rememberMe,
-                                              onChanged: (value) {
-                                                setState(() {
-                                                  _rememberMe = value ?? false;
-                                                });
-                                              },
-                                              shape: RoundedRectangleBorder(
-                                                borderRadius:
-                                                    BorderRadius.circular(4),
-                                              ),
-                                            ),
-                                          ),
-                                          const SizedBox(width: 8),
-                                          Text(
-                                            "Remember Me",
-                                            style: TextStyle(
-                                              color: Colors.grey[700],
-                                              fontSize: 13,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
+                                      // "Remember Me" feature removed from here
                                       const SizedBox(height: 20),
                                       SizedBox(
                                         width: double.infinity,

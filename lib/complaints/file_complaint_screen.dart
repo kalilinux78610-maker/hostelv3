@@ -59,6 +59,8 @@ class _FileComplaintScreenState extends State<FileComplaintScreen> {
           .doc(user.uid)
           .get();
       final hostelId = userDoc.data()?['assignedHostel'];
+      final userCategory = userDoc.data()?['category'];
+      final userBranch = userDoc.data()?['branch'];
 
       // Generate a simple unique ID
       final String id =
@@ -74,6 +76,8 @@ class _FileComplaintScreenState extends State<FileComplaintScreen> {
         status: 'Pending',
         createdAt: DateTime.now(),
         hostelId: hostelId, // Added hostelId
+        userCategory: userCategory,
+        userBranch: userBranch,
       );
 
       await _complaintRepository.addComplaint(complaint);
@@ -157,7 +161,9 @@ class _FileComplaintScreenState extends State<FileComplaintScreen> {
                           dropdownColor: Colors.white,
                           decoration: InputDecoration(
                             labelText: 'Category',
-                            floatingLabelStyle: const TextStyle(color: Color(0xFF002244)),
+                            floatingLabelStyle: const TextStyle(
+                              color: Color(0xFF002244),
+                            ),
                             filled: true,
                             fillColor: Colors.grey[50],
                             border: OutlineInputBorder(
@@ -170,12 +176,21 @@ class _FileComplaintScreenState extends State<FileComplaintScreen> {
                             ),
                             focusedBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12),
-                              borderSide: const BorderSide(color: Color(0xFF002244), width: 2),
+                              borderSide: const BorderSide(
+                                color: Color(0xFF002244),
+                                width: 2,
+                              ),
                             ),
-                            prefixIcon: const Icon(Icons.category, color: Color(0xFF002244)),
+                            prefixIcon: const Icon(
+                              Icons.category,
+                              color: Color(0xFF002244),
+                            ),
                           ),
                           items: _categories.map((category) {
-                            return DropdownMenuItem(value: category, child: Text(category));
+                            return DropdownMenuItem(
+                              value: category,
+                              child: Text(category),
+                            );
                           }).toList(),
                           onChanged: (value) {
                             setState(() {
@@ -188,7 +203,9 @@ class _FileComplaintScreenState extends State<FileComplaintScreen> {
                           controller: _titleController,
                           decoration: InputDecoration(
                             labelText: 'Title',
-                            floatingLabelStyle: const TextStyle(color: Color(0xFF002244)),
+                            floatingLabelStyle: const TextStyle(
+                              color: Color(0xFF002244),
+                            ),
                             hintText: 'Brief summary of the issue',
                             filled: true,
                             fillColor: Colors.grey[50],
@@ -202,9 +219,15 @@ class _FileComplaintScreenState extends State<FileComplaintScreen> {
                             ),
                             focusedBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12),
-                              borderSide: const BorderSide(color: Color(0xFF002244), width: 2),
+                              borderSide: const BorderSide(
+                                color: Color(0xFF002244),
+                                width: 2,
+                              ),
                             ),
-                            prefixIcon: const Icon(Icons.title, color: Color(0xFF002244)),
+                            prefixIcon: const Icon(
+                              Icons.title,
+                              color: Color(0xFF002244),
+                            ),
                           ),
                           validator: (value) {
                             if (value == null || value.isEmpty) {
@@ -219,7 +242,9 @@ class _FileComplaintScreenState extends State<FileComplaintScreen> {
                           maxLines: 5,
                           decoration: InputDecoration(
                             labelText: 'Description',
-                            floatingLabelStyle: const TextStyle(color: Color(0xFF002244)),
+                            floatingLabelStyle: const TextStyle(
+                              color: Color(0xFF002244),
+                            ),
                             hintText: 'Detailed explanation...',
                             filled: true,
                             fillColor: Colors.grey[50],
@@ -233,9 +258,15 @@ class _FileComplaintScreenState extends State<FileComplaintScreen> {
                             ),
                             focusedBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12),
-                              borderSide: const BorderSide(color: Color(0xFF002244), width: 2),
+                              borderSide: const BorderSide(
+                                color: Color(0xFF002244),
+                                width: 2,
+                              ),
                             ),
-                            prefixIcon: const Icon(Icons.description, color: Color(0xFF002244)),
+                            prefixIcon: const Icon(
+                              Icons.description,
+                              color: Color(0xFF002244),
+                            ),
                             alignLabelWithHint: true,
                           ),
                           validator: (value) {
