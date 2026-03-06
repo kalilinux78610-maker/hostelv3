@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'repositories/notification_repository.dart';
 import 'complaints/admin_complaints_screen.dart';
+import 'attendance/attendance_taking_screen.dart';
 
 class RectorDashboard extends StatefulWidget {
   const RectorDashboard({super.key});
@@ -49,7 +50,10 @@ class _RectorDashboardState extends State<RectorDashboard> {
 
   List<Widget> get _widgetOptions => <Widget>[
     HomeTab(hostelId: _assignedHostel),
-    HostelStudentsTab(hostelId: _assignedHostel), // New Tab
+    AttendanceTakingScreen(
+      hostelId: _assignedHostel ?? "BH1",
+    ), // Default to BH1 for safer build
+    HostelStudentsTab(hostelId: _assignedHostel),
     HistoryTab(hostelId: _assignedHostel),
     AdminComplaintsScreen(hostelId: _assignedHostel),
     const ProfileTab(),
@@ -91,6 +95,10 @@ class _RectorDashboardState extends State<RectorDashboard> {
             BottomNavigationBarItem(
               icon: Icon(Icons.dashboard_rounded),
               label: 'Home',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.check_circle_rounded),
+              label: 'Attendance',
             ),
             BottomNavigationBarItem(
               icon: Icon(Icons.people_rounded),
@@ -206,15 +214,7 @@ class _HomeTabState extends State<HomeTab> {
               Expanded(
                 child: _buildStatCard(
                   "PENDING",
-                  FirebaseFirestore.instance
-                      .collection('leave_requests')
-                      .where('wardenStatus', isEqualTo: 'approved')
-                      .where('rectorStatus', isEqualTo: 'pending')
-                      .where('status', isEqualTo: 'pending')
-                      .where(
-                        widget.hostelId != null ? 'hostelId' : 'status',
-                        isEqualTo: widget.hostelId ?? 'pending',
-                      ), // Hacky way to handle optional filter
+                  _getPendingQuery(),
                   Colors.orange,
                   Icons.access_time_filled_rounded,
                   0,
@@ -224,14 +224,7 @@ class _HomeTabState extends State<HomeTab> {
               Expanded(
                 child: _buildStatCard(
                   "OUT NOW",
-                  FirebaseFirestore.instance
-                      .collection('leave_requests')
-                      .where('actualOutTime', isNull: false)
-                      .where('actualInTime', isNull: true)
-                      .where(
-                        widget.hostelId != null ? 'hostelId' : 'actualOutTime',
-                        isEqualTo: widget.hostelId ?? false,
-                      ), // Hacky way to handle optional filter
+                  _getOutNowQuery(),
                   Colors.blue,
                   Icons.directions_walk_rounded,
                   1,
@@ -242,6 +235,31 @@ class _HomeTabState extends State<HomeTab> {
         ],
       ),
     );
+  }
+
+  Query _getPendingQuery() {
+    Query query = FirebaseFirestore.instance
+        .collection('leave_requests')
+        .where('wardenStatus', isEqualTo: 'approved')
+        .where('rectorStatus', isEqualTo: 'pending')
+        .where('status', isEqualTo: 'pending');
+
+    if (widget.hostelId != null) {
+      query = query.where('hostelId', isEqualTo: widget.hostelId);
+    }
+    return query;
+  }
+
+  Query _getOutNowQuery() {
+    Query query = FirebaseFirestore.instance
+        .collection('leave_requests')
+        .where('actualOutTime', isNull: false)
+        .where('actualInTime', isNull: true);
+
+    if (widget.hostelId != null) {
+      query = query.where('hostelId', isEqualTo: widget.hostelId);
+    }
+    return query;
   }
 
   Widget _buildStatCard(
