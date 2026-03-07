@@ -224,88 +224,272 @@ class _MessManagementScreenState extends State<MessManagementScreen>
           return const Center(child: CircularProgressIndicator());
         }
         if (!snapshot.hasData || snapshot.data!.isEmpty) {
-          return const Center(child: Text("No feedback received yet"));
+          return _buildEmptyAnalytics();
         }
 
         final feedbacks = snapshot.data!;
-        // Simple Average Calculation
         double totalRating = 0;
+        int breakfastCount = 0;
+        int lunchCount = 0;
+        int dinnerCount = 0;
+
         for (var f in feedbacks) {
           totalRating += f.rating;
+          if (f.mealType == 'Breakfast') breakfastCount++;
+          if (f.mealType == 'Lunch') lunchCount++;
+          if (f.mealType == 'Dinner') dinnerCount++;
         }
         double avgRating = totalRating / feedbacks.length;
 
         return ListView(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(20),
           children: [
-            // Summary Card
-            Card(
-              color: Colors.blue[50],
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  children: [
-                    const Text(
-                      "Average Quality Rating (Last 7 Days)",
-                      style: TextStyle(fontSize: 14),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      avgRating.toStringAsFixed(1),
-                      style: const TextStyle(
-                        fontSize: 36,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.blue,
-                      ),
-                    ),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: List.generate(5, (index) {
-                        return Icon(
-                          index < avgRating.round()
-                              ? Icons.star
-                              : Icons.star_border,
-                          color: Colors.orange,
-                        );
-                      }),
-                    ),
-                    Text("${feedbacks.length} reviews"),
-                  ],
+            _buildMainStats(avgRating, feedbacks.length),
+            const SizedBox(height: 24),
+            Row(
+              children: [
+                Expanded(
+                  child: _buildSmallStatCard(
+                    "Breakfast",
+                    breakfastCount.toString(),
+                    Icons.wb_sunny_outlined,
+                    Colors.green,
+                  ),
                 ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _buildSmallStatCard(
+                    "Lunch",
+                    lunchCount.toString(),
+                    Icons.sunny,
+                    Colors.orange,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _buildSmallStatCard(
+                    "Dinner",
+                    dinnerCount.toString(),
+                    Icons.nightlight_round,
+                    Colors.deepPurple,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 32),
+            const Text(
+              "RECENT REVIEWS",
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+                color: Colors.grey,
+                letterSpacing: 1.2,
               ),
             ),
             const SizedBox(height: 16),
-            const Text(
-              "Recent Comments",
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 8),
-            ...feedbacks.map(
-              (f) => Card(
-                margin: const EdgeInsets.only(bottom: 8),
-                child: ListTile(
-                  leading: CircleAvatar(
-                    backgroundColor: _getRatingColor(f.rating),
-                    child: Text(
-                      f.rating.toString(),
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                  title: Text(f.mealType),
-                  subtitle: Text(f.comment ?? "No comment"),
-                  trailing: Text(
-                    "${f.date.day}/${f.date.month}",
-                    style: TextStyle(color: Colors.grey[600], fontSize: 12),
-                  ),
-                ),
-              ),
-            ),
+            ...feedbacks.map((f) => _buildReviewCard(f)),
           ],
         );
       },
+    );
+  }
+
+  Widget _buildEmptyAnalytics() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.analytics_outlined, size: 64, color: Colors.grey[300]),
+          const SizedBox(height: 16),
+          const Text(
+            "No feedback analytics available",
+            style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMainStats(double avg, int total) {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFF002244), Color(0xFF004488)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(28),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF002244).withValues(alpha: 0.3),
+            blurRadius: 15,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          const Text(
+            "Overall Satisfaction",
+            style: TextStyle(color: Colors.white70, fontSize: 14),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.baseline,
+            textBaseline: TextBaseline.alphabetic,
+            children: [
+              Text(
+                avg.toStringAsFixed(1),
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 48,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const Text(
+                "/5.0",
+                style: TextStyle(color: Colors.white38, fontSize: 18),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: List.generate(5, (index) {
+              return Icon(
+                index < avg.round()
+                    ? Icons.star_rounded
+                    : Icons.star_outline_rounded,
+                color: Colors.orange,
+                size: 28,
+              );
+            }),
+          ),
+          const SizedBox(height: 16),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Text(
+              "Based on $total reviews",
+              style: const TextStyle(color: Colors.white, fontSize: 12),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSmallStatCard(
+    String label,
+    String val,
+    IconData icon,
+    Color color,
+  ) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.grey[100]!),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.02),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          Icon(icon, color: color, size: 20),
+          const SizedBox(height: 8),
+          Text(
+            val,
+            style: const TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF002244),
+            ),
+          ),
+          Text(label, style: TextStyle(fontSize: 10, color: Colors.grey[500])),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildReviewCard(MessFeedback f) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.grey[100]!),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          CircleAvatar(
+            radius: 20,
+            backgroundColor: _getRatingColor(f.rating).withValues(alpha: 0.1),
+            child: Text(
+              f.rating.toString(),
+              style: TextStyle(
+                color: _getRatingColor(f.rating),
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      f.studentName,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                        color: Color(0xFF002244),
+                      ),
+                    ),
+                    Text(
+                      "${f.date.day}/${f.date.month}",
+                      style: TextStyle(color: Colors.grey[400], fontSize: 11),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  f.mealType,
+                  style: TextStyle(
+                    color: Colors.grey[500],
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  f.comment ?? "No comment provided",
+                  style: const TextStyle(
+                    fontSize: 14,
+                    color: Color(0xFF002244),
+                    height: 1.4,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 
