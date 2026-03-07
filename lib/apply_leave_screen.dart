@@ -138,6 +138,19 @@ class _ApplyLeaveScreenState extends State<ApplyLeaveScreen> {
           .get();
       final userData = userDoc.data() ?? {};
 
+      // Logic to bypass HOD and Warden for Outing requests
+      String initialHodStatus = 'pending';
+      String initialWardenStatus = 'waiting_for_hod';
+      String notificationReceiver = 'hod';
+      String notificationMessage = "${userData['name'] ?? 'Student'} has requested leave.";
+
+      if (_leaveType == 'Outing') {
+        initialHodStatus = 'bypassed'; // Skip HOD
+        initialWardenStatus = 'bypassed'; // Skip Warden
+        notificationReceiver = 'rector'; // Notify Rector directly
+        notificationMessage = "${userData['name'] ?? 'Student'} has requested an outing.";
+      }
+
       final requestRef = await FirebaseFirestore.instance
           .collection('leave_requests')
           .add({
@@ -154,17 +167,17 @@ class _ApplyLeaveScreenState extends State<ApplyLeaveScreen> {
             'endDate': Timestamp.fromDate(endDateTime),
             'reason': _reasonController.text.trim(),
             'status': 'pending',
-            'hodStatus': 'pending', // First step
-            'wardenStatus': 'waiting_for_hod', // Wait for HOD
+            'hodStatus': initialHodStatus,
+            'wardenStatus': initialWardenStatus,
             'rectorStatus': 'pending',
             'createdAt': FieldValue.serverTimestamp(),
           });
 
-      // Send Notification to HOD (since they are first)
+      // Send Notification to the appropriate first approver
       await NotificationRepository().sendNotification(
-        title: "New Leave Request",
-        message: "${userData['name'] ?? 'Student'} has requested leave.",
-        receiverUid: 'hod', // Change to notify HOD
+        title: _leaveType == 'Outing' ? "New Outing Request" : "New Leave Request",
+        message: notificationMessage,
+        receiverUid: notificationReceiver, 
         type: 'leave_request',
         relatedRequestId: requestRef.id,
       );

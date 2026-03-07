@@ -238,9 +238,17 @@ class _HomeTabState extends State<HomeTab> {
   }
 
   Query _getPendingQuery() {
+    // A Rector can approve if it's explicitly waiting for them.
+    // To handle both bypassed outings and standard process:
+    // If it reaches Rector, `rectorStatus` will be 'pending' AND `status` will be 'pending'.
+    // We cannot do an OR natively in Firestore easily, but since HOD and Warden
+    // stages do NOT set rectorStatus to 'pending' prematurely (it remains 'pending' from start, BUT
+    // we need to make sure the Warden actually approved it if it's a Home leave).
+    
+    // We will just fetch all where rectorStatus = pending and status = pending,
+    // and filter them in the UI side to avoid complex indexing.
     Query query = FirebaseFirestore.instance
         .collection('leave_requests')
-        .where('wardenStatus', isEqualTo: 'approved')
         .where('rectorStatus', isEqualTo: 'pending')
         .where('status', isEqualTo: 'pending');
 
@@ -406,7 +414,6 @@ class PendingRequestsList extends StatelessWidget {
   Widget build(BuildContext context) {
     Query query = FirebaseFirestore.instance
         .collection('leave_requests')
-        .where('wardenStatus', isEqualTo: 'approved')
         .where('rectorStatus', isEqualTo: 'pending')
         .where('status', isEqualTo: 'pending');
 

@@ -20,7 +20,7 @@ class RoleChecker extends StatelessWidget {
       future: FirebaseFirestore.instance
           .collection('users')
           .doc(uid)
-          .get(), // Use get() for more stable one-time routing
+          .get(const GetOptions(source: Source.server)), // Force server fetch to bypass local stale cache
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Scaffold(

@@ -24,7 +24,10 @@ class AuthGate extends StatelessWidget {
         }
 
         // Guard 2: User is logged in, now check their specific role
-        return RoleChecker(uid: snapshot.data!.uid);
+        return RoleChecker(
+          key: ValueKey(snapshot.data!.uid),
+          uid: snapshot.data!.uid,
+        );
       },
     );
   }

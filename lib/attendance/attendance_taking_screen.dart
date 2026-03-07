@@ -91,7 +91,8 @@ class _AttendanceTakingScreenState extends State<AttendanceTakingScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text("Attendance submitted successfully!")),
         );
-        Navigator.pop(context);
+        // Refresh the list instead of popping since it's a tab
+        _loadStudents();
       }
     } catch (e) {
       if (mounted) {

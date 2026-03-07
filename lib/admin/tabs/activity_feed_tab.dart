@@ -63,74 +63,108 @@ class ActivityFeedTab extends StatelessWidget {
 
   Widget _buildActivityCard(Map<String, dynamic> data) {
     final email = data['email'] ?? 'Unknown User';
-    final createdAt = (data['createdAt'] as Timestamp).toDate();
+    final nameStr = email.split('@')[0];
+    
+    // Safety check for createdAt
+    DateTime createdAt = DateTime.now();
+    if (data['createdAt'] is Timestamp) {
+      createdAt = (data['createdAt'] as Timestamp).toDate();
+    } else if (data['createdAt'] is String) {
+      createdAt = DateTime.tryParse(data['createdAt']) ?? DateTime.now();
+    }
+    
     final timeAgo = _timeAgo(createdAt);
     final status = data['status'];
 
     String action = "created a request";
     IconData icon = Icons.edit_note;
-    Color color = Colors.blue;
+    Color iconColor = Colors.blue;
 
     if (status == 'approved') {
       action = "request was approved";
       icon = Icons.check_circle;
-      color = Colors.green;
+      iconColor = Colors.green;
     } else if (status == 'rejected') {
       action = "request was rejected";
       icon = Icons.cancel;
-      color = Colors.red;
-    } else if (data['actualOutTime'] != null) {
+      iconColor = Colors.red;
+    } else if (data['actualOutTime'] != null && data['actualInTime'] == null) {
       action = "checked out";
       icon = Icons.logout;
-      color = Colors.orange;
+      iconColor = Colors.orange;
     } else if (data['actualInTime'] != null) {
       action = "checked in";
       icon = Icons.login;
-      color = Colors.teal;
+      iconColor = Colors.teal;
     }
 
-    return Card(
-      margin: const EdgeInsets.only(bottom: 8),
-      elevation: 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(color: Colors.grey.shade200),
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+      decoration: BoxDecoration(
+        color: Colors.white, // Pure white for better contrast
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04), // Very soft shadow
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.02), // subtle spread
+            blurRadius: 2,
+            offset: const Offset(0, 0),
+          ),
+        ],
       ),
-      child: Padding(
-        padding: const EdgeInsets.all(12.0),
-        child: Row(
-          children: [
-            CircleAvatar(
-              backgroundColor: color.withValues(alpha: 0.1),
-              child: Icon(icon, color: color, size: 20),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: iconColor.withValues(alpha: 0.12), // slightly stronger tint background
+              shape: BoxShape.circle,
             ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  RichText(
-                    text: TextSpan(
-                      style: const TextStyle(color: Colors.black87),
-                      children: [
-                        TextSpan(
-                          text: email.split('@')[0],
-                          style: const TextStyle(fontWeight: FontWeight.bold),
-                        ),
-                        TextSpan(text: ' $action'),
-                      ],
+            child: Icon(icon, color: iconColor, size: 22),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                RichText(
+                  text: TextSpan(
+                    style: const TextStyle(
+                      color: Color(0xFF1A1A1A), // Darker text for readability
+                      fontSize: 15,
                     ),
+                    children: [
+                      TextSpan(
+                        text: nameStr,
+                        style: const TextStyle(fontWeight: FontWeight.w700),
+                      ),
+                      TextSpan(
+                        text: ' $action',
+                        style: const TextStyle(fontWeight: FontWeight.w400),
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    timeAgo,
-                    style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  timeAgo,
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: Colors.grey[500],
+                    fontWeight: FontWeight.w500,
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
