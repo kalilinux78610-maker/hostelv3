@@ -43,18 +43,26 @@ We use the following third-party services:
 - **Google Firebase**: For authentication, database, storage, and cloud messaging.
 - **Google Fonts**: For typography within the App.
 
-## 5. Your Rights
+## 5. Account Deletion and Data Removal
+
+We provide a clear way for users to request the deletion of their account and all associated data. You can request deletion through the following methods:
+- **In-App**: Go to your Profile settings and select "Delete Account".
+- **By Email**: Send an email to the hostel administration or the developer with the subject "Account Deletion Request".
+
+Upon receiving a valid request, we will delete your personal information from our active databases within 30 days.
+
+## 6. Your Rights
 
 Depending on your location, you may have rights regarding your personal data, including the right to access, correct, or delete your information. You can manage most of your data through your profile settings in the App.
 
-## 6. Retention
+## 7. Retention
 
 We retain your personal information for as long as your account is active or as needed to provide you with services.
 
-## 7. Changes to This Privacy Policy
+## 8. Changes to This Privacy Policy
 
 We may update our Privacy Policy from time to time. We will notify you of any changes by posting the new Privacy Policy on this page and updating the "Last updated" date.
 
-## 8. Contact Us
+## 9. Contact Us
 
-If you have any questions about this Privacy Policy, please contact the hostel administration or the App developers.
+If you have any questions about this Privacy Policy or wish to request data deletion, please contact the hostel administration or the App developers.
