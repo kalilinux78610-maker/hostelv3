@@ -161,15 +161,13 @@ class _HodDashboardScreenState extends State<HodDashboardScreen> {
   }
 
   Widget _buildLeavesTab() {
+    // Only query by hodStatus to avoid ANY composite index requirements
+    Query query = FirebaseFirestore.instance
+        .collection('leave_requests')
+        .where('hodStatus', isEqualTo: 'pending');
+
     return StreamBuilder<QuerySnapshot>(
-      stream: FirebaseFirestore.instance
-          .collection('leave_requests')
-          .where('hodStatus', isEqualTo: 'pending')
-          .where('status', isEqualTo: 'pending')
-          .where('category', isEqualTo: _category)
-          .where('branch', isEqualTo: _branch)
-          .orderBy('createdAt', descending: false)
-          .snapshots(),
+      stream: query.snapshots(),
       builder: (context, snapshot) {
         if (snapshot.hasError) {
           return Center(child: Text('Error: ${snapshot.error}'));
@@ -180,6 +178,27 @@ class _HodDashboardScreenState extends State<HodDashboardScreen> {
         }
 
         if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+          return const Center(child: Text("No requests found in database."));
+        }
+
+        // 1. Fetch all pending HOD docs
+        List<QueryDocumentSnapshot> docs = snapshot.data!.docs.toList();
+        
+        // 2. Filter in-memory by status, category, branch
+        docs = docs.where((doc) {
+          final data = doc.data() as Map<String, dynamic>;
+          final isPending = data['status'] == 'pending';
+          
+          final docCategory = data['category']?.toString();
+          final docBranch = data['branch']?.toString();
+          
+          final categoryMatch = (_category == null) || (docCategory == _category);
+          final branchMatch = (_branch == null) || (docBranch == _branch);
+          
+          return isPending && categoryMatch && branchMatch;
+        }).toList();
+
+        if (docs.isEmpty) {
           return Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -187,7 +206,7 @@ class _HodDashboardScreenState extends State<HodDashboardScreen> {
                 Icon(Icons.done_all, size: 64, color: Colors.grey[300]),
                 const SizedBox(height: 16),
                 Text(
-                  "No pending leave requests",
+                  "No pending leave requests for $_branch",
                   style: TextStyle(color: Colors.grey[400], fontSize: 16),
                 ),
               ],
@@ -195,11 +214,20 @@ class _HodDashboardScreenState extends State<HodDashboardScreen> {
           );
         }
 
+        // 3. Sort in-memory by createdAt
+        docs.sort((a, b) {
+          final aData = a.data() as Map<String, dynamic>;
+          final bData = b.data() as Map<String, dynamic>;
+          final aTime = (aData['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now();
+          final bTime = (bData['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now();
+          return aTime.compareTo(bTime);
+        });
+
         return ListView.builder(
           padding: const EdgeInsets.all(16),
-          itemCount: snapshot.data!.docs.length,
+          itemCount: docs.length,
           itemBuilder: (context, index) {
-            final doc = snapshot.data!.docs[index];
+            final doc = docs[index];
             final data = doc.data() as Map<String, dynamic>;
             final startDate = (data['startDate'] as Timestamp).toDate();
             final endDate = (data['endDate'] as Timestamp).toDate();

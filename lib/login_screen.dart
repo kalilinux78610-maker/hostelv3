@@ -547,40 +547,7 @@ class _LoginScreenState extends State<LoginScreen>
                                               ),
                                       ),
                                       const SizedBox(height: 16),
-                                      // Google Sign-In Button
-                                      SizedBox(
-                                        width: double.infinity,
-                                        height: 48,
-                                        child: OutlinedButton.icon(
-                                          onPressed: _isLoading
-                                              ? null
-                                              : _signInWithGoogle,
-                                          icon: Image.network(
-                                            'https://upload.wikimedia.org/wikipedia/commons/5/53/Google_%22G%22_Logo.svg',
-                                            height: 20,
-                                            errorBuilder: (context, error,
-                                                    stackTrace) =>
-                                                const Icon(Icons.account_circle),
-                                          ),
-                                          label: const Text(
-                                            "Sign in with Gmail",
-                                            style: TextStyle(
-                                              fontWeight: FontWeight.bold,
-                                              fontSize: 14,
-                                              color: Colors.black87,
-                                            ),
-                                          ),
-                                          style: OutlinedButton.styleFrom(
-                                            shape: RoundedRectangleBorder(
-                                              borderRadius:
-                                                  BorderRadius.circular(12),
-                                            ),
-                                            side: const BorderSide(
-                                              color: Colors.grey,
-                                            ),
-                                          ),
-                                        ),
-                                      ),
+                                      // Google Sign-In Button removed as requested
                                     ],
                                   ),
                                 ),

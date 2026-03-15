@@ -168,6 +168,8 @@ class _ApplyLeaveScreenState extends State<ApplyLeaveScreen> {
         notificationMessage = "${userData['name'] ?? 'Student'} has requested an outing.";
       }
 
+
+
       final requestRef = await FirebaseFirestore.instance
           .collection('leave_requests')
           .add({
