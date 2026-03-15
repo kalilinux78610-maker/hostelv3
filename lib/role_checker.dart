@@ -19,49 +19,25 @@ class RoleChecker extends StatefulWidget {
 }
 
 class _RoleCheckerState extends State<RoleChecker> {
-  late Future<DocumentSnapshot> _userFuture;
+  late Stream<DocumentSnapshot> _userStream;
 
   @override
   void initState() {
     super.initState();
-    _userFuture = _fetchUserData();
+    _userStream = FirebaseFirestore.instance
+        .collection('users')
+        .doc(widget.uid)
+        .snapshots();
   }
 
-  /// Fetch user data: try server first, fallback to cache if offline
-  Future<DocumentSnapshot> _fetchUserData() async {
-    try {
-      // Try server first for fresh data
-      final doc = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(widget.uid)
-          .get(const GetOptions(source: Source.server));
-      debugPrint('RoleChecker: Fetched from SERVER for ${widget.uid}');
-      return doc;
-    } catch (e) {
-      debugPrint('RoleChecker: Server fetch failed ($e), trying cache...');
-      // Fallback to cache if server fails (offline, timeout, etc.)
-      try {
-        final doc = await FirebaseFirestore.instance
-            .collection('users')
-            .doc(widget.uid)
-            .get(const GetOptions(source: Source.cache));
-        debugPrint('RoleChecker: Fetched from CACHE for ${widget.uid}');
-        return doc;
-      } catch (cacheError) {
-        debugPrint('RoleChecker: Cache also failed ($cacheError)');
-        // Last resort: let Firestore decide (default behavior)
-        return FirebaseFirestore.instance
-            .collection('users')
-            .doc(widget.uid)
-            .get();
-      }
-    }
-  }
 
-  /// Retry fetching user data
+  /// Retry fetching user data by resetting the stream
   void _retry() {
     setState(() {
-      _userFuture = _fetchUserData();
+      _userStream = FirebaseFirestore.instance
+          .collection('users')
+          .doc(widget.uid)
+          .snapshots();
     });
   }
 
@@ -90,37 +66,38 @@ class _RoleCheckerState extends State<RoleChecker> {
 
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder<DocumentSnapshot>(
-      future: _userFuture, // Same future instance, never recreated on rebuild
+    return StreamBuilder<DocumentSnapshot>(
+      stream: _userStream, 
       builder: (context, snapshot) {
-        // Still loading
+        // Still loading or no data yet
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Scaffold(
             body: Center(child: CircularProgressIndicator()),
           );
         }
 
-        // Handle Firestore errors (permission-denied, network, etc.)
+        // Handle Firestore errors
         if (snapshot.hasError) {
-          debugPrint("RoleChecker Firestore Error: ${snapshot.error}");
+          debugPrint("RoleChecker Stream Error: ${snapshot.error}");
           return _errorScreen(
             "Connection Error",
-            "Could not load your profile. Please check your internet and try again.",
+            "Could not load your profile. Please check your internet connection.",
             showRetry: true,
           );
         }
 
         // Data loaded successfully
-        if (snapshot.hasData &&
-            snapshot.data != null &&
-            snapshot.data!.exists) {
+        if (snapshot.hasData && snapshot.data != null && snapshot.data!.exists) {
           final data = snapshot.data!.data() as Map<String, dynamic>?;
-          if (data == null) {
-            return _errorScreen("Data Error", "User data is empty");
+          if (data == null || !data.containsKey('role')) {
+             // If document exists but role is missing, it might be a new doc partially synced
+             return const Scaffold(
+               body: Center(child: CircularProgressIndicator()),
+             );
           }
 
           // Normalize role: trim, lowercase
-          final String role = (data['role'] ?? 'student')
+          final String role = data['role']
               .toString()
               .toLowerCase()
               .trim();
@@ -128,11 +105,18 @@ class _RoleCheckerState extends State<RoleChecker> {
           return _getDashboard(role);
         }
 
-        // User document doesn't exist
-        debugPrint("RoleChecker: User document not found for UID: ${widget.uid}");
-        return _errorScreen(
-          "User Not Found",
-          "Your user profile does not exist in the database.",
+        // User document doesn't exist yet
+        if (snapshot.connectionState == ConnectionState.active && (!snapshot.hasData || !snapshot.data!.exists)) {
+           // Wait a bit longer or show error if it's definitely not there
+           debugPrint("RoleChecker: User document not found for UID: ${widget.uid}");
+           return _errorScreen(
+             "User Not Found",
+             "Your user profile does not exist in the database. Please contact support.",
+           );
+        }
+
+        return const Scaffold(
+          body: Center(child: CircularProgressIndicator()),
         );
       },
     );
@@ -186,6 +170,11 @@ class _RoleCheckerState extends State<RoleChecker> {
                 child: ElevatedButton.icon(
                   onPressed: () async {
                     await FirebaseAuth.instance.signOut();
+                    try {
+                      await FirebaseFirestore.instance.clearPersistence();
+                    } catch (e) {
+                      debugPrint("Error clearing persistence: $e");
+                    }
                   },
                   icon: const Icon(Icons.logout),
                   label: const Text("Logout & Fix Account"),
