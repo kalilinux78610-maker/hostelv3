@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'repositories/notification_repository.dart';
 import 'notification_screen.dart';
 import 'hod_profile_screen.dart';
+import 'utils/canonical_names.dart';
 
 class HodDashboardScreen extends StatefulWidget {
   const HodDashboardScreen({super.key});
@@ -38,40 +39,14 @@ class _HodDashboardScreenState extends State<HodDashboardScreen> {
           final data = doc.data();
 
           bool needsUpdate = false;
-          String? currentCategory = data?['category'];
-          String? currentBranch = data?['branch'];
+          String originalCategory = data?['category'] ?? '';
+          String originalBranch = data?['branch'] ?? '';
 
-          // Category Mapping First
-          if (currentCategory == 'BTech' ||
-              currentCategory == 'MTech' ||
-              currentCategory == 'BCA' ||
-              currentCategory == 'MCA') {
-            currentCategory = 'Degree';
-          }
+          String currentCategory = CanonicalNames.canonicalizeCategory(originalCategory);
+          String currentBranch = CanonicalNames.canonicalizeBranch(originalBranch, currentCategory);
 
-          // Branch Mapping Based on Category
-          if (currentCategory == 'Degree') {
-            if (currentBranch == 'Information Technology') {
-              currentBranch = 'IT & MSC-IT';
-            } else if (currentBranch == 'Computer Science') {
-              currentBranch = 'CSE';
-            } else if (currentBranch == 'Civil') {
-              currentBranch = 'Civil Engineering';
-            }
-          } else if (currentCategory == 'Diploma') {
-            if (currentBranch == 'Computer Science') {
-              currentBranch = 'Computer Engineering';
-            }
-            if (currentBranch == 'Mechanical') {
-              currentBranch = 'Mechanical Engineering';
-            }
-            if (currentBranch == 'Electrical') {
-              currentBranch = 'Electrical Engineering';
-            }
-          }
-
-          if (currentBranch != data?['branch'] ||
-              currentCategory != data?['category']) {
+          if (currentBranch != originalBranch ||
+              currentCategory != originalCategory) {
             needsUpdate = true;
           }
 

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'utils/canonical_names.dart';
 
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({super.key});
@@ -70,7 +71,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
           'assignedHostel': data['assignedHostel'],
           'hostel': data['hostel'],
           'room': data['room'],
-          'branch': data['branch'],
+          'category': CanonicalNames.canonicalizeCategory(data['category']),
+          'branch': CanonicalNames.canonicalizeBranch(data['branch'], data['category']),
           'year': data['year'],
           'createdAt': FieldValue.serverTimestamp(),
           'isVerified': true,

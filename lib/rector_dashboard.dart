@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'repositories/notification_repository.dart';
 import 'complaints/admin_complaints_screen.dart';
 import 'attendance/attendance_taking_screen.dart';
+import 'auth_gate.dart';
+import 'utils/canonical_names.dart';
 
 class RectorDashboard extends StatefulWidget {
   const RectorDashboard({super.key});
@@ -71,6 +73,7 @@ class _RectorDashboardState extends State<RectorDashboard> {
     final roomController = TextEditingController();
     String? selectedBranch;
     String? selectedYear;
+    String? selectedCategory = 'Degree'; // Default to Degree
 
     showDialog(
       context: context,
@@ -97,6 +100,20 @@ class _RectorDashboardState extends State<RectorDashboard> {
                     labelText: 'Gmail Address (Required)',
                   ),
                   keyboardType: TextInputType.emailAddress,
+                ),
+                const SizedBox(height: 12),
+                InputDecorator(
+                  decoration: const InputDecoration(labelText: 'Category'),
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton<String>(
+                      value: selectedCategory,
+                      isDense: true,
+                      items: ['Degree', 'Diploma']
+                          .map((c) => DropdownMenuItem(value: c, child: Text(c)))
+                          .toList(),
+                      onChanged: (val) => setState(() => selectedCategory = val),
+                    ),
+                  ),
                 ),
                 const SizedBox(height: 12),
                 TextField(
@@ -177,7 +194,8 @@ class _RectorDashboardState extends State<RectorDashboard> {
                         'assignedHostel': _assignedHostel,
                         'hostel': _getLongHostelName(_assignedHostel),
                         'room': roomController.text.trim(),
-                        'branch': selectedBranch,
+                        'category': CanonicalNames.canonicalizeCategory(selectedCategory),
+                        'branch': CanonicalNames.canonicalizeBranch(selectedBranch, selectedCategory),
                         'year': selectedYear,
                         'importedAt': FieldValue.serverTimestamp(),
                         'source': 'rector_add',

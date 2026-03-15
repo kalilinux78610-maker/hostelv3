@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'repositories/notification_repository.dart';
+import 'utils/canonical_names.dart';
 
 class ApplyLeaveScreen extends StatefulWidget {
   const ApplyLeaveScreen({super.key});
@@ -160,8 +161,8 @@ class _ApplyLeaveScreenState extends State<ApplyLeaveScreen> {
             'hostelId': userData['assignedHostel'],
             'room': userData['room'],
             'parentContact': userData['parentContact'],
-            'category': userData['category'] ?? 'Degree',
-            'branch': userData['branch'] ?? 'Unknown',
+            'category': CanonicalNames.canonicalizeCategory(userData['category']),
+            'branch': CanonicalNames.canonicalizeBranch(userData['branch'], userData['category']),
             'type': _leaveType,
             'startDate': Timestamp.fromDate(startDateTime),
             'endDate': Timestamp.fromDate(endDateTime),
