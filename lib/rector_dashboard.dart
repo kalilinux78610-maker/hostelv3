@@ -154,7 +154,7 @@ class _RectorDashboardState extends State<RectorDashboard> {
                       value: selectedYear,
                       isDense: true,
                       hint: const Text("Select Year"),
-                      items: ['1', '2', '3', '4']
+                      items: ['1', '2', '3']
                           .map(
                             (y) => DropdownMenuItem(
                               value: y,
