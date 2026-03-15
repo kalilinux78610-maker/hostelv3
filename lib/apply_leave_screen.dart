@@ -126,6 +126,20 @@ class _ApplyLeaveScreenState extends State<ApplyLeaveScreen> {
       return;
     }
 
+    // Validation for Outing: Max 1 day (24 hours)
+    if (_leaveType == 'Outing') {
+      final hoursDifference = endDateTime.difference(startDateTime).inHours;
+      if (hoursDifference > 24) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Outing requests can only be for a maximum of 24 hours (1 day).'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+    }
+
     setState(() => _isLoading = true);
 
     try {
@@ -139,15 +153,17 @@ class _ApplyLeaveScreenState extends State<ApplyLeaveScreen> {
           .get();
       final userData = userDoc.data() ?? {};
 
-      // Logic to bypass HOD and Warden for Outing requests
+      // Logic to correctly route based on Home vs Outing
       String initialHodStatus = 'pending';
       String initialWardenStatus = 'waiting_for_hod';
+      String initialRectorStatus = 'waiting_for_warden'; // Important: wait for Warden
       String notificationReceiver = 'hod';
-      String notificationMessage = "${userData['name'] ?? 'Student'} has requested leave.";
+      String notificationMessage = "${userData['name'] ?? 'Student'} has requested a home leave.";
 
       if (_leaveType == 'Outing') {
         initialHodStatus = 'bypassed'; // Skip HOD
         initialWardenStatus = 'bypassed'; // Skip Warden
+        initialRectorStatus = 'pending'; // Go directly to Rector
         notificationReceiver = 'rector'; // Notify Rector directly
         notificationMessage = "${userData['name'] ?? 'Student'} has requested an outing.";
       }
@@ -170,7 +186,7 @@ class _ApplyLeaveScreenState extends State<ApplyLeaveScreen> {
             'status': 'pending',
             'hodStatus': initialHodStatus,
             'wardenStatus': initialWardenStatus,
-            'rectorStatus': 'pending',
+            'rectorStatus': initialRectorStatus,
             'createdAt': FieldValue.serverTimestamp(),
           });
 

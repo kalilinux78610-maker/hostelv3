@@ -758,6 +758,7 @@ class WardenDeptRequestsScreen extends StatelessWidget {
       final updateData = <String, dynamic>{};
       if (action == 'approve') {
         updateData['wardenStatus'] = 'approved';
+        updateData['rectorStatus'] = 'pending'; // Pass to Rector
       } else {
         updateData['wardenStatus'] = 'rejected';
         updateData['status'] = 'rejected';

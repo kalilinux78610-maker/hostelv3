@@ -9,31 +9,108 @@ import 'admin/admin_dashboard_screen.dart';
 import 'mess/mess_manager_dashboard.dart';
 import 'hod_dashboard.dart';
 
-class RoleChecker extends StatelessWidget {
+class RoleChecker extends StatefulWidget {
   final String uid;
 
   const RoleChecker({super.key, required this.uid});
 
   @override
+  State<RoleChecker> createState() => _RoleCheckerState();
+}
+
+class _RoleCheckerState extends State<RoleChecker> {
+  late Future<DocumentSnapshot> _userFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _userFuture = _fetchUserData();
+  }
+
+  /// Fetch user data: try server first, fallback to cache if offline
+  Future<DocumentSnapshot> _fetchUserData() async {
+    try {
+      // Try server first for fresh data
+      final doc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(widget.uid)
+          .get(const GetOptions(source: Source.server));
+      debugPrint('RoleChecker: Fetched from SERVER for ${widget.uid}');
+      return doc;
+    } catch (e) {
+      debugPrint('RoleChecker: Server fetch failed ($e), trying cache...');
+      // Fallback to cache if server fails (offline, timeout, etc.)
+      try {
+        final doc = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(widget.uid)
+            .get(const GetOptions(source: Source.cache));
+        debugPrint('RoleChecker: Fetched from CACHE for ${widget.uid}');
+        return doc;
+      } catch (cacheError) {
+        debugPrint('RoleChecker: Cache also failed ($cacheError)');
+        // Last resort: let Firestore decide (default behavior)
+        return FirebaseFirestore.instance
+            .collection('users')
+            .doc(widget.uid)
+            .get();
+      }
+    }
+  }
+
+  /// Retry fetching user data
+  void _retry() {
+    setState(() {
+      _userFuture = _fetchUserData();
+    });
+  }
+
+  /// Route to the correct dashboard based on role string
+  Widget _getDashboard(String role) {
+    debugPrint('RoleChecker: Routing user ${widget.uid} with role "$role"');
+
+    switch (role) {
+      case 'admin':
+        return const AdminDashboardScreen();
+      case 'mess_manager':
+        return const MessManagerDashboard();
+      case 'warden':
+        return const WardenDashboard();
+      case 'hod':
+        return const HodDashboardScreen();
+      case 'guard':
+        return const GuardDashboardScreen();
+      case 'rector':
+        return const RectorDashboard();
+      case 'student':
+      default:
+        return const StudentDashboard();
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     return FutureBuilder<DocumentSnapshot>(
-      future: FirebaseFirestore.instance
-          .collection('users')
-          .doc(uid)
-          .get(const GetOptions(source: Source.server)), // Force server fetch to bypass local stale cache
+      future: _userFuture, // Same future instance, never recreated on rebuild
       builder: (context, snapshot) {
+        // Still loading
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Scaffold(
             body: Center(child: CircularProgressIndicator()),
           );
         }
 
-        // Handle Firestore errors (permission-denied, etc.)
+        // Handle Firestore errors (permission-denied, network, etc.)
         if (snapshot.hasError) {
           debugPrint("RoleChecker Firestore Error: ${snapshot.error}");
-          return _errorScreen("Firebase Error", "${snapshot.error}");
+          return _errorScreen(
+            "Connection Error",
+            "Could not load your profile. Please check your internet and try again.",
+            showRetry: true,
+          );
         }
 
+        // Data loaded successfully
         if (snapshot.hasData &&
             snapshot.data != null &&
             snapshot.data!.exists) {
@@ -42,24 +119,17 @@ class RoleChecker extends StatelessWidget {
             return _errorScreen("Data Error", "User data is empty");
           }
 
-          String role = (data['role'] ?? 'student')
+          // Normalize role: trim, lowercase
+          final String role = (data['role'] ?? 'student')
               .toString()
               .toLowerCase()
               .trim();
 
-          // Dashboard Routing
-          if (role == 'admin') return const AdminDashboardScreen();
-          if (role == 'mess_manager') return const MessManagerDashboard();
-          if (role == 'warden') return const WardenDashboard();
-          if (role == 'hod') return const HodDashboardScreen();
-          if (role == 'guard') return const GuardDashboardScreen();
-          if (role == 'rector') return const RectorDashboard();
-
-          return const StudentDashboard();
+          return _getDashboard(role);
         }
 
-        // If user doc doesn't exist, we must log out to clear the stale session
-        debugPrint("RoleChecker: User document not found for UID: $uid");
+        // User document doesn't exist
+        debugPrint("RoleChecker: User document not found for UID: ${widget.uid}");
         return _errorScreen(
           "User Not Found",
           "Your user profile does not exist in the database.",
@@ -68,7 +138,7 @@ class RoleChecker extends StatelessWidget {
     );
   }
 
-  Widget _errorScreen(String title, String message) {
+  Widget _errorScreen(String title, String message, {bool showRetry = false}) {
     return Scaffold(
       backgroundColor: Colors.white,
       body: Center(
@@ -97,6 +167,20 @@ class RoleChecker extends StatelessWidget {
                 style: const TextStyle(color: Colors.grey, fontSize: 14),
               ),
               const SizedBox(height: 32),
+              if (showRetry)
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: _retry,
+                    icon: const Icon(Icons.refresh),
+                    label: const Text("Retry"),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF002244),
+                      foregroundColor: Colors.white,
+                    ),
+                  ),
+                ),
+              const SizedBox(height: 12),
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton.icon(
