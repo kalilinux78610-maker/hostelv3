@@ -26,24 +26,28 @@ class _SignUpScreenState extends State<SignUpScreen> {
     }
 
     setState(() => _isLoading = true);
+    User? firebaseUser;
     try {
-      // 1. Verify against Rector's list
+      // 1. Create Firebase Auth User FIRST (to get permission to read imports)
+      final userCredential = await FirebaseAuth.instance
+          .createUserWithEmailAndPassword(email: email, password: password);
+      
+      firebaseUser = userCredential.user;
+      final uid = firebaseUser!.uid;
+
+      // 2. NOW Verify against Rector's list (User is authenticated, so rules should allow it)
       final importDoc = await FirebaseFirestore.instance
           .collection('student_imports')
           .doc(email)
           .get();
 
       if (!importDoc.exists) {
+        // If not in imports, delete the newly created auth user and throw error
+        await firebaseUser.delete();
         throw "Your Gmail ($email) is not in our hostel records. Please contact your Rector.";
       }
 
       final importData = importDoc.data()!;
-
-      // 2. Create Firebase Auth User
-      final userCredential = await FirebaseAuth.instance
-          .createUserWithEmailAndPassword(email: email, password: password);
-      
-      final uid = userCredential.user!.uid;
 
       // 3. Create the profile
       await FirebaseFirestore.instance.collection('users').doc(uid).set({
@@ -54,8 +58,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
         'assignedHostel': importData['assignedHostel'],
         'hostel': importData['hostel'],
         'room': importData['room'],
-        'category': CanonicalNames.canonicalizeCategory(importData['category']),
-        'branch': CanonicalNames.canonicalizeBranch(importData['branch'], importData['category']),
+        'category': CanonicalNames.canonicalizeCategory(importData['category'] ?? "N/A"),
+        'branch': CanonicalNames.canonicalizeBranch(importData['branch'] ?? "N/A", importData['category'] ?? "N/A"),
         'year': importData['year'],
         'createdAt': FieldValue.serverTimestamp(),
         'isVerified': true,
