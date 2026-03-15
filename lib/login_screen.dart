@@ -1,6 +1,7 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'signup_screen.dart';
 import 'services/push_notification_service.dart';
 
@@ -182,6 +183,108 @@ class _LoginScreenState extends State<LoginScreen>
         });
       }
     }
+  }
+
+  Future<void> _signInWithGoogle() async {
+    setState(() => _isLoading = true);
+    try {
+      final GoogleSignIn googleSignIn = GoogleSignIn.instance;
+      final googleUser = await googleSignIn.authenticate();
+
+      final GoogleSignInAuthentication googleAuth = googleUser.authentication;
+      final AuthCredential credential = GoogleAuthProvider.credential(
+        idToken: googleAuth.idToken,
+      );
+
+      final UserCredential userCredential =
+          await _auth.signInWithCredential(credential);
+      final String email = userCredential.user?.email?.toLowerCase() ?? "";
+
+      // Check for user profile
+      final userDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(userCredential.user!.uid)
+          .get();
+
+      if (!userDoc.exists) {
+        // Auto-claim if in imports
+        final importDoc = await FirebaseFirestore.instance
+            .collection('student_imports')
+            .doc(email)
+            .get();
+
+        if (importDoc.exists) {
+          final data = importDoc.data()!;
+          await FirebaseFirestore.instance
+              .collection('users')
+              .doc(userCredential.user!.uid)
+              .set({
+                'uid': userCredential.user!.uid,
+                'email': email,
+                'name': data['name'],
+                'role': 'student',
+                'assignedHostel': data['assignedHostel'],
+                'hostel': data['hostel'],
+                'room': data['room'],
+                'branch': data['branch'],
+                'year': data['year'],
+                'createdAt': FieldValue.serverTimestamp(),
+                'isVerified': true,
+              });
+        } else {
+          // Access Denied
+          await _auth.signOut();
+          await googleSignIn.signOut();
+          if (mounted) {
+            _showErrorDialog(
+              "Access Denied",
+              "You are not registered in any Hostel. Please contact your Rector.",
+            );
+          }
+          return;
+        }
+      }
+
+      // Save FCM Token
+      try {
+        final token = await PushNotificationService().getFcmToken();
+        if (token != null) {
+          await FirebaseFirestore.instance
+              .collection('users')
+              .doc(userCredential.user!.uid)
+              .update({'fcmToken': token});
+        }
+      } catch (e) {
+        debugPrint("Error saving FCM token: $e");
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text("Google Sign-In failed: $e")));
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  void _showErrorDialog(String title, String message) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(
+          title,
+          style: const TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
+        ),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("OK"),
+          ),
+        ],
+      ),
+    );
   }
 
   String _getErrorMessage(FirebaseAuthException e) {
@@ -443,6 +546,41 @@ class _LoginScreenState extends State<LoginScreen>
                                                 ),
                                               ),
                                       ),
+                                      const SizedBox(height: 16),
+                                      // Google Sign-In Button
+                                      SizedBox(
+                                        width: double.infinity,
+                                        height: 48,
+                                        child: OutlinedButton.icon(
+                                          onPressed: _isLoading
+                                              ? null
+                                              : _signInWithGoogle,
+                                          icon: Image.network(
+                                            'https://upload.wikimedia.org/wikipedia/commons/5/53/Google_%22G%22_Logo.svg',
+                                            height: 20,
+                                            errorBuilder: (context, error,
+                                                    stackTrace) =>
+                                                const Icon(Icons.account_circle),
+                                          ),
+                                          label: const Text(
+                                            "Sign in with Gmail",
+                                            style: TextStyle(
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 14,
+                                              color: Colors.black87,
+                                            ),
+                                          ),
+                                          style: OutlinedButton.styleFrom(
+                                            shape: RoundedRectangleBorder(
+                                              borderRadius:
+                                                  BorderRadius.circular(12),
+                                            ),
+                                            side: const BorderSide(
+                                              color: Colors.grey,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
                                     ],
                                   ),
                                 ),
@@ -464,7 +602,7 @@ class _LoginScreenState extends State<LoginScreen>
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
                               const Text(
-                                "Don't have an account? ",
+                                "New Student? ",
                                 style: TextStyle(
                                   color: Colors.grey,
                                   fontSize: 14,
@@ -481,7 +619,7 @@ class _LoginScreenState extends State<LoginScreen>
                                   );
                                 },
                                 child: const Text(
-                                  "Register",
+                                  "Verify Enrollment",
                                   style: TextStyle(
                                     fontWeight: FontWeight.bold,
                                     color: Color(0xFF002244),

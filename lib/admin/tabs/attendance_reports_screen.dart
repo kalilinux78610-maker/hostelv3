@@ -71,7 +71,7 @@ class _AttendanceReportsScreenState extends State<AttendanceReportsScreen> {
         children: [
           Expanded(
             child: DropdownButtonFormField<String>(
-              value: _selectedHostel,
+              initialValue: _selectedHostel,
               decoration: InputDecoration(
                 labelText: "Filter by Hostel",
                 contentPadding: const EdgeInsets.symmetric(horizontal: 12),

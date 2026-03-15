@@ -65,6 +65,173 @@ class _RectorDashboardState extends State<RectorDashboard> {
     });
   }
 
+  void _showAddStudentDialog() {
+    final nameController = TextEditingController();
+    final emailController = TextEditingController();
+    final roomController = TextEditingController();
+    String? selectedBranch;
+    String? selectedYear;
+
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          title: const Text('Add Student (Pre-register)'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  "This creates a record so the student can verify their Gmail and join.",
+                  style: TextStyle(fontSize: 12, color: Colors.grey),
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: nameController,
+                  decoration: const InputDecoration(labelText: 'Full Name'),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: emailController,
+                  decoration: const InputDecoration(
+                    labelText: 'Gmail Address (Required)',
+                  ),
+                  keyboardType: TextInputType.emailAddress,
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: roomController,
+                  decoration: const InputDecoration(labelText: 'Room Number'),
+                ),
+                const SizedBox(height: 12),
+                InputDecorator(
+                  decoration: const InputDecoration(labelText: 'Branch'),
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton<String>(
+                      value: selectedBranch,
+                      isDense: true,
+                      hint: const Text("Select Branch"),
+                      items:
+                          [
+                                'Computer Engineering',
+                                'Information Technology',
+                                'Mechanical Engineering',
+                                'Civil Engineering',
+                                'Electrical Engineering',
+                                'Chemical Engineering',
+                              ]
+                              .map(
+                                (b) =>
+                                    DropdownMenuItem(value: b, child: Text(b)),
+                              )
+                              .toList(),
+                      onChanged: (val) => setState(() => selectedBranch = val),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                InputDecorator(
+                  decoration: const InputDecoration(labelText: 'Year'),
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton<String>(
+                      value: selectedYear,
+                      isDense: true,
+                      hint: const Text("Select Year"),
+                      items: ['1', '2', '3', '4']
+                          .map(
+                            (y) => DropdownMenuItem(
+                              value: y,
+                              child: Text("Year $y"),
+                            ),
+                          )
+                          .toList(),
+                      onChanged: (val) => setState(() => selectedYear = val),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                if (emailController.text.trim().isEmpty ||
+                    !emailController.text.contains('@')) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Please enter a valid Gmail')),
+                  );
+                  return;
+                }
+
+                try {
+                  await FirebaseFirestore.instance
+                      .collection('student_imports')
+                      .doc(emailController.text.trim().toLowerCase())
+                      .set({
+                        'name': nameController.text.trim(),
+                        'email': emailController.text.trim().toLowerCase(),
+                        'assignedHostel': _assignedHostel,
+                        'hostel': _getLongHostelName(_assignedHostel),
+                        'room': roomController.text.trim(),
+                        'branch': selectedBranch,
+                        'year': selectedYear,
+                        'importedAt': FieldValue.serverTimestamp(),
+                        'source': 'rector_add',
+                      });
+
+                  if (context.mounted) {
+                    Navigator.pop(context);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text(
+                          'Student Pre-registered! They can now login with Gmail.',
+                        ),
+                      ),
+                    );
+                  }
+                } catch (e) {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(
+                      context,
+                    ).showSnackBar(SnackBar(content: Text('Error: $e')));
+                  }
+                }
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF002244),
+                foregroundColor: Colors.white,
+              ),
+              child: const Text('Add Student'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _getLongHostelName(String? code) {
+    switch (code) {
+      case 'BH1':
+        return 'Boys Hostel 1';
+      case 'BH2':
+        return 'Boys Hostel 2';
+      case 'BH3':
+        return 'Boys Hostel 3';
+      case 'BH4':
+        return 'Boys Hostel 4';
+      case 'GH1':
+        return 'Girls Hostel 1';
+      case 'GH2':
+        return 'Girls Hostel 2';
+      default:
+        return code ?? 'Unknown';
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
@@ -121,6 +288,13 @@ class _RectorDashboardState extends State<RectorDashboard> {
           onTap: _onItemTapped,
         ),
       ),
+      floatingActionButton: _selectedIndex == 2
+          ? FloatingActionButton(
+              onPressed: _showAddStudentDialog,
+              backgroundColor: _primaryColor,
+              child: const Icon(Icons.person_add, color: Colors.white),
+            )
+          : null,
     );
   }
 }
@@ -261,8 +435,7 @@ class _HomeTabState extends State<HomeTab> {
   Query _getOutNowQuery() {
     Query query = FirebaseFirestore.instance
         .collection('leave_requests')
-        .where('actualOutTime', isNull: false)
-        .where('actualInTime', isNull: true);
+        .where('status', isEqualTo: 'out');
 
     if (widget.hostelId != null) {
       query = query.where('hostelId', isEqualTo: widget.hostelId);
@@ -1681,8 +1854,7 @@ class OutStudentsListWidget extends StatelessWidget {
   Widget build(BuildContext context) {
     Query query = FirebaseFirestore.instance
         .collection('leave_requests')
-        .where('actualOutTime', isNull: false)
-        .where('actualInTime', isNull: true);
+        .where('status', isEqualTo: 'out');
 
     if (hostelId != null) {
       query = query.where('hostelId', isEqualTo: hostelId);

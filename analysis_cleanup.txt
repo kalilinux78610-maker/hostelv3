@@ -1,0 +1,5 @@
+Analyzing 6 items...                                            
+
+   info - Statements in an if should be enclosed in a block - lib\admin\tabs\staff_management_screen.dart:491:27 - curly_braces_in_flow_control_structures
+
+1 issue found. (ran in 10.9s)

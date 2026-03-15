@@ -2,6 +2,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'auth_gate.dart';
 import 'firebase_options.dart';
 import 'services/push_notification_service.dart';
@@ -10,6 +11,12 @@ import 'fix_role.dart'; // TODO: Remove after one-time fix
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  
+  try {
+    await GoogleSignIn.instance.initialize();
+  } catch (e) {
+    debugPrint("GoogleSignIn init failed: $e");
+  }
 
   // ONE-TIME FIX: Change sem@gmail.com role from admin to student
   // TODO: Remove this block after running once

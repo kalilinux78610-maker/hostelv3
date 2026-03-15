@@ -16,274 +16,6 @@ class _StaffManagementScreenState extends State<StaffManagementScreen> {
   final _repository = StaffRepository();
   bool _isLoading = false;
 
-  void _showAddEditDialog({StaffMember? staff}) {
-    final nameController = TextEditingController(text: staff?.name ?? '');
-    final mobileController = TextEditingController(text: staff?.mobile ?? '');
-    final emailController = TextEditingController(text: staff?.email ?? '');
-    String role = staff?.role ?? 'Guard';
-    String? shift = staff?.assignedShift;
-    String? hostel = staff?.assignedHostel;
-    String? category = staff?.assignedCategory;
-    String? branch = staff?.assignedBranch;
-
-    showDialog(
-      context: context,
-      builder: (dialogContext) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
-          title: Text(staff == null ? 'Add New Staff' : 'Edit Staff'),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(
-                  controller: nameController,
-                  decoration: const InputDecoration(labelText: 'Full Name'),
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: emailController,
-                  keyboardType: TextInputType.emailAddress,
-                  decoration: const InputDecoration(
-                    labelText: 'Email (Linked Account)',
-                  ),
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: mobileController,
-                  keyboardType: TextInputType.phone,
-                  decoration: const InputDecoration(labelText: 'Mobile Number'),
-                ),
-                const SizedBox(height: 12),
-                DropdownButtonFormField<String>(
-                  initialValue: role,
-                  decoration: const InputDecoration(labelText: 'Role'),
-                  items:
-                      [
-                            'Rector',
-                            'Warden',
-                            'Guard',
-                            'Cleaner',
-                            'Cook',
-                            'Mess Manager',
-                            'HOD',
-                          ]
-                          .map(
-                            (r) => DropdownMenuItem(value: r, child: Text(r)),
-                          )
-                          .toList(),
-                  onChanged: (val) {
-                    setDialogState(() {
-                      role = val!;
-                    });
-                  },
-                ),
-                const SizedBox(height: 12),
-                if (role == 'HOD') ...[
-                  DropdownButtonFormField<String>(
-                    initialValue: category,
-                    decoration: const InputDecoration(labelText: 'Category'),
-                    items: ['Degree', 'Diploma']
-                        .map((c) => DropdownMenuItem(value: c, child: Text(c)))
-                        .toList(),
-                    onChanged: (val) {
-                      setDialogState(() {
-                        category = val;
-                        branch = null; // Reset branch when category changes
-                      });
-                    },
-                  ),
-                  const SizedBox(height: 12),
-                  DropdownButtonFormField<String>(
-                    initialValue: branch,
-                    decoration: const InputDecoration(
-                      labelText: 'Branch/Department',
-                    ),
-                    items:
-                        (category == 'Degree'
-                                ? [
-                                    'IT & MSC-IT',
-                                    'B.VOC',
-                                    'CSE',
-                                    'BBA & MBA',
-                                    'Chemical',
-                                    'Electrical',
-                                    'Pharmacy',
-                                    'Civil Engineering',
-                                  ]
-                                : category == 'Diploma'
-                                ? [
-                                    'Electrical Engineering',
-                                    'Chemical Engineering',
-                                    'Information Technology',
-                                    'Computer Engineering',
-                                    'Mechanical Engineering',
-                                  ]
-                                : <String>[])
-                            .map(
-                              (b) => DropdownMenuItem(value: b, child: Text(b)),
-                            )
-                            .toList(),
-                    onChanged: (val) {
-                      setDialogState(() {
-                        branch = val;
-                      });
-                    },
-                  ),
-                  const SizedBox(height: 12),
-                ],
-                DropdownButtonFormField<String>(
-                  initialValue: shift,
-                  decoration: const InputDecoration(labelText: 'Assign Shift'),
-                  items: [
-                    const DropdownMenuItem(value: null, child: Text("None")),
-                    const DropdownMenuItem(
-                      value: "Day",
-                      child: Text("Day (8am-8pm)"),
-                    ),
-                    const DropdownMenuItem(
-                      value: "Night",
-                      child: Text("Night (8pm-8am)"),
-                    ),
-                  ],
-                  onChanged: (val) => shift = val,
-                ),
-                const SizedBox(height: 12),
-                DropdownButtonFormField<String>(
-                  initialValue: hostel,
-                  decoration: const InputDecoration(labelText: 'Assign Hostel'),
-                  items: [
-                    const DropdownMenuItem(
-                      value: null,
-                      child: Text("None (Global)"),
-                    ),
-                    const DropdownMenuItem(
-                      value: "BH1",
-                      child: Text("Boys Hostel 1"),
-                    ),
-                    const DropdownMenuItem(
-                      value: "BH2",
-                      child: Text("Boys Hostel 2"),
-                    ),
-                    const DropdownMenuItem(
-                      value: "BH3",
-                      child: Text("Boys Hostel 3"),
-                    ),
-                    const DropdownMenuItem(
-                      value: "BH4",
-                      child: Text("Boys Hostel 4"),
-                    ),
-                    const DropdownMenuItem(
-                      value: "GH1",
-                      child: Text("Girls Hostel 1"),
-                    ),
-                    const DropdownMenuItem(
-                      value: "GH2",
-                      child: Text("Girls Hostel 2"),
-                    ),
-                  ],
-                  onChanged: (val) => hostel = val,
-                ),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext),
-              child: const Text('Cancel'),
-            ),
-            ElevatedButton(
-              onPressed: () async {
-                if (nameController.text.isEmpty) return;
-
-                Navigator.pop(dialogContext);
-                setState(() => _isLoading = true);
-
-                try {
-                  final newStaff = StaffMember(
-                    id:
-                        staff?.id ??
-                        DateTime.now().millisecondsSinceEpoch.toString(),
-                    name: nameController.text.trim(),
-                    role: role,
-                    mobile: mobileController.text.trim(),
-                    email: emailController.text.trim().toLowerCase(),
-                    isActive: true, // Default active
-                    assignedShift: shift,
-                    assignedHostel: hostel,
-                    assignedCategory: category,
-                    assignedBranch: branch,
-                  );
-
-                  if (staff == null) {
-                    await _repository.addStaff(newStaff);
-                  } else {
-                    await _repository.updateStaff(newStaff);
-                  }
-
-                  // SYNC TO USERS COLLECTION
-                  if (newStaff.email != null && newStaff.email!.isNotEmpty) {
-                    try {
-                      final userQuery = await FirebaseFirestore.instance
-                          .collection('users')
-                          .where('email', isEqualTo: newStaff.email)
-                          .get();
-
-                      if (userQuery.docs.isNotEmpty) {
-                        for (var doc in userQuery.docs) {
-                          String userRole = 'student';
-                          final lowerRole = newStaff.role.toLowerCase();
-                          if (lowerRole.contains('rector')) {
-                            userRole = 'rector';
-                          } else if (lowerRole.contains('warden')) {
-                            userRole = 'warden';
-                          } else if (lowerRole.contains('mess')) {
-                            userRole = 'mess_manager';
-                          } else if (lowerRole.contains('guard')) {
-                            userRole = 'guard';
-                          } else if (lowerRole.contains('hod')) {
-                            userRole = 'hod';
-                          }
-
-                          await doc.reference.update({
-                            'role': userRole,
-                            'assignedHostel': hostel,
-                            'category': category,
-                            'branch': branch,
-                          });
-                        }
-                      }
-                    } catch (e) {
-                      debugPrint("Error syncing user: $e");
-                    }
-                  }
-
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Staff saved successfully')),
-                    );
-                  }
-                } catch (e) {
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(
-                      context,
-                    ).showSnackBar(SnackBar(content: Text('Error: $e')));
-                  }
-                } finally {
-                  if (mounted) setState(() => _isLoading = false);
-                }
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF002244),
-                foregroundColor: Colors.white,
-              ),
-              child: Text(staff == null ? 'Add' : 'Save'),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   Future<void> _seedDefaultStaff() async {
     setState(() => _isLoading = true);
     try {
@@ -433,12 +165,17 @@ class _StaffManagementScreenState extends State<StaffManagementScreen> {
                 children: [
                   Expanded(
                     child: GridView.count(
-                      crossAxisCount: 1, // Full width boxes as per drawing, or 2 for grid. The drawing suggests 1 vertical list of boxes. We will use a ListView of boxed items for the top level menus to exactly match the whiteboard-style drawing logic.
+                      crossAxisCount:
+                          1, // Full width boxes as per drawing, or 2 for grid. The drawing suggests 1 vertical list of boxes. We will use a ListView of boxed items for the top level menus to exactly match the whiteboard-style drawing logic.
                       childAspectRatio: 3.5, // Make them rectangular boxes
                       mainAxisSpacing: 16,
                       crossAxisSpacing: 16,
                       children: [
-                        _buildRoleBox(context, 'Warden', Icons.admin_panel_settings),
+                        _buildRoleBox(
+                          context,
+                          'Warden',
+                          Icons.admin_panel_settings,
+                        ),
                         _buildRoleBox(context, 'HOD', Icons.school),
                         _buildRoleBox(context, 'Rector', Icons.home_work),
                         _buildRoleBox(context, 'Guard', Icons.security),
@@ -457,10 +194,8 @@ class _StaffManagementScreenState extends State<StaffManagementScreen> {
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) => StaffListScreen(
-              role: role,
-              repository: _repository,
-            ),
+            builder: (context) =>
+                StaffListScreen(role: role, repository: _repository),
           ),
         );
       },
@@ -531,7 +266,9 @@ class _StaffListScreenState extends State<StaffListScreen> {
       context: context,
       builder: (dialogContext) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
-          title: Text(staff == null ? 'Add New ${widget.role}' : 'Edit ${widget.role}'),
+          title: Text(
+            staff == null ? 'Add New ${widget.role}' : 'Edit ${widget.role}',
+          ),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -669,90 +406,108 @@ class _StaffListScreenState extends State<StaffListScreen> {
               child: const Text('Cancel'),
             ),
             ElevatedButton(
-              onPressed: isLoading ? null : () async {
-                if (nameController.text.isEmpty) return;
-                setDialogState(() => isLoading = true);
+              onPressed: isLoading
+                  ? null
+                  : () async {
+                      if (nameController.text.isEmpty) {
+                        return;
+                      }
+                      setDialogState(() => isLoading = true);
 
-                try {
-                  final newStaff = StaffMember(
-                    id:
-                        staff?.id ??
-                        DateTime.now().millisecondsSinceEpoch.toString(),
-                    name: nameController.text.trim(),
-                    role: role,
-                    mobile: mobileController.text.trim(),
-                    email: emailController.text.trim().toLowerCase(),
-                    isActive: true, // Default active
-                    assignedShift: shift,
-                    assignedHostel: hostel,
-                    assignedCategory: category,
-                    assignedBranch: branch,
-                  );
+                      try {
+                        final newStaff = StaffMember(
+                          id:
+                              staff?.id ??
+                              DateTime.now().millisecondsSinceEpoch.toString(),
+                          name: nameController.text.trim(),
+                          role: role,
+                          mobile: mobileController.text.trim(),
+                          email: emailController.text.trim().toLowerCase(),
+                          isActive: true, // Default active
+                          assignedShift: shift,
+                          assignedHostel: hostel,
+                          assignedCategory: category,
+                          assignedBranch: branch,
+                        );
 
-                  if (staff == null) {
-                    await widget.repository.addStaff(newStaff);
-                  } else {
-                    await widget.repository.updateStaff(newStaff);
-                  }
+                        if (staff == null) {
+                          await widget.repository.addStaff(newStaff);
+                        } else {
+                          await widget.repository.updateStaff(newStaff);
+                        }
 
-                  // SYNC TO USERS COLLECTION
-                  if (newStaff.email != null && newStaff.email!.isNotEmpty) {
-                    try {
-                      final userQuery = await FirebaseFirestore.instance
-                          .collection('users')
-                          .where('email', isEqualTo: newStaff.email)
-                          .get();
+                        // SYNC TO USERS COLLECTION
+                        if (newStaff.email != null &&
+                            newStaff.email!.isNotEmpty) {
+                          try {
+                            final userQuery = await FirebaseFirestore.instance
+                                .collection('users')
+                                .where('email', isEqualTo: newStaff.email)
+                                .get();
 
-                      if (userQuery.docs.isNotEmpty) {
-                        for (var doc in userQuery.docs) {
-                          String userRole = 'student';
-                          final lowerRole = newStaff.role.toLowerCase();
-                          if (lowerRole.contains('rector')) {
-                            userRole = 'rector';
-                          } else if (lowerRole.contains('warden')) {
-                            userRole = 'warden';
-                          } else if (lowerRole.contains('mess')) {
-                            userRole = 'mess_manager';
-                          } else if (lowerRole.contains('guard')) {
-                            userRole = 'guard';
-                          } else if (lowerRole.contains('hod')) {
-                            userRole = 'hod';
+                            if (userQuery.docs.isNotEmpty) {
+                              for (var doc in userQuery.docs) {
+                                String userRole = 'student';
+                                final lowerRole = newStaff.role.toLowerCase();
+                                if (lowerRole.contains('rector')) {
+                                  userRole = 'rector';
+                                } else if (lowerRole.contains('warden')) {
+                                  userRole = 'warden';
+                                } else if (lowerRole.contains('mess')) {
+                                  userRole = 'mess_manager';
+                                } else if (lowerRole.contains('guard')) {
+                                  userRole = 'guard';
+                                } else if (lowerRole.contains('hod')) {
+                                  userRole = 'hod';
+                                }
+
+                                await doc.reference.update({
+                                  'role': userRole,
+                                  'assignedHostel': hostel,
+                                  'category': category,
+                                  'branch': branch,
+                                });
+                              }
+                            }
+                          } catch (e) {
+                            debugPrint("Error syncing user: $e");
                           }
+                        }
 
-                          await doc.reference.update({
-                            'role': userRole,
-                            'assignedHostel': hostel,
-                            'category': category,
-                            'branch': branch,
-                          });
+                        if (context.mounted) {
+                          Navigator.pop(dialogContext);
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Staff saved successfully'),
+                            ),
+                          );
+                        }
+                      } catch (e) {
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(
+                            context,
+                          ).showSnackBar(SnackBar(content: Text('Error: $e')));
+                        }
+                      } finally {
+                        if (context.mounted) {
+                          setDialogState(() => isLoading = false);
                         }
                       }
-                    } catch (e) {
-                      debugPrint("Error syncing user: $e");
-                    }
-                  }
-                  
-                  if (context.mounted) {
-                    Navigator.pop(dialogContext);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Staff saved successfully')),
-                    );
-                  }
-                } catch (e) {
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(
-                      context,
-                    ).showSnackBar(SnackBar(content: Text('Error: $e')));
-                  }
-                } finally {
-                  if (context.mounted) setDialogState(() => isLoading = false);
-                }
-              },
+                    },
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF002244),
                 foregroundColor: Colors.white,
               ),
-              child: isLoading ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)) : Text(staff == null ? 'Add' : 'Save'),
+              child: isLoading
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        color: Colors.white,
+                        strokeWidth: 2,
+                      ),
+                    )
+                  : Text(staff == null ? 'Add' : 'Save'),
             ),
           ],
         ),
@@ -765,7 +520,10 @@ class _StaffListScreenState extends State<StaffListScreen> {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        title: Text('${widget.role} List', style: GoogleFonts.inter(fontWeight: FontWeight.w600)),
+        title: Text(
+          '${widget.role} List',
+          style: GoogleFonts.inter(fontWeight: FontWeight.w600),
+        ),
         backgroundColor: const Color(0xFF002244),
         foregroundColor: Colors.white,
       ),
@@ -800,9 +558,14 @@ class _StaffListScreenState extends State<StaffListScreen> {
               final staff = filteredStaff[index];
               return Container(
                 margin: const EdgeInsets.only(bottom: 12),
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 16,
+                ),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFFCF5F5), // Keeping your exact design color
+                  color: const Color(
+                    0xFFFCF5F5,
+                  ), // Keeping your exact design color
                   borderRadius: BorderRadius.circular(16),
                 ),
                 child: Row(
@@ -813,7 +576,11 @@ class _StaffListScreenState extends State<StaffListScreen> {
                         color: Colors.blue.withValues(alpha: 0.1),
                         shape: BoxShape.circle,
                       ),
-                      child: const Icon(Icons.person, color: Colors.blue, size: 24),
+                      child: const Icon(
+                        Icons.person,
+                        color: Colors.blue,
+                        size: 24,
+                      ),
                     ),
                     const SizedBox(width: 16),
                     Expanded(
@@ -854,4 +621,3 @@ class _StaffListScreenState extends State<StaffListScreen> {
     );
   }
 }
-

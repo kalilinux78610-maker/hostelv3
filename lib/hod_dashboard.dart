@@ -36,28 +36,42 @@ class _HodDashboardScreenState extends State<HodDashboardScreen> {
             .get();
         if (doc.exists) {
           final data = doc.data();
-          
+
           bool needsUpdate = false;
           String? currentCategory = data?['category'];
           String? currentBranch = data?['branch'];
 
           // Category Mapping First
-          if (currentCategory == 'BTech' || currentCategory == 'MTech' || currentCategory == 'BCA' || currentCategory == 'MCA') {
+          if (currentCategory == 'BTech' ||
+              currentCategory == 'MTech' ||
+              currentCategory == 'BCA' ||
+              currentCategory == 'MCA') {
             currentCategory = 'Degree';
           }
 
           // Branch Mapping Based on Category
           if (currentCategory == 'Degree') {
-            if (currentBranch == 'Information Technology') currentBranch = 'IT & MSC-IT';
-            else if (currentBranch == 'Computer Science') currentBranch = 'CSE';
-            else if (currentBranch == 'Civil') currentBranch = 'Civil Engineering';
+            if (currentBranch == 'Information Technology') {
+              currentBranch = 'IT & MSC-IT';
+            } else if (currentBranch == 'Computer Science') {
+              currentBranch = 'CSE';
+            } else if (currentBranch == 'Civil') {
+              currentBranch = 'Civil Engineering';
+            }
           } else if (currentCategory == 'Diploma') {
-             if (currentBranch == 'Computer Science') currentBranch = 'Computer Engineering';
-             if (currentBranch == 'Mechanical') currentBranch = 'Mechanical Engineering';
-             if (currentBranch == 'Electrical') currentBranch = 'Electrical Engineering';
+            if (currentBranch == 'Computer Science') {
+              currentBranch = 'Computer Engineering';
+            }
+            if (currentBranch == 'Mechanical') {
+              currentBranch = 'Mechanical Engineering';
+            }
+            if (currentBranch == 'Electrical') {
+              currentBranch = 'Electrical Engineering';
+            }
           }
 
-          if (currentBranch != data?['branch'] || currentCategory != data?['category']) {
+          if (currentBranch != data?['branch'] ||
+              currentCategory != data?['category']) {
             needsUpdate = true;
           }
 
@@ -67,14 +81,11 @@ class _HodDashboardScreenState extends State<HodDashboardScreen> {
             _photoUrl = data?['photoUrl'];
           });
 
-          if (needsUpdate && user.uid != null) {
+          if (needsUpdate) {
             await FirebaseFirestore.instance
                 .collection('users')
                 .doc(user.uid)
-                .update({
-                  'branch': currentBranch,
-                  'category': currentCategory,
-                });
+                .update({'branch': currentBranch, 'category': currentCategory});
           }
         }
       }
@@ -491,111 +502,6 @@ class _HodDashboardScreenState extends State<HodDashboardScreen> {
     );
   }
 
-  Widget _buildComplaintsTab() {
-    return StreamBuilder<QuerySnapshot>(
-      stream: FirebaseFirestore.instance
-          .collection('complaints')
-          .where('userCategory', isEqualTo: _category)
-          .where('userBranch', isEqualTo: _branch)
-          .orderBy('createdAt', descending: true)
-          .snapshots(),
-      builder: (context, snapshot) {
-        if (snapshot.hasError) {
-          return Center(child: Text('Error: ${snapshot.error}'));
-        }
-
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
-        }
-
-        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-          return Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  Icons.sentiment_satisfied_alt,
-                  size: 64,
-                  color: Colors.grey[300],
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  "No complaints filed",
-                  style: TextStyle(color: Colors.grey[400], fontSize: 16),
-                ),
-              ],
-            ),
-          );
-        }
-
-        return ListView.builder(
-          padding: const EdgeInsets.all(16),
-          itemCount: snapshot.data!.docs.length,
-          itemBuilder: (context, index) {
-            final doc = snapshot.data!.docs[index];
-            final data = doc.data() as Map<String, dynamic>;
-            final status = data['status'] ?? 'Pending';
-            final isResolved = status == 'Resolved';
-
-            return Card(
-              margin: const EdgeInsets.only(bottom: 12),
-              shape: RoundedRectangleBorder(
-                side: BorderSide(
-                  color: isResolved
-                      ? Colors.green.shade200
-                      : Colors.orange.shade200,
-                ),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: ListTile(
-                title: Text(
-                  data['title'] ?? 'Complaint',
-                  style: const TextStyle(fontWeight: FontWeight.bold),
-                ),
-                subtitle: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      data['category'] ?? 'Category',
-                      style: TextStyle(color: Colors.grey[600], fontSize: 12),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      data['description'] ?? '',
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
-                ),
-                isThreeLine: true,
-                trailing: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: isResolved
-                        ? Colors.green.withValues(alpha: 0.1)
-                        : Colors.orange.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    status.toUpperCase(),
-                    style: TextStyle(
-                      color: isResolved ? Colors.green : Colors.orange,
-                      fontSize: 10,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-              ),
-            );
-          },
-        );
-      },
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
@@ -617,7 +523,9 @@ class _HodDashboardScreenState extends State<HodDashboardScreen> {
                 onPressed: () async {
                   final result = await Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (context) => const HodProfileScreen()),
+                    MaterialPageRoute(
+                      builder: (context) => const HodProfileScreen(),
+                    ),
                   );
                   if (result == true) {
                     _loadHodProfile();
@@ -675,7 +583,9 @@ class _HodDashboardScreenState extends State<HodDashboardScreen> {
                           onTap: () async {
                             final result = await Navigator.push(
                               context,
-                              MaterialPageRoute(builder: (context) => const HodProfileScreen()),
+                              MaterialPageRoute(
+                                builder: (context) => const HodProfileScreen(),
+                              ),
                             );
                             if (result == true) {
                               _loadHodProfile();
@@ -697,8 +607,15 @@ class _HodDashboardScreenState extends State<HodDashboardScreen> {
                             child: CircleAvatar(
                               radius: 20,
                               backgroundColor: Colors.white,
-                              backgroundImage: _photoUrl != null ? NetworkImage(_photoUrl!) : null,
-                              child: _photoUrl == null ? const Icon(Icons.person, color: _primaryColor) : null,
+                              backgroundImage: _photoUrl != null
+                                  ? NetworkImage(_photoUrl!)
+                                  : null,
+                              child: _photoUrl == null
+                                  ? const Icon(
+                                      Icons.person,
+                                      color: _primaryColor,
+                                    )
+                                  : null,
                             ),
                           ),
                         ),
@@ -733,7 +650,10 @@ class _HodDashboardScreenState extends State<HodDashboardScreen> {
                                 Navigator.push(
                                   context,
                                   MaterialPageRoute(
-                                    builder: (context) => const NotificationScreen(userRole: 'hod'),
+                                    builder: (context) =>
+                                        const NotificationScreen(
+                                          userRole: 'hod',
+                                        ),
                                   ),
                                 );
                               },
@@ -742,9 +662,15 @@ class _HodDashboardScreenState extends State<HodDashboardScreen> {
                                 decoration: BoxDecoration(
                                   color: Colors.white.withValues(alpha: 0.1),
                                   borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
+                                  border: Border.all(
+                                    color: Colors.white.withValues(alpha: 0.2),
+                                  ),
                                 ),
-                                child: const Icon(Icons.notifications_none, color: Colors.white, size: 20),
+                                child: const Icon(
+                                  Icons.notifications_none,
+                                  color: Colors.white,
+                                  size: 20,
+                                ),
                               ),
                             ),
                             const SizedBox(width: 10),
@@ -753,11 +679,21 @@ class _HodDashboardScreenState extends State<HodDashboardScreen> {
                               child: Container(
                                 padding: const EdgeInsets.all(10),
                                 decoration: BoxDecoration(
-                                  color: Colors.redAccent.withValues(alpha: 0.1),
+                                  color: Colors.redAccent.withValues(
+                                    alpha: 0.1,
+                                  ),
                                   borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(color: Colors.redAccent.withValues(alpha: 0.3)),
+                                  border: Border.all(
+                                    color: Colors.redAccent.withValues(
+                                      alpha: 0.3,
+                                    ),
+                                  ),
                                 ),
-                                child: const Icon(Icons.power_settings_new, color: Colors.redAccent, size: 20),
+                                child: const Icon(
+                                  Icons.power_settings_new,
+                                  color: Colors.redAccent,
+                                  size: 20,
+                                ),
                               ),
                             ),
                           ],
@@ -826,7 +762,10 @@ class _HodDashboardScreenState extends State<HodDashboardScreen> {
                       ),
                       labelColor: _primaryColor,
                       unselectedLabelColor: Colors.white70,
-                      labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                      labelStyle: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 13,
+                      ),
                       padding: const EdgeInsets.all(4),
                       tabs: const [
                         Tab(text: "Requests"),
@@ -841,10 +780,7 @@ class _HodDashboardScreenState extends State<HodDashboardScreen> {
             // Tab Views
             Expanded(
               child: TabBarView(
-                children: [
-                  _buildLeavesTab(),
-                  _buildGatePassesTab(),
-                ],
+                children: [_buildLeavesTab(), _buildGatePassesTab()],
               ),
             ),
           ],
@@ -897,7 +833,10 @@ class _HodDashboardScreenState extends State<HodDashboardScreen> {
                   return const SizedBox(
                     width: 24,
                     height: 24,
-                    child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white54),
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Colors.white54,
+                    ),
                   );
                 },
               ),

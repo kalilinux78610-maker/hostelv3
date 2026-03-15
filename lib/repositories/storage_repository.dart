@@ -5,8 +5,6 @@ import 'package:image/image.dart' as img_pkg;
 import 'package:http/http.dart' as http;
 
 class StorageRepository {
-  // TODO: Replace 'YOUR_CLOUD_NAME' with your actual Cloudinary Cloud Name
-  // You can find this on your Cloudinary Dashboard
   final String cloudName = 'ddvpybjyu';
 
   // The preset you created in the Cloudinary settings
