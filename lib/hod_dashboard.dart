@@ -164,7 +164,8 @@ class _HodDashboardScreenState extends State<HodDashboardScreen> {
     // Only query by hodStatus to avoid ANY composite index requirements
     Query query = FirebaseFirestore.instance
         .collection('leave_requests')
-        .where('hodStatus', isEqualTo: 'pending');
+        .where('hodStatus', isEqualTo: 'pending')
+        .where('type', isEqualTo: 'Home');
 
     return StreamBuilder<QuerySnapshot>(
       stream: query.snapshots(),
@@ -418,6 +419,7 @@ class _HodDashboardScreenState extends State<HodDashboardScreen> {
       stream: FirebaseFirestore.instance
           .collection('leave_requests')
           .where('status', isEqualTo: 'approved')
+          .where('type', isEqualTo: 'Home')
           .where('category', isEqualTo: _category)
           .where('branch', isEqualTo: _branch)
           .orderBy('createdAt', descending: true)
@@ -720,6 +722,7 @@ class _HodDashboardScreenState extends State<HodDashboardScreen> {
                             query: FirebaseFirestore.instance
                                 .collection('leave_requests')
                                 .where('hodStatus', isEqualTo: 'pending')
+                                .where('type', isEqualTo: 'Home')
                                 .where('category', isEqualTo: _category)
                                 .where('branch', isEqualTo: _branch),
                           ),
@@ -733,6 +736,7 @@ class _HodDashboardScreenState extends State<HodDashboardScreen> {
                             query: FirebaseFirestore.instance
                                 .collection('leave_requests')
                                 .where('status', isEqualTo: 'approved')
+                                .where('type', isEqualTo: 'Home')
                                 .where('category', isEqualTo: _category)
                                 .where('branch', isEqualTo: _branch),
                           ),
