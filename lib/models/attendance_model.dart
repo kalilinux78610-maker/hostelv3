@@ -7,6 +7,7 @@ class AttendanceRecord {
   final String studentName;
   final String room;
   AttendanceStatus status;
+  final String? studentUid;
   final String? leaveId; // Reference to leave request if applicable
   final String? gatePassId; // Reference to gate pass if applicable
 
@@ -15,6 +16,7 @@ class AttendanceRecord {
     required this.studentName,
     required this.room,
     required this.status,
+    this.studentUid,
     this.leaveId,
     this.gatePassId,
   });
@@ -25,6 +27,7 @@ class AttendanceRecord {
       'studentName': studentName,
       'room': room,
       'status': status.name,
+      'studentUid': studentUid,
       'leaveId': leaveId,
       'gatePassId': gatePassId,
     };
@@ -39,6 +42,7 @@ class AttendanceRecord {
         (e) => e.name == map['status'],
         orElse: () => AttendanceStatus.present,
       ),
+      studentUid: map['studentUid'],
       leaveId: map['leaveId'],
       gatePassId: map['gatePassId'],
     );

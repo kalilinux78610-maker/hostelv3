@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../models/attendance_model.dart';
 import '../services/attendance_service.dart';
+import '../repositories/notification_repository.dart';
 
 class AttendanceTakingScreen extends StatefulWidget {
   final String hostelId;
@@ -84,7 +85,24 @@ class _AttendanceTakingScreenState extends State<AttendanceTakingScreen> {
         timestamp: DateTime.now(),
       );
 
+
       await _attendanceService.submitAttendance(attendance);
+
+      // Notify students who are absent
+      for (var record in _records) {
+        if (record.status == AttendanceStatus.absent && record.studentUid != null) {
+          try {
+            await NotificationRepository().sendNotification(
+              title: "Attendance Alert",
+              message: "You have been marked absent for ${_selectedDate.day}/${_selectedDate.month}.",
+              receiverUid: record.studentUid!,
+              type: 'attendance_alert',
+            );
+          } catch (e) {
+            debugPrint("Failed to notify absent student: ${record.studentEmail}");
+          }
+        }
+      }
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

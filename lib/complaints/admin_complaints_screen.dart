@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../models/complaint_model.dart';
 import '../repositories/complaint_repository.dart';
+import '../repositories/notification_repository.dart';
 
 class AdminComplaintsScreen extends StatefulWidget {
   final String? hostelId; // Optional filter for Rectors
@@ -262,12 +263,25 @@ class _AdminComplaintsScreenState extends State<AdminComplaintsScreen> {
                 ElevatedButton(
                   onPressed: () async {
                     try {
-                      await _complaintRepository.updateComplaintStatus(
-                        complaint.id,
-                        status,
-                        commentController.text.trim(),
-                      );
-                      if (context.mounted) Navigator.pop(context);
+
+                        await _complaintRepository.updateComplaintStatus(
+                          complaint.id,
+                          status,
+                          commentController.text.trim(),
+                        );
+
+                        // Notify Student if resolved
+                        if (status == 'Resolved') {
+                          await NotificationRepository().sendNotification(
+                            title: "Complaint Resolved",
+                            message: "Your complaint '${complaint.title}' has been marked as resolved.",
+                            receiverUid: complaint.uid,
+                            type: 'complaint_update',
+                            relatedRequestId: complaint.id,
+                          );
+                        }
+
+                        if (context.mounted) Navigator.pop(context);
                     } catch (e) {
                       // Handle error
                     }

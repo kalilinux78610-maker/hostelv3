@@ -300,7 +300,6 @@ class StudentHomeTab extends StatelessWidget {
       {'icon': Icons.article_outlined, 'label': 'Leave App'},
       {'icon': Icons.qr_code_scanner, 'label': 'Gate Pass'},
       {'icon': Icons.restaurant_menu, 'label': 'Mess Menu'},
-      {'icon': Icons.local_laundry_service_outlined, 'label': 'Laundry'},
       {'icon': Icons.event_outlined, 'label': 'Events'},
       {'icon': Icons.gavel_outlined, 'label': 'Rules'},
     ];

@@ -22,7 +22,19 @@ class AttendanceService {
         .where('assignedHostel', isEqualTo: hostelId)
         .get();
 
-    // 2. Fetch active approved leave requests for today
+    // 2. Fetch signed-up users to get their UIDs for notifications
+    final usersSnapshot = await _firestore
+        .collection('users')
+        .where('assignedHostel', isEqualTo: hostelId)
+        .where('role', isEqualTo: 'student')
+        .get();
+
+    final Map<String, String> emailToUid = {
+      for (var doc in usersSnapshot.docs)
+        (doc.data()['email']?.toString().toLowerCase() ?? ''): doc.id
+    };
+
+    // 3. Fetch active approved leave requests for today
     final startOfToday = DateTime(date.year, date.month, date.day);
     final endOfToday = DateTime(date.year, date.month, date.day, 23, 59, 59);
 
@@ -82,6 +94,7 @@ class AttendanceService {
       records.add(
         AttendanceRecord(
           studentEmail: email,
+          studentUid: emailToUid[email.toLowerCase()],
           studentName: name,
           room: room,
           status: initialStatus,

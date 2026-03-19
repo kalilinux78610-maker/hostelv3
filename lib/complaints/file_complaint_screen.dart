@@ -5,6 +5,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/complaint_model.dart';
 import '../repositories/complaint_repository.dart';
+import '../repositories/notification_repository.dart';
 
 class FileComplaintScreen extends StatefulWidget {
   const FileComplaintScreen({super.key});
@@ -80,7 +81,17 @@ class _FileComplaintScreenState extends State<FileComplaintScreen> {
         userBranch: userBranch,
       );
 
+
       await _complaintRepository.addComplaint(complaint);
+
+      // Send Notification to Rector
+      await NotificationRepository().sendNotification(
+        title: "New Complaint",
+        message: "A student from ${hostelId ?? 'Unknown Hostel'} filed a complaint: $_selectedCategory",
+        receiverUid: 'rector',
+        type: 'complaint',
+        relatedRequestId: id,
+      );
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
