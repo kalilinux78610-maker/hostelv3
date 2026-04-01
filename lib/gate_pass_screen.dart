@@ -18,7 +18,6 @@ class _GatePassScreenState extends State<GatePassScreen> {
   @override
   void initState() {
     super.initState();
-    // Refresh every minute so validity status auto-updates
     _timer = Timer.periodic(const Duration(minutes: 1), (_) {
       if (mounted) setState(() => _now = DateTime.now());
     });
@@ -57,9 +56,9 @@ class _GatePassScreenState extends State<GatePassScreen> {
             stream: FirebaseFirestore.instance
                 .collection('leave_requests')
                 .where('uid', isEqualTo: user?.uid)
-                .where('status', isEqualTo: 'approved')
-                .orderBy('createdAt', descending: true)
-                .limit(5)
+                // Show BOTH 'approved' (not yet out) AND 'out' (checked out, not back yet)
+                // QR should remain visible until endDate passes — NOT just on first scan
+                .where('status', whereIn: ['approved', 'out'])
                 .snapshots(),
             builder: (context, snapshot) {
               if (snapshot.hasError) {
@@ -75,28 +74,39 @@ class _GatePassScreenState extends State<GatePassScreen> {
                 );
               }
 
-              // Find a leave that is currently valid (startDate <= now <= endDate)
-              final docs = snapshot.data!.docs;
+              // Sort client-side newest first
+              final docs = List<QueryDocumentSnapshot>.from(snapshot.data!.docs);
+              docs.sort((a, b) {
+                final aData = a.data() as Map<String, dynamic>;
+                final bData = b.data() as Map<String, dynamic>;
+                final aTime = (aData['createdAt'] as Timestamp?)?.millisecondsSinceEpoch ?? 0;
+                final bTime = (bData['createdAt'] as Timestamp?)?.millisecondsSinceEpoch ?? 0;
+                return bTime.compareTo(aTime);
+              });
+
+              // Find active pass: endDate hasn't passed yet
+              // QR is valid as long as return time hasn't come — regardless of checkout state
               QueryDocumentSnapshot? activeDoc;
               for (final doc in docs) {
                 final d = doc.data() as Map<String, dynamic>;
-                final start = (d['startDate'] as Timestamp).toDate();
                 final end = (d['endDate'] as Timestamp).toDate();
-                if (!_now.isBefore(start) && !_now.isAfter(end)) {
+                if (!_now.isAfter(end)) {
                   activeDoc = doc;
                   break;
                 }
               }
 
               if (activeDoc == null) {
-                // Check if there is a future leave coming up
+                // Check upcoming approved leave
                 QueryDocumentSnapshot? upcomingDoc;
                 for (final doc in docs) {
                   final d = doc.data() as Map<String, dynamic>;
-                  final start = (d['startDate'] as Timestamp).toDate();
-                  if (_now.isBefore(start)) {
-                    upcomingDoc = doc;
-                    break;
+                  if ((d['status'] ?? '') == 'approved') {
+                    final start = (d['startDate'] as Timestamp).toDate();
+                    if (_now.isBefore(start)) {
+                      upcomingDoc = doc;
+                      break;
+                    }
                   }
                 }
 
@@ -127,15 +137,13 @@ class _GatePassScreenState extends State<GatePassScreen> {
                 padding: const EdgeInsets.all(20),
                 child: Column(
                   children: [
-                    _buildPassCard(
-                        context, data, activeDoc.id, user, userName),
+                    _buildPassCard(context, data, activeDoc.id, user, userName),
                     const SizedBox(height: 16),
                     const Text(
                       "Show this QR code to the security guard",
                       style: TextStyle(color: Colors.grey),
                     ),
                     const SizedBox(height: 8),
-                    // Live validity countdown banner
                     _buildValidityBanner(data),
                   ],
                 ),
@@ -150,6 +158,9 @@ class _GatePassScreenState extends State<GatePassScreen> {
   Widget _buildValidityBanner(Map<String, dynamic> data) {
     final endDate = (data['endDate'] as Timestamp).toDate();
     final remaining = endDate.difference(_now);
+    final gateStatus = data['status'] ?? 'approved';
+    final isOut = gateStatus == 'out';
+
     String timeLeft;
     if (remaining.inHours >= 1) {
       timeLeft = "${remaining.inHours}h ${remaining.inMinutes % 60}m remaining";
@@ -157,28 +168,73 @@ class _GatePassScreenState extends State<GatePassScreen> {
       timeLeft = "${remaining.inMinutes} minutes remaining";
     }
 
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 20),
-      decoration: BoxDecoration(
-        color: Colors.green.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.green.withValues(alpha: 0.4)),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const Icon(Icons.timer_outlined, color: Colors.green, size: 18),
-          const SizedBox(width: 8),
-          Text(
-            timeLeft,
-            style: const TextStyle(
-              color: Colors.green,
-              fontWeight: FontWeight.bold,
+    return Column(
+      children: [
+        // Gate status indicator
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 20),
+          decoration: BoxDecoration(
+            color: isOut
+                ? Colors.orange.withValues(alpha: 0.1)
+                : Colors.blue.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: isOut
+                  ? Colors.orange.withValues(alpha: 0.5)
+                  : Colors.blue.withValues(alpha: 0.5),
             ),
           ),
-        ],
-      ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                isOut ? Icons.directions_walk : Icons.home_outlined,
+                color: isOut ? Colors.orange : Colors.blue,
+                size: 18,
+              ),
+              const SizedBox(width: 8),
+              Flexible(
+                child: Text(
+                  isOut
+                      ? "🚶 Currently OUT — Scan again to Check-In"
+                      : "🏠 At Hostel — Scan to Check-Out",
+                  style: TextStyle(
+                    color: isOut ? Colors.orange : Colors.blue,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 13,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 8),
+        // Time remaining
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 20),
+          decoration: BoxDecoration(
+            color: Colors.green.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Colors.green.withValues(alpha: 0.4)),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.timer_outlined, color: Colors.green, size: 18),
+              const SizedBox(width: 8),
+              Text(
+                "Return by: $timeLeft",
+                style: const TextStyle(
+                  color: Colors.green,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 
@@ -229,6 +285,8 @@ class _GatePassScreenState extends State<GatePassScreen> {
     final startDate = (data['startDate'] as Timestamp).toDate();
     final endDate = (data['endDate'] as Timestamp).toDate();
     final reason = data['reason'] ?? 'N/A';
+    final gateStatus = data['status'] ?? 'approved';
+    final isOut = gateStatus == 'out';
 
     String fmt(DateTime dt) =>
         "${dt.day}/${dt.month} ${dt.hour}:${dt.minute.toString().padLeft(2, '0')}";
@@ -291,13 +349,40 @@ class _GatePassScreenState extends State<GatePassScreen> {
                     letterSpacing: 1,
                   ),
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: 16),
 
-                // QR Code — only shown when time is valid (enforced by parent)
+                // Gate Status Badge
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: isOut
+                        ? Colors.orange.withValues(alpha: 0.1)
+                        : Colors.green.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: isOut ? Colors.orange : Colors.green,
+                    ),
+                  ),
+                  child: Text(
+                    isOut ? "✈  CHECKED OUT" : "✓  VALID — NOT YET OUT",
+                    style: TextStyle(
+                      color: isOut ? Colors.orange : Colors.green,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12,
+                      letterSpacing: 1,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+
+                // QR Code
                 Container(
                   decoration: BoxDecoration(
                     border: Border.all(
-                        color: Colors.green.withValues(alpha: 0.5), width: 3),
+                        color: isOut
+                            ? Colors.orange.withValues(alpha: 0.5)
+                            : Colors.green.withValues(alpha: 0.5),
+                        width: 3),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   padding: const EdgeInsets.all(8),
@@ -308,25 +393,14 @@ class _GatePassScreenState extends State<GatePassScreen> {
                     backgroundColor: Colors.white,
                   ),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 12),
 
-                // VALID badge
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 20, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: Colors.green.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(30),
-                    border: Border.all(color: Colors.green),
-                  ),
-                  child: const Text(
-                    "✓  VALID NOW",
-                    style: TextStyle(
-                      color: Colors.green,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 1,
-                    ),
-                  ),
+                // Instruction
+                Text(
+                  isOut
+                      ? "Show to guard when returning to hostel"
+                      : "Show to guard when leaving hostel",
+                  style: TextStyle(color: Colors.grey[600], fontSize: 12),
                 ),
                 const SizedBox(height: 24),
 
@@ -346,7 +420,7 @@ class _GatePassScreenState extends State<GatePassScreen> {
                         child: _buildDetailItem("Valid From", fmt(startDate),
                             center: true)),
                     Expanded(
-                        child: _buildDetailItem("Valid To", fmt(endDate),
+                        child: _buildDetailItem("Return By", fmt(endDate),
                             center: true)),
                   ],
                 ),
