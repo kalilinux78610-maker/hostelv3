@@ -404,43 +404,55 @@ class _RecentRequestsListState extends State<_RecentRequestsList> {
     _ticker = Stream.periodic(const Duration(minutes: 1), (i) => i);
   }
 
-  /// Filter and deduplicate requests:
-  /// - Approved requests: only show 1 (most recent), only if NOT expired
-  /// - Pending/rejected requests: show as normal
+  /// Filter requests — only show ACTIVE/RELEVANT ones:
+  /// - 'completed' → skip (done, no need to show)
+  /// - 'approved' → only 1, only if endDate not passed
+  /// - 'out' → show if endDate not passed (student currently out)
+  /// - 'pending' → skip if endDate has already passed (stale old request)
+  /// - 'rejected' → always show
   List<Map<String, dynamic>> _filterRequests(List<QueryDocumentSnapshot> docs) {
     final now = DateTime.now();
     final List<Map<String, dynamic>> result = [];
     bool approvedAdded = false;
 
-    // Sort by createdAt descending (newest first)
+    // Sort newest first
     final sorted = List<QueryDocumentSnapshot>.from(docs);
     sorted.sort((a, b) {
       final aData = a.data() as Map<String, dynamic>;
       final bData = b.data() as Map<String, dynamic>;
       final aTime = (aData['createdAt'] as Timestamp?)?.toDate() ?? DateTime(2000);
       final bTime = (bData['createdAt'] as Timestamp?)?.toDate() ?? DateTime(2000);
-      return bTime.compareTo(aTime); // newest first
+      return bTime.compareTo(aTime);
     });
 
     for (final doc in sorted) {
       final data = doc.data() as Map<String, dynamic>;
       final status = (data['status'] ?? '').toString();
+      final endDate = (data['endDate'] as Timestamp?)?.toDate();
+
+      // Skip fully completed requests
+      if (status == 'completed') continue;
 
       if (status == 'approved') {
-        // Check if endDate has expired
-        final endDate = (data['endDate'] as Timestamp?)?.toDate();
-        if (endDate != null && endDate.isBefore(now)) {
-          // Expired — skip this request entirely
-          continue;
-        }
+        // Skip expired approved requests
+        if (endDate != null && endDate.isBefore(now)) continue;
         // Only show 1 active approved request
         if (approvedAdded) continue;
         approvedAdded = true;
         result.add(data);
-      } else {
-        // Pending / rejected / other — show normally
+      } else if (status == 'out') {
+        // Student is currently out — show only if not overdue
+        if (endDate != null && endDate.isBefore(now)) continue;
+        result.add(data);
+      } else if (status == 'rejected') {
+        // Always show rejected so student knows
+        result.add(data);
+      } else if (status == 'pending') {
+        // Skip old stale pending requests where return date has passed
+        if (endDate != null && endDate.isBefore(now)) continue;
         result.add(data);
       }
+      // Any other unknown status → skip
     }
 
     return result;
@@ -517,8 +529,19 @@ class _RecentRequestsListState extends State<_RecentRequestsList> {
     if (status == 'rejected') {
       statusText = "Rejected";
       statusColor = Colors.red;
+    } else if (status == 'completed') {
+      statusText = "Completed ✓";
+      statusColor = Colors.green;
+    } else if (status == 'out') {
+      final endDate = (data['endDate'] as Timestamp?)?.toDate();
+      if (endDate != null) {
+        final d = endDate;
+        statusText = "Out • Return by ${d.day}/${d.month} ${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}";
+      } else {
+        statusText = "Currently Out";
+      }
+      statusColor = Colors.orange;
     } else if (status == 'approved') {
-      // Show return time for active approved request
       final endDate = (data['endDate'] as Timestamp?)?.toDate();
       if (endDate != null) {
         final d = endDate;
@@ -534,6 +557,9 @@ class _RecentRequestsListState extends State<_RecentRequestsList> {
       statusText = "Waiting for Warden";
     } else if (rectorStatus == 'pending') {
       statusText = "Waiting for Rector";
+    } else {
+      statusText = "In Review";
+      statusColor = Colors.blueGrey;
     }
 
     return Container(
