@@ -181,6 +181,7 @@ class _ApplyLeaveScreenState extends State<ApplyLeaveScreen> {
             'parentContact': userData['parentContact'],
             'category': CanonicalNames.canonicalizeCategory(userData['category']),
             'branch': CanonicalNames.canonicalizeBranch(userData['branch'], userData['category']),
+            'feeStatus': userData['feeStatus'], // NEW
             'type': _leaveType,
             'startDate': Timestamp.fromDate(startDateTime),
             'endDate': Timestamp.fromDate(endDateTime),

@@ -19,6 +19,7 @@ class _HodDashboardScreenState extends State<HodDashboardScreen> {
   String? _category;
   String? _branch;
   String? _photoUrl;
+  String? _currentWorkingCategory; // Tracks Degree/Diploma switcher
   bool _isLoading = true;
 
   @override
@@ -53,6 +54,7 @@ class _HodDashboardScreenState extends State<HodDashboardScreen> {
           setState(() {
             _category = currentCategory;
             _branch = currentBranch;
+            _currentWorkingCategory ??= currentCategory; // Initialize with profile category
             _photoUrl = data?['photoUrl'];
           });
 
@@ -193,7 +195,7 @@ class _HodDashboardScreenState extends State<HodDashboardScreen> {
           final docCategory = data['category']?.toString();
           final docBranch = data['branch']?.toString();
           
-          final categoryMatch = (_category == null) || (docCategory == _category);
+          final categoryMatch = (_currentWorkingCategory == null) || (docCategory == _currentWorkingCategory);
           final branchMatch = (_branch == null) || (docBranch == _branch);
           
           return isPending && categoryMatch && branchMatch;
@@ -420,7 +422,7 @@ class _HodDashboardScreenState extends State<HodDashboardScreen> {
           .collection('leave_requests')
           .where('status', isEqualTo: 'approved')
           .where('type', isEqualTo: 'Home')
-          .where('category', isEqualTo: _category)
+          .where('category', isEqualTo: _currentWorkingCategory)
           .where('branch', isEqualTo: _branch)
           .orderBy('createdAt', descending: true)
           .snapshots(),
@@ -648,56 +650,44 @@ class _HodDashboardScreenState extends State<HodDashboardScreen> {
                             ],
                           ),
                         ),
+                        // Action Row: Toggle + Logout
                         Row(
+                          mainAxisSize: MainAxisSize.min,
                           children: [
-                            GestureDetector(
-                              onTap: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) =>
-                                        const NotificationScreen(
-                                          userRole: 'hod',
-                                        ),
-                                  ),
-                                );
-                              },
-                              child: Container(
-                                padding: const EdgeInsets.all(10),
-                                decoration: BoxDecoration(
-                                  color: Colors.white.withValues(alpha: 0.1),
-                                  borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(
-                                    color: Colors.white.withValues(alpha: 0.2),
-                                  ),
-                                ),
-                                child: const Icon(
-                                  Icons.notifications_none,
-                                  color: Colors.white,
-                                  size: 20,
+                            // Category Switcher Toggle
+                            Container(
+                              padding: const EdgeInsets.all(4),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: Colors.white.withValues(alpha: 0.2),
                                 ),
                               ),
+                              child: Row(
+                                children: [
+                                  _buildCategorySwitchButton("Degree"),
+                                  _buildCategorySwitchButton("Diploma"),
+                                ],
+                              ),
                             ),
-                            const SizedBox(width: 10),
+                            const SizedBox(width: 8),
+                            // Logout Button
                             GestureDetector(
                               onTap: () => FirebaseAuth.instance.signOut(),
                               child: Container(
-                                padding: const EdgeInsets.all(10),
+                                padding: const EdgeInsets.all(8),
                                 decoration: BoxDecoration(
-                                  color: Colors.redAccent.withValues(
-                                    alpha: 0.1,
-                                  ),
+                                  color: Colors.redAccent.withValues(alpha: 0.1),
                                   borderRadius: BorderRadius.circular(12),
                                   border: Border.all(
-                                    color: Colors.redAccent.withValues(
-                                      alpha: 0.3,
-                                    ),
+                                    color: Colors.redAccent.withValues(alpha: 0.3),
                                   ),
                                 ),
                                 child: const Icon(
                                   Icons.power_settings_new,
                                   color: Colors.redAccent,
-                                  size: 20,
+                                  size: 18,
                                 ),
                               ),
                             ),
@@ -723,7 +713,7 @@ class _HodDashboardScreenState extends State<HodDashboardScreen> {
                                 .collection('leave_requests')
                                 .where('hodStatus', isEqualTo: 'pending')
                                 .where('type', isEqualTo: 'Home')
-                                .where('category', isEqualTo: _category)
+                                .where('category', isEqualTo: _currentWorkingCategory)
                                 .where('branch', isEqualTo: _branch),
                           ),
                         ),
@@ -737,7 +727,7 @@ class _HodDashboardScreenState extends State<HodDashboardScreen> {
                                 .collection('leave_requests')
                                 .where('status', isEqualTo: 'approved')
                                 .where('type', isEqualTo: 'Home')
-                                .where('category', isEqualTo: _category)
+                                .where('category', isEqualTo: _currentWorkingCategory)
                                 .where('branch', isEqualTo: _branch),
                           ),
                         ),
@@ -859,6 +849,28 @@ class _HodDashboardScreenState extends State<HodDashboardScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildCategorySwitchButton(String label) {
+    bool isSelected = _currentWorkingCategory == label;
+    return GestureDetector(
+      onTap: () => setState(() => _currentWorkingCategory = label),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: isSelected ? Colors.white : Colors.transparent,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: isSelected ? _primaryColor : Colors.white70,
+            fontSize: 12,
+            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+          ),
+        ),
       ),
     );
   }

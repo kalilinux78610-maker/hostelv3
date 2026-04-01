@@ -490,9 +490,11 @@ class _StudentDirectoryScreenState extends State<StudentDirectoryScreen> {
     final nameController = TextEditingController();
     final emailController = TextEditingController();
     final roomController = TextEditingController();
+    String? selectedCategory;
     String? selectedHostel;
     String? selectedBranch;
     String? selectedYear;
+    String? selectedFeeStatus;
 
     showDialog(
       context: context,
@@ -522,6 +524,62 @@ class _StudentDirectoryScreenState extends State<StudentDirectoryScreen> {
                 ),
                 const SizedBox(height: 12),
                 InputDecorator(
+                  decoration: const InputDecoration(labelText: 'Category'),
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton<String>(
+                      value: selectedCategory,
+                      isDense: true,
+                      hint: const Text("Select Category"),
+                      items: ['Degree', 'Diploma']
+                          .map((c) => DropdownMenuItem(value: c, child: Text(c)))
+                          .toList(),
+                      onChanged: (val) {
+                        setState(() {
+                          selectedCategory = val;
+                          selectedBranch = null; // Reset branch when category changes
+                        });
+                      },
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                InputDecorator(
+                  decoration: const InputDecoration(labelText: 'Branch'),
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton<String>(
+                      value: selectedBranch,
+                      isDense: true,
+                      hint: const Text("Select Branch"),
+                      items: (selectedCategory == 'Degree'
+                              ? [
+                                  'IT & MSC-IT',
+                                  'B.VOC',
+                                  'CSE',
+                                  'BBA & MBA',
+                                  'Chemical',
+                                  'Electrical',
+                                  'Pharmacy',
+                                  'Civil Engineering',
+                                ]
+                              : selectedCategory == 'Diploma'
+                                  ? [
+                                      'Electrical Engineering',
+                                      'Chemical Engineering',
+                                      'Information Technology',
+                                      'Computer Engineering',
+                                      'Mechanical Engineering',
+                                    ]
+                                  : <String>[])
+                          .map(
+                            (b) => DropdownMenuItem(value: b, child: Text(b)),
+                          )
+                          .toList(),
+                      onChanged: (val) => setState(() => selectedBranch = val),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                InputDecorator(
                   decoration: const InputDecoration(labelText: 'Assign Hostel'),
                   child: DropdownButtonHideUnderline(
                     child: DropdownButton<String>(
@@ -544,32 +602,6 @@ class _StudentDirectoryScreenState extends State<StudentDirectoryScreen> {
                 ),
                 const SizedBox(height: 12),
                 InputDecorator(
-                  decoration: const InputDecoration(labelText: 'Branch'),
-                  child: DropdownButtonHideUnderline(
-                    child: DropdownButton<String>(
-                      value: selectedBranch,
-                      isDense: true,
-                      hint: const Text("Select Branch"),
-                      items:
-                          [
-                                'Computer Engineering',
-                                'Information Technology',
-                                'Mechanical Engineering',
-                                'Civil Engineering',
-                                'Electrical Engineering',
-                                'Chemical Engineering',
-                              ]
-                              .map(
-                                (b) =>
-                                    DropdownMenuItem(value: b, child: Text(b)),
-                              )
-                              .toList(),
-                      onChanged: (val) => setState(() => selectedBranch = val),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                InputDecorator(
                   decoration: const InputDecoration(labelText: 'Year'),
                   child: DropdownButtonHideUnderline(
                     child: DropdownButton<String>(
@@ -585,6 +617,21 @@ class _StudentDirectoryScreenState extends State<StudentDirectoryScreen> {
                           )
                           .toList(),
                       onChanged: (val) => setState(() => selectedYear = val),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                InputDecorator(
+                  decoration: const InputDecoration(labelText: 'Fee Status'),
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton<String>(
+                      value: selectedFeeStatus,
+                      isDense: true,
+                      hint: const Text("Select Fee Status"),
+                      items: ['Paid', 'Scholarship']
+                          .map((s) => DropdownMenuItem(value: s, child: Text(s)))
+                          .toList(),
+                      onChanged: (val) => setState(() => selectedFeeStatus = val),
                     ),
                   ),
                 ),
@@ -616,8 +663,10 @@ class _StudentDirectoryScreenState extends State<StudentDirectoryScreen> {
                         'assignedHostel': selectedHostel,
                         'hostel': _getLongHostelName(selectedHostel),
                         'room': roomController.text.trim(),
+                        'category': selectedCategory,
                         'branch': selectedBranch,
                         'year': selectedYear,
+                        'feeStatus': selectedFeeStatus,
                         'importedAt': FieldValue.serverTimestamp(),
                         'source': 'manual_admin_add',
                       });
