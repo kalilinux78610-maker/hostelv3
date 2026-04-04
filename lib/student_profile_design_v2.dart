@@ -27,14 +27,14 @@ class StudentProfileDesignV2 extends StatelessWidget {
           }
 
           final data = snapshot.data?.data() as Map<String, dynamic>?;
-          final name = data?['name'] ?? "Student Name";
-          final email = data?['email'] ?? "student@example.com";
+          final name = data?['name'] ?? user?.displayName ?? "Student";
+          final email = data?['email'] ?? user?.email ?? "No Email";
           final photoUrl = data?['photoUrl'];
-          final room = data?['room'] ?? "304";
-          final hostel = data?['assignedHostel'] ?? "Hostel A";
-          final mobile = data?['mobile'] ?? "+91 9876543210";
-          final parentContact = data?['parentContact'] ?? "N/A";
-          final address = data?['address'] ?? "N/A";
+          final room = data?['room'] ?? "N/A";
+          final hostel = data?['assignedHostel'] ?? data?['hostel'] ?? "N/A";
+          final mobile = data?['mobile'] ?? "Not Provided";
+          final parentContact = data?['parentContact'] ?? "Not Provided";
+          final address = data?['address'] ?? "Not Provided";
 
           return SingleChildScrollView(
             child: Column(

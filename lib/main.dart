@@ -6,8 +6,6 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'auth_gate.dart';
 import 'firebase_options.dart';
 import 'services/push_notification_service.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'utils/canonical_names.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -35,8 +33,6 @@ void main() async {
     debugPrint("Push notification init failed: $e");
   }
 
-  // TODO: TEMPORARY DATA MIGRATION - REMOVE AFTER ONE RUN
-  _migrateData();
 
   runApp(const MyApp());
 }
@@ -58,32 +54,4 @@ class MyApp extends StatelessWidget {
   }
 }
 
-Future<void> _migrateData() async {
-  try {
-    debugPrint("Starting data migration...");
-    final snapshot = await FirebaseFirestore.instance
-        .collection('leave_requests')
-        .where('status', isEqualTo: 'pending')
-        .get();
 
-    for (var doc in snapshot.docs) {
-      final data = doc.data();
-      final branch = data['branch'];
-      final category = data['category'];
-      
-      final cBranch = CanonicalNames.canonicalizeBranch(branch, category);
-      final cCategory = CanonicalNames.canonicalizeCategory(category);
-      
-      if (branch != cBranch || category != cCategory) {
-        await doc.reference.update({
-          'branch': cBranch,
-          'category': cCategory,
-        });
-        debugPrint("Migrated request ${doc.id}: $branch -> $cBranch");
-      }
-    }
-    debugPrint("Data migration finished.");
-  } catch (e) {
-    debugPrint("Migration error: $e");
-  }
-}

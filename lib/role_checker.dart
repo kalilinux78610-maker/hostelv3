@@ -89,18 +89,11 @@ class _RoleCheckerState extends State<RoleChecker> {
         // Data loaded successfully
         if (snapshot.hasData && snapshot.data != null && snapshot.data!.exists) {
           final data = snapshot.data!.data() as Map<String, dynamic>?;
-          if (data == null || !data.containsKey('role')) {
-             // If document exists but role is missing, it might be a new doc partially synced
-             return const Scaffold(
-               body: Center(child: CircularProgressIndicator()),
-             );
+          // Default to 'student' if role is missing
+          String role = 'student';
+          if (data != null && data.containsKey('role') && data['role'] != null && data['role'].toString().trim().isNotEmpty) {
+            role = data['role'].toString().toLowerCase().trim();
           }
-
-          // Normalize role: trim, lowercase
-          final String role = data['role']
-              .toString()
-              .toLowerCase()
-              .trim();
 
           return _getDashboard(role);
         }

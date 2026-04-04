@@ -166,8 +166,7 @@ class _HodDashboardScreenState extends State<HodDashboardScreen> {
     // Only query by hodStatus to avoid ANY composite index requirements
     Query query = FirebaseFirestore.instance
         .collection('leave_requests')
-        .where('hodStatus', isEqualTo: 'pending')
-        .where('type', isEqualTo: 'Home');
+        .where('hodStatus', isEqualTo: 'pending');
 
     return StreamBuilder<QuerySnapshot>(
       stream: query.snapshots(),
@@ -187,10 +186,11 @@ class _HodDashboardScreenState extends State<HodDashboardScreen> {
         // 1. Fetch all pending HOD docs
         List<QueryDocumentSnapshot> docs = snapshot.data!.docs.toList();
         
-        // 2. Filter in-memory by status, category, branch
+        // 2. Filter in-memory by status, category, branch, type
         docs = docs.where((doc) {
           final data = doc.data() as Map<String, dynamic>;
           final isPending = data['status'] == 'pending';
+          final isHome = data['type'] == 'Home';
           
           final docCategory = data['category']?.toString();
           final docBranch = data['branch']?.toString();
@@ -198,7 +198,7 @@ class _HodDashboardScreenState extends State<HodDashboardScreen> {
           final categoryMatch = (_currentWorkingCategory == null) || (docCategory == _currentWorkingCategory);
           final branchMatch = (_branch == null) || (docBranch == _branch);
           
-          return isPending && categoryMatch && branchMatch;
+          return isPending && isHome && categoryMatch && branchMatch;
         }).toList();
 
         if (docs.isEmpty) {
@@ -421,10 +421,6 @@ class _HodDashboardScreenState extends State<HodDashboardScreen> {
       stream: FirebaseFirestore.instance
           .collection('leave_requests')
           .where('status', isEqualTo: 'approved')
-          .where('type', isEqualTo: 'Home')
-          .where('category', isEqualTo: _currentWorkingCategory)
-          .where('branch', isEqualTo: _branch)
-          .orderBy('createdAt', descending: true)
           .snapshots(),
       builder: (context, snapshot) {
         if (snapshot.hasError) {
@@ -435,7 +431,15 @@ class _HodDashboardScreenState extends State<HodDashboardScreen> {
           return const Center(child: CircularProgressIndicator());
         }
 
-        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+        // 1. Fetch docs and filter in-memory to avoid index errors
+        List<QueryDocumentSnapshot> docs = snapshot.data!.docs.where((doc) {
+          final data = doc.data() as Map<String, dynamic>;
+          return data['type'] == 'Home' &&
+                 data['category'] == _currentWorkingCategory &&
+                 data['branch'] == _branch;
+        }).toList();
+
+        if (docs.isEmpty) {
           return Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -451,11 +455,19 @@ class _HodDashboardScreenState extends State<HodDashboardScreen> {
           );
         }
 
+        // 2. Sort descending in memory
+        docs.sort((a, b) {
+          final aTime = (a.data() as Map<String, dynamic>)['createdAt'] as Timestamp?;
+          final bTime = (b.data() as Map<String, dynamic>)['createdAt'] as Timestamp?;
+          if (aTime == null || bTime == null) return 0;
+          return bTime.compareTo(aTime);
+        });
+
         return ListView.builder(
           padding: const EdgeInsets.all(16),
-          itemCount: snapshot.data!.docs.length,
+          itemCount: docs.length,
           itemBuilder: (context, index) {
-            final doc = snapshot.data!.docs[index];
+            final doc = docs[index];
             final data = doc.data() as Map<String, dynamic>;
             final endDate = (data['endDate'] as Timestamp).toDate();
 
@@ -515,7 +527,7 @@ class _HodDashboardScreenState extends State<HodDashboardScreen> {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
-    if (_category == null || _branch == null) {
+    if (_category == null || _category!.isEmpty || _branch == null || _branch!.isEmpty) {
       return Scaffold(
         appBar: AppBar(title: const Text('HOD Dashboard')),
         body: Center(
@@ -711,10 +723,8 @@ class _HodDashboardScreenState extends State<HodDashboardScreen> {
                             color: Colors.orange,
                             query: FirebaseFirestore.instance
                                 .collection('leave_requests')
-                                .where('hodStatus', isEqualTo: 'pending')
-                                .where('type', isEqualTo: 'Home')
-                                .where('category', isEqualTo: _currentWorkingCategory)
-                                .where('branch', isEqualTo: _branch),
+                                .where('hodStatus', isEqualTo: 'pending'),
+                            filter: (data) => data['type'] == 'Home' && data['category'] == _currentWorkingCategory && data['branch'] == _branch,
                           ),
                         ),
                         const SizedBox(width: 12),
@@ -725,10 +735,8 @@ class _HodDashboardScreenState extends State<HodDashboardScreen> {
                             color: Colors.green,
                             query: FirebaseFirestore.instance
                                 .collection('leave_requests')
-                                .where('status', isEqualTo: 'approved')
-                                .where('type', isEqualTo: 'Home')
-                                .where('category', isEqualTo: _currentWorkingCategory)
-                                .where('branch', isEqualTo: _branch),
+                                .where('status', isEqualTo: 'approved'),
+                            filter: (data) => data['type'] == 'Home' && data['category'] == _currentWorkingCategory && data['branch'] == _branch,
                           ),
                         ),
                       ],
@@ -792,6 +800,7 @@ class _HodDashboardScreenState extends State<HodDashboardScreen> {
     required IconData icon,
     required Color color,
     required Query query,
+    required bool Function(Map<String, dynamic>) filter,
   }) {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
@@ -818,8 +827,11 @@ class _HodDashboardScreenState extends State<HodDashboardScreen> {
                 stream: query.snapshots(),
                 builder: (context, snapshot) {
                   if (snapshot.hasData) {
+                    final validDocsCount = snapshot.data!.docs
+                        .where((d) => filter(d.data() as Map<String, dynamic>))
+                        .length;
                     return Text(
-                      "${snapshot.data!.docs.length}",
+                      "$validDocsCount",
                       style: const TextStyle(
                         color: Colors.white,
                         fontSize: 24,
