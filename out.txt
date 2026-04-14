@@ -1,0 +1,4 @@
+Analyzing warden_dashboard.dart...                              
+
+warning - The declaration '_CategoryCard' isn't referenced - lib\warden_dashboard.dart:671:7 - unused_element
+

@@ -5,6 +5,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'apply_leave_screen.dart';
 import 'gate_pass_screen.dart';
 import 'complaints/student_complaints_screen.dart';
+import 'mess_menu_screen.dart';
 import 'student_profile_design_v2.dart';
 import 'notification_screen.dart';
 
@@ -211,17 +212,24 @@ class StudentHomeTab extends StatelessWidget {
                         ),
                         const SizedBox(height: 30),
 
-                        // Recent Requests
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 20),
-                          child: _RecentRequestsList(uid: user.uid),
-                        ),
-                        const SizedBox(height: 40),
-
                         // Action Grid View
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 20),
                           child: _buildGrid(context, isWideScreen, screenWidth),
+                        ),
+                        const SizedBox(height: 28),
+
+                        // My Latest Request
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 20),
+                          child: _RecentRequestsList(uid: user.uid),
+                        ),
+                        const SizedBox(height: 28),
+
+                        // Today's Mess Section
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 20),
+                          child: _TodayMessCard(),
                         ),
                         const SizedBox(height: 40),
                       ],
@@ -300,6 +308,8 @@ class StudentHomeTab extends StatelessWidget {
     );
   }
 
+
+
   Widget _buildGrid(
       BuildContext context, bool isWideScreen, double screenWidth) {
     // We removed 'Complaints' and 'Profile' from the grid because they are now bottom tabs.
@@ -339,6 +349,11 @@ class StudentHomeTab extends StatelessWidget {
               Navigator.push(
                 context,
                 MaterialPageRoute(builder: (context) => const GatePassScreen()),
+              );
+            } else if (item['label'] == 'Mess Menu') {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const MessMenuScreen()),
               );
             } else {
               // Add other pages navigation here if needed
@@ -404,16 +419,12 @@ class _RecentRequestsListState extends State<_RecentRequestsList> {
     _ticker = Stream.periodic(const Duration(minutes: 1), (i) => i);
   }
 
-  /// Filter requests — only show ACTIVE/RELEVANT ones:
-  /// - 'completed' → skip (done, no need to show)
-  /// - 'approved' → only 1, only if endDate not passed
-  /// - 'out' → show if endDate not passed (student currently out)
-  /// - 'pending' → skip if endDate has already passed (stale old request)
-  /// - 'rejected' → always show
+  /// Filter requests — returns maps with 'docId' + all data fields.
+  /// - 'completed' / 'cancelled' → skip
+  /// - Active (pending/approved/out) → show only the most recent non-expired one
+  /// - 'rejected' → always show so student sees the outcome
   List<Map<String, dynamic>> _filterRequests(List<QueryDocumentSnapshot> docs) {
     final now = DateTime.now();
-    final List<Map<String, dynamic>> result = [];
-    bool approvedAdded = false;
 
     // Sort newest first
     final sorted = List<QueryDocumentSnapshot>.from(docs);
@@ -425,37 +436,35 @@ class _RecentRequestsListState extends State<_RecentRequestsList> {
       return bTime.compareTo(aTime);
     });
 
+    Map<String, dynamic>? activeRequest;
+    final List<Map<String, dynamic>> rejectedRequests = [];
+
     for (final doc in sorted) {
-      final data = doc.data() as Map<String, dynamic>;
-      final status = (data['status'] ?? '').toString();
-      final endDate = (data['endDate'] as Timestamp?)?.toDate();
+      final raw = doc.data() as Map<String, dynamic>;
+      // Inject docId so the card can act on it
+      final data = {'docId': doc.id, ...raw};
+      final status = (raw['status'] ?? '').toString();
+      final endDate = (raw['endDate'] as Timestamp?)?.toDate();
 
-      // Skip fully completed requests
-      if (status == 'completed') continue;
+      // Skip finished / cancelled entries
+      if (status == 'completed' || status == 'cancelled') continue;
 
-      if (status == 'approved') {
-        // Skip expired approved requests
-        if (endDate != null && endDate.isBefore(now)) continue;
-        // Only show 1 active approved request
-        if (approvedAdded) continue;
-        approvedAdded = true;
-        result.add(data);
-      } else if (status == 'out') {
-        // Student is currently out — show only if not overdue
-        if (endDate != null && endDate.isBefore(now)) continue;
-        result.add(data);
-      } else if (status == 'rejected') {
-        // Always show rejected so student knows
-        result.add(data);
-      } else if (status == 'pending') {
-        // Skip old stale pending requests where return date has passed
-        if (endDate != null && endDate.isBefore(now)) continue;
-        result.add(data);
+      if (status == 'rejected') {
+        rejectedRequests.add(data);
+        continue;
       }
-      // Any other unknown status → skip
+
+      // Active: pending / approved / out
+      if (status == 'pending' || status == 'approved' || status == 'out') {
+        if (endDate != null && endDate.isBefore(now)) continue;
+        activeRequest ??= data;
+      }
     }
 
-    return result;
+    return [
+      if (activeRequest != null) activeRequest,
+      ...rejectedRequests,
+    ];
   }
 
   @override
@@ -463,15 +472,19 @@ class _RecentRequestsListState extends State<_RecentRequestsList> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          "Recent Requests",
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-            color: Color(0xFF002244),
+        const SizedBox(
+          width: double.infinity,
+          child: Text(
+            "My Latest Request",
+            textAlign: TextAlign.left,
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF1A1A2E),
+            ),
           ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 12),
         StreamBuilder<int>(
           stream: _ticker,
           builder: (context, _) {
@@ -507,7 +520,9 @@ class _RecentRequestsListState extends State<_RecentRequestsList> {
                 }
 
                 return Column(
-                  children: filtered.map((data) => _buildRequestCard(data)).toList(),
+                  children: filtered
+                      .map((data) => _buildRequestCard(context, data))
+                      .toList(),
                 );
               },
             );
@@ -517,104 +532,614 @@ class _RecentRequestsListState extends State<_RecentRequestsList> {
     );
   }
 
-  Widget _buildRequestCard(Map<String, dynamic> data) {
-    String statusText = "Pending";
-    Color statusColor = Colors.orange;
+  Widget _buildRequestCard(BuildContext context, Map<String, dynamic> data) {
+    final status   = (data['status'] ?? '').toString();
+    final hodStatus    = (data['hodStatus'] ?? '').toString();
+    final wardenStatus = (data['wardenStatus'] ?? '').toString();
+    final rectorStatus = (data['rectorStatus'] ?? '').toString();
+    final docId    = data['docId'] as String?;
+    final type     = data['type'] ?? 'Leave';
+    final bool canCancel = status == 'pending';
 
-    final status = data['status'];
-    final hodStatus = data['hodStatus'];
-    final wardenStatus = data['wardenStatus'];
-    final rectorStatus = data['rectorStatus'];
+    // Date range label
+    String dateRange = '';
+    final start = (data['startDate'] as Timestamp?)?.toDate();
+    final end   = (data['endDate']   as Timestamp?)?.toDate();
+    if (start != null && end != null) {
+      String fmt(DateTime d) => '${d.day} ${_monthName(d.month)} ${d.year}';
+      dateRange = '${fmt(start)} – ${fmt(end)}';
+    }
 
+    // Overall status badge
+    String badgeLabel;
+    Color  badgeColor;
+    Color  badgeBg;
     if (status == 'rejected') {
-      statusText = "Rejected";
-      statusColor = Colors.red;
-    } else if (status == 'completed') {
-      statusText = "Completed ✓";
-      statusColor = Colors.green;
-    } else if (status == 'out') {
-      final endDate = (data['endDate'] as Timestamp?)?.toDate();
-      if (endDate != null) {
-        final d = endDate;
-        statusText = "Out • Return by ${d.day}/${d.month} ${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}";
-      } else {
-        statusText = "Currently Out";
-      }
-      statusColor = Colors.orange;
-    } else if (status == 'approved') {
-      final endDate = (data['endDate'] as Timestamp?)?.toDate();
-      if (endDate != null) {
-        final d = endDate;
-        statusText =
-            "Active • Return by ${d.day}/${d.month} ${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}";
-      } else {
-        statusText = "Fully Approved";
-      }
-      statusColor = Colors.green;
-    } else if (hodStatus == 'pending') {
-      statusText = "Waiting for HOD";
-    } else if (wardenStatus == 'pending') {
-      statusText = "Waiting for Warden";
-    } else if (rectorStatus == 'pending') {
-      statusText = "Waiting for Rector";
+      badgeLabel = 'REJECTED'; badgeColor = Colors.red; badgeBg = const Color(0xFFFFE5E5);
+    } else if (status == 'approved' || status == 'out' || status == 'completed') {
+      badgeLabel = 'APPROVED'; badgeColor = const Color(0xFF1A7A5E); badgeBg = const Color(0xFFD0F5EA);
     } else {
-      statusText = "In Review";
-      statusColor = Colors.blueGrey;
+      badgeLabel = 'PENDING';  badgeColor = const Color(0xFFFF6B00); badgeBg = const Color(0xFFFFF0E6);
+    }
+
+    // Stepper step states: 0=waiting, 1=active/pending, 2=done, 3=rejected
+    int hodStep, wardenStep, rectorStep;
+
+    final isOuting = type.toLowerCase().contains('outing');
+
+    if (isOuting) {
+      // Outing: only Rector matters
+      hodStep    = 2; // bypassed → show as done
+      wardenStep = 2;
+      if (status == 'rejected')      { rectorStep = 3; }
+      else if (rectorStatus == 'approved' || status == 'approved') { rectorStep = 2; }
+      else { rectorStep = 1; }
+    } else {
+      // Home leave
+      if (status == 'rejected') {
+        hodStep    = hodStatus == 'approved' ? 2 : 3;
+        wardenStep = hodStatus == 'approved' && wardenStatus != 'approved' ? 3 : (wardenStatus == 'approved' ? 2 : 0);
+        rectorStep = 3;
+      } else {
+        hodStep    = hodStatus == 'approved' ? 2 : (hodStatus == 'pending' ? 1 : 0);
+        wardenStep = hodStatus != 'approved' ? 0
+                   : wardenStatus == 'approved' ? 2
+                   : wardenStatus == 'pending'  ? 1 : 0;
+        rectorStep = wardenStatus != 'approved' ? 0
+                   : rectorStatus == 'approved' || status == 'approved' ? 2
+                   : rectorStatus == 'pending'  ? 1 : 0;
+      }
     }
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.fromLTRB(18, 18, 18, 14),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 10,
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 14,
             offset: const Offset(0, 4),
           ),
         ],
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: statusColor.withValues(alpha: 0.1),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(
-              data['type'] == 'Home' ? Icons.home : Icons.directions_walk,
-              color: statusColor,
-              size: 20,
-            ),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  data['type'] ?? 'Leave',
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 15,
-                  ),
+          // ── Row 1: type + badge ────────────────────────────────
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                type,
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                  color: Color(0xFF1A1A2E),
                 ),
-                Text(
-                  statusText,
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                decoration: BoxDecoration(
+                  color: badgeBg,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  badgeLabel,
                   style: TextStyle(
-                    color: statusColor,
                     fontSize: 12,
-                    fontWeight: FontWeight.w600,
+                    fontWeight: FontWeight.w700,
+                    color: badgeColor,
+                    letterSpacing: 0.5,
                   ),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
-          const Icon(Icons.arrow_forward_ios, size: 12, color: Colors.grey),
+
+          if (dateRange.isNotEmpty) ...
+            [
+              const SizedBox(height: 4),
+              Text(
+                dateRange,
+                style: TextStyle(fontSize: 13, color: Colors.grey[500]),
+              ),
+            ],
+
+          const SizedBox(height: 18),
+
+          // ── Stepper ─────────────────────────────────────────────
+          if (!isOuting)
+            _buildStepper(hodStep, wardenStep, rectorStep)
+          else
+            _buildOutingStepper(rectorStep),
+
+          // ── Cancel button ────────────────────────────────────────
+          if (canCancel && docId != null) ...
+            [
+              const SizedBox(height: 14),
+              const Divider(height: 1),
+              const SizedBox(height: 10),
+              GestureDetector(
+                onTap: () => _confirmCancel(context, docId),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(Icons.cancel_outlined, size: 15, color: Colors.red),
+                    const SizedBox(width: 6),
+                    Text(
+                      'Cancel Request',
+                      style: TextStyle(
+                        color: Colors.red.shade600,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
         ],
+      ),
+    );
+  }
+
+  String _monthName(int m) {
+    const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    return months[m - 1];
+  }
+
+  /// step: 0=waiting(grey) 1=active/pending(orange) 2=done(green) 3=rejected(red)
+  Widget _buildStepper(int hod, int warden, int rector) {
+    final labels = ['HOD', 'WARDEN', 'RECTOR'];
+    final steps  = [hod, warden, rector];
+    return _stepperRow(labels, steps);
+  }
+
+  Widget _buildOutingStepper(int rector) {
+    return _stepperRow(['RECTOR'], [rector]);
+  }
+
+  Widget _stepperRow(List<String> labels, List<int> steps) {
+    return Row(
+      children: List.generate(labels.length, (i) {
+        final isLast = i == labels.length - 1;
+        return Expanded(
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  children: [
+                    _stepCircle(steps[i]),
+                    const SizedBox(height: 6),
+                    Text(
+                      labels[i],
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 0.4,
+                        color: _stepLabelColor(steps[i]),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (!isLast)
+                Expanded(
+                  child: Container(
+                    height: 2,
+                    margin: const EdgeInsets.only(bottom: 18),
+                    color: steps[i] == 2
+                        ? const Color(0xFF1A7A5E)
+                        : Colors.grey[300],
+                  ),
+                ),
+            ],
+          ),
+        );
+      }),
+    );
+  }
+
+  Widget _stepCircle(int step) {
+    Color bg;
+    Widget child;
+    switch (step) {
+      case 2: // done
+        bg    = const Color(0xFF1A7A5E);
+        child = const Icon(Icons.check, color: Colors.white, size: 16);
+        break;
+      case 1: // active / pending
+        bg    = const Color(0xFFFF6B00);
+        child = const Icon(Icons.hourglass_bottom, color: Colors.white, size: 16);
+        break;
+      case 3: // rejected
+        bg    = Colors.grey;
+        child = const Icon(Icons.close, color: Colors.white, size: 16);
+        break;
+      default: // waiting
+        bg    = Colors.grey[300]!;
+        child = Container(
+          width: 8, height: 8,
+          decoration: BoxDecoration(
+            color: Colors.grey[400],
+            shape: BoxShape.circle,
+          ),
+        );
+    }
+    return CircleAvatar(
+      radius: 18,
+      backgroundColor: bg,
+      child: child,
+    );
+  }
+
+  Color _stepLabelColor(int step) {
+    if (step == 2) return const Color(0xFF1A7A5E);
+    if (step == 1) return const Color(0xFFFF6B00);
+    return Colors.grey;
+  }
+
+  /// Shows a confirm dialog, then sets status to 'cancelled'
+  Future<void> _confirmCancel(BuildContext context, String docId) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Row(
+          children: [
+            Icon(Icons.warning_amber_rounded, color: Colors.orange),
+            SizedBox(width: 8),
+            Text("Cancel Request?"),
+          ],
+        ),
+        content: const Text(
+          "Are you sure you want to cancel this request?\n"
+          "You will be able to submit a new one after cancelling.",
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text("No, Keep It"),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+            child: const Text("Yes, Cancel"),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      try {
+        await FirebaseFirestore.instance
+            .collection('leave_requests')
+            .doc(docId)
+            .update({'status': 'cancelled'});
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Request cancelled. You can now submit a new one.'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+      } catch (e) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Error cancelling: $e'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    }
+  }
+}
+
+// ============================================================
+// TODAY'S MESS CARD — Student Dashboard
+// ============================================================
+class _TodayMessCard extends StatefulWidget {
+  @override
+  State<_TodayMessCard> createState() => _TodayMessCardState();
+}
+
+class _TodayMessCardState extends State<_TodayMessCard> {
+  static const Color _orange = Color(0xFFFF6B00);
+
+  // Meal tabs
+  final List<String> _meals = ['Breakfast', 'Lunch', 'Dinner'];
+  int _selectedMeal = 0;
+
+  // Meal time labels
+  final Map<String, String> _mealTimes = {
+    'Breakfast': '7:30 AM – 9:00 AM',
+    'Lunch': '12:30 PM – 2:30 PM',
+    'Dinner': '7:30 PM – 9:00 PM',
+  };
+
+  // Pick current meal automatically based on time
+  @override
+  void initState() {
+    super.initState();
+    final hour = DateTime.now().hour;
+    if (hour >= 12 && hour < 15) {
+      _selectedMeal = 1; // Lunch
+    } else if (hour >= 19) {
+      _selectedMeal = 2; // Dinner
+    } else {
+      _selectedMeal = 0; // Breakfast
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<DocumentSnapshot>(
+      stream: FirebaseFirestore.instance
+          .collection('config')
+          .doc('mess_menu')
+          .snapshots(),
+      builder: (context, snapshot) {
+        // Get today's day name
+        final days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+        final today = days[DateTime.now().weekday - 1];
+
+        Map<String, dynamic> dayData = {};
+        if (snapshot.hasData && snapshot.data!.exists) {
+          final allData = snapshot.data!.data() as Map<String, dynamic>? ?? {};
+          dayData = allData[today] as Map<String, dynamic>? ?? {};
+        }
+
+        final mealKey = _meals[_selectedMeal];
+        final mealText = dayData[mealKey] as String? ?? '';
+        final imageUrl = dayData['${mealKey}_imageUrl'] as String? ?? '';
+        final mealTime = _mealTimes[mealKey] ?? '';
+
+        // Parse comma-separated items into list
+        final items = mealText
+            .split(',')
+            .map((e) => e.trim())
+            .where((e) => e.isNotEmpty)
+            .toList();
+
+        return Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.07),
+                blurRadius: 16,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Header: "Today's Mess" + "FULL MENU"
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      "Today's Mess",
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF1A1A2E),
+                      ),
+                    ),
+                    GestureDetector(
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const MessMenuScreen(),
+                        ),
+                      ),
+                      child: const Text(
+                        'FULL MENU',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          color: _orange,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              // Meal Tabs: Breakfast | Lunch | Dinner
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Row(
+                  children: List.generate(_meals.length, (i) {
+                    final isSelected = _selectedMeal == i;
+                    return GestureDetector(
+                      onTap: () => setState(() => _selectedMeal = i),
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
+                        margin: const EdgeInsets.only(right: 10),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 18, vertical: 9),
+                        decoration: BoxDecoration(
+                          color: isSelected ? _orange : const Color(0xFFF2F2F2),
+                          borderRadius: BorderRadius.circular(30),
+                        ),
+                        child: Text(
+                          _meals[i].toUpperCase(),
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: isSelected ? Colors.white : Colors.grey[600],
+                            letterSpacing: 0.4,
+                          ),
+                        ),
+                      ),
+                    );
+                  }),
+                ),
+              ),
+
+              const SizedBox(height: 14),
+
+              // Food Photo
+              if (imageUrl.isNotEmpty)
+                Stack(
+                  children: [
+                    ClipRRect(
+                      borderRadius: BorderRadius.zero,
+                      child: Image.network(
+                        imageUrl,
+                        height: 185,
+                        width: double.infinity,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, _, _) => _noPhotoPlaceholder(),
+                      ),
+                    ),
+                    // Gradient overlay at bottom of image
+                    Positioned(
+                      bottom: 0,
+                      left: 0,
+                      right: 0,
+                      child: Container(
+                        height: 80,
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.bottomCenter,
+                            end: Alignment.topCenter,
+                            colors: [
+                              Colors.black.withValues(alpha: 0.7),
+                              Colors.transparent,
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                    // Meal name + time on photo
+                    Positioned(
+                      bottom: 12,
+                      left: 16,
+                      right: 16,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            mealKey == 'Breakfast'
+                                ? 'Morning Breakfast'
+                                : mealKey == 'Lunch'
+                                    ? 'Maharaja Thali'
+                                    : 'Evening Dinner',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          Text(
+                            'Served from $mealTime',
+                            style: TextStyle(
+                              color: Colors.white.withValues(alpha: 0.85),
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                )
+              else
+                _noPhotoPlaceholder(),
+
+              const SizedBox(height: 14),
+
+              // Food Items List
+              if (items.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Column(
+                    children: items
+                        .map(
+                          (item) => Padding(
+                            padding: const EdgeInsets.only(bottom: 8),
+                            child: Row(
+                              children: [
+                                Container(
+                                  width: 8,
+                                  height: 8,
+                                  decoration: const BoxDecoration(
+                                    color: _orange,
+                                    shape: BoxShape.circle,
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Text(
+                                    item,
+                                    style: const TextStyle(
+                                      fontSize: 14,
+                                      color: Color(0xFF1A1A2E),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        )
+                        .toList(),
+                  ),
+                )
+              else
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Text(
+                    'Menu not set for today',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: Colors.grey[400],
+                      fontStyle: FontStyle.italic,
+                    ),
+                  ),
+                ),
+
+              const SizedBox(height: 18),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _noPhotoPlaceholder() {
+    return Container(
+      height: 140,
+      color: const Color(0xFFF5F5F5),
+      child: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.restaurant_menu, size: 36, color: Colors.grey[300]),
+            const SizedBox(height: 6),
+            Text(
+              'No photo yet',
+              style: TextStyle(color: Colors.grey[400], fontSize: 13),
+            ),
+          ],
+        ),
       ),
     );
   }

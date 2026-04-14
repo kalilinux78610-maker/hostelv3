@@ -78,30 +78,22 @@ class NotificationRepository {
   // Stream notifications for a user based on their UID and Role
   Stream<QuerySnapshot> getNotifications({
     required String uid,
-    required String role, // 'student', 'warden', 'rector', 'guard'
+    required String role,
   }) {
-    // Basic query for direct messages to this UID
-    Query query = _firestore
-        .collection('notifications')
-        .orderBy('createdAt', descending: true);
-
-    // If role is warden or rector, they should also see messages sent to 'warden' or 'rector'
-    // Firestore OR queries are limited, so we might need to handle this by querying for
-    // receiverUid IN [uid, role] -- but 'role' here maps to the reserved strings 'warden', 'rector'
-
-    // For simplicity and efficiency in this specific app structure:
-    // We will rely on 'receiverUid' being the primary filter.
-    // If a notification is for ALL wardens, receiverUid should be 'warden'.
-    // If it's for a specific student, receiverUid is their UID.
-
-    // NOTE: Firestore 'in' query supports up to 10 values.
+    // Build the list of receiverUids this user can receive notifications for
     List<String> targetIds = [uid];
     if (role == 'warden') targetIds.add('warden');
     if (role == 'rector') targetIds.add('rector');
     if (role == 'guard') targetIds.add('guard');
     if (role == 'hod') targetIds.add('hod');
+    if (role == 'student') targetIds.add('student');
 
-    return query.where('receiverUid', whereIn: targetIds).snapshots();
+    // NOTE: We do NOT use orderBy here because combining orderBy with whereIn
+    // requires a Firestore composite index. We sort client-side in the UI instead.
+    return _firestore
+        .collection('notifications')
+        .where('receiverUid', whereIn: targetIds)
+        .snapshots();
   }
 
   // Mark a notification as read

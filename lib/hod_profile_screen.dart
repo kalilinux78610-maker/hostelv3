@@ -24,6 +24,7 @@ class _HodProfileScreenState extends State<HodProfileScreen> {
   String? _category;
   String? _branch;
   String? _photoUrl;
+  bool _isDepartmentLocked = false;
 
   // Sample Data for Dropdowns to match signup_screen.dart
   final List<String> _categories = ['Degree', 'Diploma'];
@@ -75,6 +76,7 @@ class _HodProfileScreenState extends State<HodProfileScreen> {
             _category = data['category'];
             _branch = data['branch'];
             _photoUrl = data['photoUrl'];
+            _isDepartmentLocked = _category != null && _category!.isNotEmpty && _branch != null && _branch!.isNotEmpty;
           });
         }
       }
@@ -191,16 +193,23 @@ class _HodProfileScreenState extends State<HodProfileScreen> {
     IconData icon,
     String? value,
     List<String> items,
-    Function(String?) onChanged,
-  ) {
+    Function(String?) onChanged, {
+    bool isLocked = false,
+  }) {
+    // Ensure the current value exists in the items list to prevent assertion errors
+    final safeItems = (value != null && !items.contains(value))
+        ? [value, ...items]
+        : items;
+
     return Padding(
       padding: const EdgeInsets.only(bottom: 20),
       child: DropdownButtonFormField<String>(
         initialValue: value,
-        items: items
+        items: safeItems
             .map((e) => DropdownMenuItem(value: e, child: Text(e)))
             .toList(),
-        onChanged: onChanged,
+        onChanged: isLocked ? null : onChanged,
+        isExpanded: true,
         decoration: InputDecoration(
           labelText: label,
           prefixIcon: Icon(icon, color: _primaryColor),
@@ -324,12 +333,26 @@ class _HodProfileScreenState extends State<HodProfileScreen> {
                           ),
                           const SizedBox(height: 16),
 
+                          if (_isDepartmentLocked)
+                            const Padding(
+                              padding: EdgeInsets.only(bottom: 16),
+                              child: Text(
+                                "Department details cannot be changed once set. Please contact admin if you need to update them.",
+                                style: TextStyle(
+                                  color: Colors.redAccent,
+                                  fontSize: 12,
+                                  fontStyle: FontStyle.italic,
+                                ),
+                              ),
+                            ),
+
                           _buildDropdown(
                             "Category (e.g. BTech)",
                             Icons.category_outlined,
                             _category,
                             _categories,
                             (val) => setState(() => _category = val),
+                            isLocked: _isDepartmentLocked,
                           ),
 
                           _buildDropdown(
@@ -338,6 +361,7 @@ class _HodProfileScreenState extends State<HodProfileScreen> {
                             _branch,
                             _branches,
                             (val) => setState(() => _branch = val),
+                            isLocked: _isDepartmentLocked,
                           ),
 
                           const SizedBox(height: 30),

@@ -110,31 +110,32 @@ class _BulkImportScreenState extends State<BulkImportScreen> {
       for (var row in chunk) {
         rowOffset++;
         try {
-          // Expecting CSV format: Name, Email, Hostel, Room, Branch, Year
-          // Index: 0, 1, 2, 3, 4, 5
+          // CSV format: Name(0), EnrollmentNo(1), Gender(2), BloodGroup(3),
+          // StudentMobile(4), Email(5), FatherMobile(6), MotherMobile(7),
+          // Institute(8), Department(9), Hostel(10), Floor(11), Room(12)
           if (row.length < 2) {
             _failCount++;
             _errorLogs.add(
               "Row $rowOffset: Skipped - Not enough columns (expected at least 2)",
             );
-            continue; // Skip invalid rows logic
+            continue;
           }
 
           // Clean Data
           final String name = row[0].toString().trim();
-          final String email = row[1].toString().trim();
 
-          // Skip completely empty rows (common in CSV exports)
+          // Support both old format (email at col 1) and new format (email at col 5)
+          final bool isNewFormat = row.length >= 6 && row[5].toString().contains('@');
+          final String email = isNewFormat
+              ? row[5].toString().trim().toLowerCase()
+              : row[1].toString().trim().toLowerCase();
+
+          // Skip completely empty rows
           if (name.isEmpty && email.isEmpty) {
             _failCount++;
             _errorLogs.add("Row $rowOffset: Skipped - Empty row");
             continue;
           }
-
-          final String hostel = row.length > 2 ? row[2].toString().trim() : '';
-          final String room = row.length > 3 ? row[3].toString().trim() : '';
-          final String branch = row.length > 4 ? row[4].toString().trim() : '';
-          final String year = row.length > 5 ? row[5].toString().trim() : '';
 
           if (email.isEmpty || !email.contains('@')) {
             _failCount++;
@@ -144,15 +145,65 @@ class _BulkImportScreenState extends State<BulkImportScreen> {
             continue;
           }
 
+          String enrollmentNo = '';
+          String gender = '';
+          String bloodGroup = '';
+          String studentMobile = '';
+          String fatherMobile = '';
+          String motherMobile = '';
+          String institute = '';
+          String branch = '';
+          String hostel = '';
+          String floor = '';
+          String room = '';
+          String category = 'Degree';
+
+          if (isNewFormat) {
+            // New 13-column format
+            enrollmentNo = row.length > 1 ? row[1].toString().trim() : '';
+            gender      = row.length > 2 ? row[2].toString().trim() : '';
+            bloodGroup  = row.length > 3 ? row[3].toString().trim() : '';
+            studentMobile = row.length > 4 ? row[4].toString().trim() : '';
+            fatherMobile  = row.length > 6 ? row[6].toString().trim() : '';
+            motherMobile  = row.length > 7 ? row[7].toString().trim() : '';
+            institute   = row.length > 8 ? row[8].toString().trim() : '';
+            branch      = row.length > 9 ? row[9].toString().trim() : '';
+            hostel      = row.length > 10 ? row[10].toString().trim() : '';
+            floor       = row.length > 11 ? row[11].toString().trim() : '';
+            room        = row.length > 12 ? row[12].toString().trim() : '';
+            // Map institute name to category
+            if (institute.toUpperCase() == 'RNGPIT') {
+              category = 'Degree';
+            } else if (institute.toUpperCase() == 'NGPP') {
+              category = 'Diploma';
+            } else {
+              category = institute.isNotEmpty ? institute : 'Degree';
+            }
+          } else {
+            // Old 7-column format: Name, Email, Hostel, Room, Branch, Year, Category
+            hostel   = row.length > 2 ? row[2].toString().trim() : '';
+            room     = row.length > 3 ? row[3].toString().trim() : '';
+            branch   = row.length > 4 ? row[4].toString().trim() : '';
+            category = row.length > 6 ? row[6].toString().trim() : 'Degree';
+          }
+
           final docRef = firestore.collection('student_imports').doc(email);
           batch.set(docRef, {
             'name': name,
             'email': email,
+            'enrollmentNo': enrollmentNo,
+            'gender': gender,
+            'bloodGroup': bloodGroup,
+            'mobile': studentMobile,
+            'fatherMobile': fatherMobile,
+            'motherMobile': motherMobile,
+            'institute': institute,
             'assignedHostel': _getShortHostelCode(hostel),
             'hostel': hostel,
+            'floor': floor,
             'room': room,
             'branch': branch,
-            'year': year,
+            'category': category,
             'importedAt': FieldValue.serverTimestamp(),
           });
           _successCount++;
@@ -169,9 +220,69 @@ class _BulkImportScreenState extends State<BulkImportScreen> {
       });
     }
 
+    // SECOND PASS: Directly update already-registered students in 'users' collection
+    setState(() => _statusMessage = "Syncing profiles of already-registered students...");
+    int syncCount = 0;
+    for (var row in _data) {
+      try {
+        final bool isNewFormat = row.length >= 6 && row[5].toString().contains('@');
+        final String email = isNewFormat
+            ? row[5].toString().trim().toLowerCase()
+            : row[1].toString().trim().toLowerCase();
+        if (email.isEmpty || !email.contains('@')) continue;
+
+        // Build the same field map as we saved to student_imports
+        final Map<String, dynamic> updateData = {};
+        if (isNewFormat) {
+          final String inst = row.length > 8 ? row[8].toString().trim() : '';
+          String cat = 'Degree';
+          if (inst.toUpperCase() == 'RNGPIT') {
+            cat = 'Degree';
+          } else if (inst.toUpperCase() == 'NGPP') {
+            cat = 'Diploma';
+          } else if (inst.isNotEmpty) {
+            cat = inst;
+          }
+
+          updateData['name']         = row[0].toString().trim();
+          updateData['enrollmentNo'] = row.length > 1 ? row[1].toString().trim() : '';
+          updateData['gender']       = row.length > 2 ? row[2].toString().trim() : '';
+          updateData['bloodGroup']   = row.length > 3 ? row[3].toString().trim() : '';
+          updateData['mobile']       = row.length > 4 ? row[4].toString().trim() : '';
+          updateData['fatherMobile'] = row.length > 6 ? row[6].toString().trim() : '';
+          updateData['motherMobile'] = row.length > 7 ? row[7].toString().trim() : '';
+          updateData['parentContact']= row.length > 6 ? row[6].toString().trim() : '';
+          updateData['institute']    = inst;
+          updateData['category']     = cat;
+          updateData['branch']       = row.length > 9 ? row[9].toString().trim() : '';
+          final String hostelName    = row.length > 10 ? row[10].toString().trim() : '';
+          updateData['hostel']       = hostelName;
+          updateData['assignedHostel'] = _getShortHostelCode(hostelName);
+          updateData['floor']        = row.length > 11 ? row[11].toString().trim() : '';
+          updateData['room']         = row.length > 12 ? row[12].toString().trim() : '';
+        }
+
+        if (updateData.isEmpty) continue;
+
+        // Find user by email in 'users' collection
+        final userQuery = await FirebaseFirestore.instance
+            .collection('users')
+            .where('email', isEqualTo: email)
+            .limit(1)
+            .get();
+
+        if (userQuery.docs.isNotEmpty) {
+          await userQuery.docs.first.reference.update(updateData);
+          syncCount++;
+        }
+      } catch (e) {
+        debugPrint("Sync error for row: $e");
+      }
+    }
+
     setState(() {
       _isLoading = false;
-      _statusMessage = "Complete! Success: $_successCount, Failed: $_failCount";
+      _statusMessage = "Complete! Imported: $_successCount, Synced existing: $syncCount, Failed: $_failCount";
       _data = []; // Clear after upload
     });
   }
@@ -558,8 +669,18 @@ class _BulkImportScreenState extends State<BulkImportScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text(
-                    "CSV Format: Name, Email, Hostel, Room, Branch, Year",
+                    "New CSV Format (13 columns):",
                     style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 4),
+                  const Text(
+                    "Name, Enrollment No, Gender, Blood Group, Student Mobile, Email, Father Mobile, Mother Mobile, Institute, Department, Hostel, Floor, Room",
+                    style: TextStyle(fontSize: 12, color: Colors.blueGrey),
+                  ),
+                  const SizedBox(height: 6),
+                  const Text(
+                    "Institute: Use 'RNGPIT' for Degree, 'NGPP' for Diploma.",
+                    style: TextStyle(color: Colors.grey, fontSize: 12),
                   ),
                   const SizedBox(height: 4),
                   const Text(

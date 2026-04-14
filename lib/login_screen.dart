@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:google_sign_in/google_sign_in.dart';
 import 'signup_screen.dart';
 import 'services/push_notification_service.dart';
 
@@ -23,6 +22,7 @@ class _LoginScreenState extends State<LoginScreen>
   late Animation<Offset> _slideAnimation;
 
   bool _isLoading = false;
+  bool _isResetting = false;
   final bool _isPasswordVisible = false;
   String? _emailError;
   String? _passwordError;
@@ -82,24 +82,60 @@ class _LoginScreenState extends State<LoginScreen>
       return;
     }
 
+    if (_isResetting) return;
+
+    setState(() {
+      _isResetting = true;
+    });
+
+    // Show "Sending..." feedback immediately
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Row(
+          children: [
+            SizedBox(
+              width: 16,
+              height: 16,
+              child: CircularProgressIndicator(
+                color: Colors.white,
+                strokeWidth: 2,
+              ),
+            ),
+            SizedBox(width: 12),
+            Text('Sending reset email...'),
+          ],
+        ),
+        duration: Duration(seconds: 1),
+      ),
+    );
+
     try {
       await _auth.sendPasswordResetEmail(email: email);
       if (mounted) {
+        ScaffoldMessenger.of(context).clearSnackBars();
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Password reset email sent! Check your inbox.'),
+            content: Text('Password reset email sent! Check your inbox (including Spam).'),
             backgroundColor: Colors.green,
+            duration: Duration(seconds: 5),
           ),
         );
       }
     } on FirebaseAuthException catch (e) {
       if (mounted) {
+        ScaffoldMessenger.of(context).clearSnackBars();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Error: ${e.message}'),
             backgroundColor: Colors.redAccent,
           ),
         );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isResetting = false;
+        });
       }
     }
   }
@@ -114,7 +150,7 @@ class _LoginScreenState extends State<LoginScreen>
     });
 
     if (email.isEmpty) {
-      setState(() => _emailError = 'Enrollment is required');
+      setState(() => _emailError = 'Enrollment Email is required');
       return;
     }
     if (password.isEmpty) {
@@ -153,7 +189,7 @@ class _LoginScreenState extends State<LoginScreen>
       if (mounted) {
         setState(() {
           if (e.code == 'user-not-found' || e.code == 'invalid-email') {
-            _emailError = 'Invalid enrollment ID';
+            _emailError = 'Invalid enrollment email';
           } else if (e.code == 'wrong-password' ||
               e.code == 'invalid-credential') {
             _passwordError = 'Incorrect password';
@@ -185,107 +221,7 @@ class _LoginScreenState extends State<LoginScreen>
     }
   }
 
-  Future<void> _signInWithGoogle() async {
-    setState(() => _isLoading = true);
-    try {
-      final GoogleSignIn googleSignIn = GoogleSignIn.instance;
-      final googleUser = await googleSignIn.authenticate();
 
-      final GoogleSignInAuthentication googleAuth = googleUser.authentication;
-      final AuthCredential credential = GoogleAuthProvider.credential(
-        idToken: googleAuth.idToken,
-      );
-
-      final UserCredential userCredential =
-          await _auth.signInWithCredential(credential);
-      final String email = userCredential.user?.email?.toLowerCase() ?? "";
-
-      // Check for user profile
-      final userDoc = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(userCredential.user!.uid)
-          .get();
-
-      if (!userDoc.exists) {
-        // Auto-claim if in imports
-        final importDoc = await FirebaseFirestore.instance
-            .collection('student_imports')
-            .doc(email)
-            .get();
-
-        if (importDoc.exists) {
-          final data = importDoc.data()!;
-          await FirebaseFirestore.instance
-              .collection('users')
-              .doc(userCredential.user!.uid)
-              .set({
-                'uid': userCredential.user!.uid,
-                'email': email,
-                'name': data['name'],
-                'role': 'student',
-                'assignedHostel': data['assignedHostel'],
-                'hostel': data['hostel'],
-                'room': data['room'],
-                'branch': data['branch'],
-                'year': data['year'],
-                'createdAt': FieldValue.serverTimestamp(),
-                'isVerified': true,
-              });
-        } else {
-          // Access Denied
-          await _auth.signOut();
-          await googleSignIn.signOut();
-          if (mounted) {
-            _showErrorDialog(
-              "Access Denied",
-              "You are not registered in any Hostel. Please contact your Rector.",
-            );
-          }
-          return;
-        }
-      }
-
-      // Save FCM Token
-      try {
-        final token = await PushNotificationService().getFcmToken();
-        if (token != null) {
-          await FirebaseFirestore.instance
-              .collection('users')
-              .doc(userCredential.user!.uid)
-              .update({'fcmToken': token});
-        }
-      } catch (e) {
-        debugPrint("Error saving FCM token: $e");
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text("Google Sign-In failed: $e")));
-      }
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
-    }
-  }
-
-  void _showErrorDialog(String title, String message) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(
-          title,
-          style: const TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
-        ),
-        content: Text(message),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text("OK"),
-          ),
-        ],
-      ),
-    );
-  }
 
   String _getErrorMessage(FirebaseAuthException e) {
     switch (e.code) {
@@ -312,69 +248,31 @@ class _LoginScreenState extends State<LoginScreen>
               child: IntrinsicHeight(
                 child: Column(
                   children: [
-                    // Top Section with Header & Logo
-                    Stack(
-                      alignment: Alignment.center,
-                      children: [
-                        ClipPath(
-                          clipper: HeaderClipper(),
-                          child: Container(
-                            height: 220, // Reduced height
-                            width: double.infinity,
-                            decoration: const BoxDecoration(
-                              image: DecorationImage(
-                                image: AssetImage('assets/images/building.jpg'),
-                                fit: BoxFit.cover,
-                              ),
-                            ),
-                            child: Container(
-                              decoration: BoxDecoration(
-                                gradient: LinearGradient(
-                                  begin: Alignment.topCenter,
-                                  end: Alignment.bottomCenter,
-                                  colors: [
-                                    Colors.black.withValues(alpha: 0.3),
-                                    Colors.transparent,
-                                  ],
-                                ),
-                              ),
-                            ),
+                    // Top Section with Header
+                    ClipPath(
+                      clipper: HeaderClipper(),
+                      child: Container(
+                        height: 220,
+                        width: double.infinity,
+                        decoration: const BoxDecoration(
+                          image: DecorationImage(
+                            image: AssetImage('assets/images/building.jpg'),
+                            fit: BoxFit.cover,
                           ),
                         ),
-                        // Logo moved to top
-                        Positioned(
-                          bottom: 0,
-                          child: Container(
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withValues(alpha: 0.1),
-                                  blurRadius: 10,
-                                  spreadRadius: 2,
-                                ),
+                        child: Container(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                              colors: [
+                                Colors.black.withValues(alpha: 0.3),
+                                Colors.transparent,
                               ],
                             ),
-                            child: CircleAvatar(
-                              radius: 45,
-                              backgroundColor: Colors.white,
-                              child: Padding(
-                                padding: const EdgeInsets.all(8.0),
-                                child: Image.asset(
-                                  'assets/images/logo.png',
-                                  errorBuilder: (context, error, stackTrace) {
-                                    return const Icon(
-                                      Icons.school,
-                                      size: 40,
-                                      color: Color(0xFF002244),
-                                    );
-                                  },
-                                ),
-                              ),
-                            ),
                           ),
                         ),
-                      ],
+                      ),
                     ),
 
                     const SizedBox(height: 20),
@@ -425,7 +323,7 @@ class _LoginScreenState extends State<LoginScreen>
                                         keyboardType:
                                             TextInputType.emailAddress,
                                         decoration: InputDecoration(
-                                          hintText: 'Enter Enrollment',
+                                          hintText: 'Enter Enrollment Email',
                                           prefixIcon: const Icon(
                                             Icons.badge_outlined,
                                             color: Colors.grey,
@@ -586,7 +484,7 @@ class _LoginScreenState extends State<LoginScreen>
                                   );
                                 },
                                 child: const Text(
-                                  "Verify Enrollment",
+                                  "Verify Email",
                                   style: TextStyle(
                                     fontWeight: FontWeight.bold,
                                     color: Color(0xFF002244),

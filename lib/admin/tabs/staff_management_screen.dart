@@ -257,9 +257,12 @@ class _StaffListScreenState extends State<StaffListScreen> {
     final emailController = TextEditingController(text: staff?.email ?? '');
     String role = staff?.role ?? widget.role; // Default to this screen's role
     String? shift = staff?.assignedShift;
-    String? hostel = staff?.assignedHostel;
     String? category = staff?.assignedCategory;
     String? branch = staff?.assignedBranch;
+    List<String> assignedHostels = staff?.assignedHostels?.toList() ?? [];
+    if (assignedHostels.isEmpty && staff?.assignedHostel != null) {
+      assignedHostels.add(staff!.assignedHostel!);
+    }
     bool isLoading = false;
 
     showDialog(
@@ -362,40 +365,28 @@ class _StaffListScreenState extends State<StaffListScreen> {
                   onChanged: (val) => shift = val,
                 ),
                 const SizedBox(height: 12),
-                DropdownButtonFormField<String>(
-                  initialValue: hostel,
-                  decoration: const InputDecoration(labelText: 'Assign Hostel'),
-                  items: [
-                    const DropdownMenuItem(
-                      value: null,
-                      child: Text("None (Global)"),
-                    ),
-                    const DropdownMenuItem(
-                      value: "BH1",
-                      child: Text("Boys Hostel 1"),
-                    ),
-                    const DropdownMenuItem(
-                      value: "BH2",
-                      child: Text("Boys Hostel 2"),
-                    ),
-                    const DropdownMenuItem(
-                      value: "BH3",
-                      child: Text("Boys Hostel 3"),
-                    ),
-                    const DropdownMenuItem(
-                      value: "BH4",
-                      child: Text("Boys Hostel 4"),
-                    ),
-                    const DropdownMenuItem(
-                      value: "GH1",
-                      child: Text("Girls Hostel 1"),
-                    ),
-                    const DropdownMenuItem(
-                      value: "GH2",
-                      child: Text("Girls Hostel 2"),
-                    ),
-                  ],
-                  onChanged: (val) => hostel = val,
+                const Text('Assign Hostels', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 4,
+                  children: ['BH1', 'BH2', 'BH3', 'BH4', 'GH1', 'GH2'].map((String h) {
+                    return FilterChip(
+                      label: Text(h),
+                      selected: assignedHostels.contains(h),
+                      selectedColor: const Color(0xFF002244).withValues(alpha: 0.2),
+                      checkmarkColor: const Color(0xFF002244),
+                      onSelected: (bool selected) {
+                        setDialogState(() {
+                          if (selected) {
+                            assignedHostels.add(h);
+                          } else {
+                            assignedHostels.remove(h);
+                          }
+                        });
+                      },
+                    );
+                  }).toList(),
                 ),
               ],
             ),
@@ -425,7 +416,8 @@ class _StaffListScreenState extends State<StaffListScreen> {
                           email: emailController.text.trim().toLowerCase(),
                           isActive: true, // Default active
                           assignedShift: shift,
-                          assignedHostel: hostel,
+                          assignedHostel: assignedHostels.isNotEmpty ? assignedHostels.first : null,
+                          assignedHostels: assignedHostels,
                           assignedCategory: category,
                           assignedBranch: branch,
                         );
@@ -463,7 +455,8 @@ class _StaffListScreenState extends State<StaffListScreen> {
 
                                 await doc.reference.update({
                                   'role': userRole,
-                                  'assignedHostel': hostel,
+                                  'assignedHostel': assignedHostels.isNotEmpty ? assignedHostels.first : null,
+                                  'assignedHostels': assignedHostels,
                                   'category': category,
                                   'branch': branch,
                                 });
@@ -597,7 +590,7 @@ class _StaffListScreenState extends State<StaffListScreen> {
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            '${staff.role} • ${staff.assignedShift ?? "No Shift"} • ${staff.assignedHostel ?? "Global"}',
+                            '${staff.role} • ${staff.assignedShift ?? "No Shift"} • ${staff.assignedHostels?.isNotEmpty == true ? staff.assignedHostels!.join(", ") : (staff.assignedHostel ?? "Global")}',
                             style: GoogleFonts.inter(
                               fontSize: 13,
                               color: Colors.grey[600],

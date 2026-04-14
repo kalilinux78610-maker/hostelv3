@@ -146,6 +146,53 @@ class _ApplyLeaveScreenState extends State<ApplyLeaveScreen> {
       final user = FirebaseAuth.instance.currentUser;
       if (user == null) throw Exception("User not logged in");
 
+      // ── Block if student already has an active request ──────────────
+      final activeCheck = await FirebaseFirestore.instance
+          .collection('leave_requests')
+          .where('uid', isEqualTo: user.uid)
+          .where('status', whereIn: ['pending', 'approved', 'out'])
+          .limit(1)
+          .get();
+
+      if (activeCheck.docs.isNotEmpty) {
+        if (mounted) {
+          setState(() => _isLoading = false);
+          showDialog(
+            context: context,
+            builder: (ctx) => AlertDialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              title: const Row(
+                children: [
+                  Icon(Icons.warning_amber_rounded, color: Colors.orange),
+                  SizedBox(width: 8),
+                  Text("Request Already Active"),
+                ],
+              ),
+              content: const Text(
+                "You already have an active leave or outing request.\n\n"
+                "Please wait for it to be completed or rejected before submitting a new one.",
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  child: const Text(
+                    "OK",
+                    style: TextStyle(
+                      color: Color(0xFF002244),
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          );
+        }
+        return;
+      }
+      // ────────────────────────────────────────────────────────────────
+
       // Fetch User Details for Context (Hostel, Room, Parent Phone)
       final userDoc = await FirebaseFirestore.instance
           .collection('users')
@@ -198,6 +245,17 @@ class _ApplyLeaveScreenState extends State<ApplyLeaveScreen> {
         title: _leaveType == 'Outing' ? "New Outing Request" : "New Leave Request",
         message: notificationMessage,
         receiverUid: notificationReceiver, 
+        type: 'leave_request',
+        relatedRequestId: requestRef.id,
+      );
+
+      // Also notify the student themselves: submission receipt
+      await NotificationRepository().sendNotification(
+        title: "Request Submitted ✅",
+        message: _leaveType == 'Outing'
+            ? "Your outing request has been submitted and is pending Rector approval."
+            : "Your home leave request has been submitted and is pending HOD approval.",
+        receiverUid: user.uid,
         type: 'leave_request',
         relatedRequestId: requestRef.id,
       );

@@ -1,6 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import '../admin/tabs/mess_management_screen.dart';
+import '../mess_menu_editor_screen.dart';
+import 'mess_profile_screen.dart';
 
 class MessManagerDashboard extends StatefulWidget {
   const MessManagerDashboard({super.key});
@@ -14,9 +15,9 @@ class _MessManagerDashboardState extends State<MessManagerDashboard> {
   final Color _primaryColor = const Color(0xFF002244);
 
   static const List<Widget> _widgetOptions = <Widget>[
-    MessManagementScreen(),
+    MessMenuEditorScreen(),
     Center(child: Text("Purchase & Stock (Coming Soon)")),
-    Center(child: Text("Profile Settings")),
+    MessProfileScreen(),
   ];
 
   void _onItemTapped(int index) {
@@ -32,18 +33,6 @@ class _MessManagerDashboardState extends State<MessManagerDashboard> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Mess Manager'),
-        backgroundColor: _primaryColor,
-        foregroundColor: Colors.white,
-        automaticallyImplyLeading: false,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.logout),
-            onPressed: () => FirebaseAuth.instance.signOut(),
-          ),
-        ],
-      ),
       body: _widgetOptions.elementAt(_selectedIndex),
       bottomNavigationBar: BottomNavigationBar(
         items: const <BottomNavigationBarItem>[

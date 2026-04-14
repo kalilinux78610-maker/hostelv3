@@ -3,7 +3,6 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 import 'repositories/notification_repository.dart';
-import 'notification_screen.dart';
 import 'hod_profile_screen.dart';
 import 'utils/canonical_names.dart';
 
@@ -19,7 +18,7 @@ class _HodDashboardScreenState extends State<HodDashboardScreen> {
   String? _category;
   String? _branch;
   String? _photoUrl;
-  String? _currentWorkingCategory; // Tracks Degree/Diploma switcher
+  String? _name;
   bool _isLoading = true;
 
   @override
@@ -54,8 +53,8 @@ class _HodDashboardScreenState extends State<HodDashboardScreen> {
           setState(() {
             _category = currentCategory;
             _branch = currentBranch;
-            _currentWorkingCategory ??= currentCategory; // Initialize with profile category
             _photoUrl = data?['photoUrl'];
+            _name = data?['name'];
           });
 
           if (needsUpdate) {
@@ -186,19 +185,23 @@ class _HodDashboardScreenState extends State<HodDashboardScreen> {
         // 1. Fetch all pending HOD docs
         List<QueryDocumentSnapshot> docs = snapshot.data!.docs.toList();
         
-        // 2. Filter in-memory by status, category, branch, type
+        // 2. Filter in-memory by status, type, and branch only
+        //    Category toggle controls which "view" the HOD is in but
+        //    branch is the authoritative filter for ownership.
         docs = docs.where((doc) {
           final data = doc.data() as Map<String, dynamic>;
           final isPending = data['status'] == 'pending';
           final isHome = data['type'] == 'Home';
-          
-          final docCategory = data['category']?.toString();
-          final docBranch = data['branch']?.toString();
-          
-          final categoryMatch = (_currentWorkingCategory == null) || (docCategory == _currentWorkingCategory);
-          final branchMatch = (_branch == null) || (docBranch == _branch);
-          
-          return isPending && isHome && categoryMatch && branchMatch;
+
+          final docBranch = CanonicalNames.canonicalizeBranch(
+            data['branch']?.toString() ?? '',
+            data['category']?.toString() ?? '',
+          );
+
+          // Branch must match. Category toggle is just a UI view switcher.
+          final branchMatch = (_branch == null || _branch!.isEmpty) || (docBranch == _branch);
+
+          return isPending && isHome && branchMatch;
         }).toList();
 
         if (docs.isEmpty) {
@@ -209,8 +212,23 @@ class _HodDashboardScreenState extends State<HodDashboardScreen> {
                 Icon(Icons.done_all, size: 64, color: Colors.grey[300]),
                 const SizedBox(height: 16),
                 Text(
-                  "No pending leave requests for $_branch",
-                  style: TextStyle(color: Colors.grey[400], fontSize: 16),
+                  "No pending leave requests",
+                  style: TextStyle(
+                    color: Colors.grey[600],
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  "Filtering for: $_branch",
+                  style: TextStyle(color: Colors.grey[400], fontSize: 13),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  "Only 'Home' type requests appear here.\nOuting requests go directly to Rector.",
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: Colors.grey[400], fontSize: 12),
                 ),
               ],
             ),
@@ -435,7 +453,7 @@ class _HodDashboardScreenState extends State<HodDashboardScreen> {
         List<QueryDocumentSnapshot> docs = snapshot.data!.docs.where((doc) {
           final data = doc.data() as Map<String, dynamic>;
           return data['type'] == 'Home' &&
-                 data['category'] == _currentWorkingCategory &&
+                 data['category'] == _category &&
                  data['branch'] == _branch;
         }).toList();
 
@@ -652,7 +670,7 @@ class _HodDashboardScreenState extends State<HodDashboardScreen> {
                                 ),
                               ),
                               Text(
-                                "Professor • $_branch",
+                                "${_name != null && _name!.isNotEmpty ? _name : 'Professor'} • $_branch",
                                 style: const TextStyle(
                                   color: Colors.white,
                                   fontSize: 18,
@@ -662,28 +680,10 @@ class _HodDashboardScreenState extends State<HodDashboardScreen> {
                             ],
                           ),
                         ),
-                        // Action Row: Toggle + Logout
+                        // Action Row: Logout
                         Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            // Category Switcher Toggle
-                            Container(
-                              padding: const EdgeInsets.all(4),
-                              decoration: BoxDecoration(
-                                color: Colors.white.withValues(alpha: 0.1),
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(
-                                  color: Colors.white.withValues(alpha: 0.2),
-                                ),
-                              ),
-                              child: Row(
-                                children: [
-                                  _buildCategorySwitchButton("Degree"),
-                                  _buildCategorySwitchButton("Diploma"),
-                                ],
-                              ),
-                            ),
-                            const SizedBox(width: 8),
                             // Logout Button
                             GestureDetector(
                               onTap: () => FirebaseAuth.instance.signOut(),
@@ -724,7 +724,7 @@ class _HodDashboardScreenState extends State<HodDashboardScreen> {
                             query: FirebaseFirestore.instance
                                 .collection('leave_requests')
                                 .where('hodStatus', isEqualTo: 'pending'),
-                            filter: (data) => data['type'] == 'Home' && data['category'] == _currentWorkingCategory && data['branch'] == _branch,
+                            filter: (data) => data['type'] == 'Home' && data['category'] == _category && data['branch'] == _branch,
                           ),
                         ),
                         const SizedBox(width: 12),
@@ -736,7 +736,7 @@ class _HodDashboardScreenState extends State<HodDashboardScreen> {
                             query: FirebaseFirestore.instance
                                 .collection('leave_requests')
                                 .where('status', isEqualTo: 'approved'),
-                            filter: (data) => data['type'] == 'Home' && data['category'] == _currentWorkingCategory && data['branch'] == _branch,
+                            filter: (data) => data['type'] == 'Home' && data['category'] == _category && data['branch'] == _branch,
                           ),
                         ),
                       ],
@@ -863,27 +863,4 @@ class _HodDashboardScreenState extends State<HodDashboardScreen> {
         ],
       ),
     );
-  }
-
-  Widget _buildCategorySwitchButton(String label) {
-    bool isSelected = _currentWorkingCategory == label;
-    return GestureDetector(
-      onTap: () => setState(() => _currentWorkingCategory = label),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-        decoration: BoxDecoration(
-          color: isSelected ? Colors.white : Colors.transparent,
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            color: isSelected ? _primaryColor : Colors.white70,
-            fontSize: 12,
-            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-          ),
-        ),
-      ),
-    );
-  }
-}
+  }}

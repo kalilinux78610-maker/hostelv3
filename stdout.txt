@@ -1,0 +1,7 @@
+Analyzing warden_dashboard.dart...                              
+
+warning - Unused import: 'repositories/notification_repository.dart' - lib\warden_dashboard.dart:8:8 - unused_import
+warning - Unused import: 'notification_screen.dart' - lib\warden_dashboard.dart:10:8 - unused_import
+  error - The method 'WardenHomeTab' isn't defined for the type '_WardenDashboardState' - lib\warden_dashboard.dart:29:7 - undefined_method
+
+3 issues found. (ran in 1.5s)

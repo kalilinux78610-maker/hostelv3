@@ -5,10 +5,9 @@ import 'package:image_picker/image_picker.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'dart:typed_data';
 
-import 'repositories/notification_repository.dart';
 import 'complaints/admin_complaints_screen.dart';
-import 'notification_screen.dart';
-
+import 'repositories/notification_repository.dart';
+import 'utils/canonical_names.dart';
 class WardenDashboard extends StatefulWidget {
   const WardenDashboard({super.key});
 
@@ -100,11 +99,10 @@ class WardenHomeTab extends StatefulWidget {
 
 class _WardenHomeTabState extends State<WardenHomeTab> {
   static const Color _primaryColor = Color(0xFF002244);
-  String? _wardenCategory;
-  String? _wardenFeeStatus;
-  String? _currentWorkingCategory;
-  String? _selectedDept;
+  List<String> _assignedHostels = [];
   bool _isLoading = true;
+  String _selectedCategory = 'Degree';
+  String _selectedHostel = 'All';
 
   @override
   void initState() {
@@ -119,11 +117,13 @@ class _WardenHomeTabState extends State<WardenHomeTab> {
         final doc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
         if (doc.exists && mounted) {
           final data = doc.data() as Map<String, dynamic>;
-          debugPrint("Warden Profile Loaded: Category=${data['category']}, FeeStatus=${data['feeStatus']}");
           setState(() {
-            _wardenCategory = data['category'];
-            _wardenFeeStatus = data['feeStatus'];
-            _currentWorkingCategory = _wardenCategory; 
+            if (data['assignedHostels'] != null) {
+              _assignedHostels = List<String>.from(data['assignedHostels']);
+            }
+            if (_assignedHostels.isEmpty && data['assignedHostel'] != null) {
+              _assignedHostels.add(data['assignedHostel']);
+            }
             _isLoading = false;
           });
         }
@@ -134,23 +134,45 @@ class _WardenHomeTabState extends State<WardenHomeTab> {
     }
   }
 
+  Widget _buildToggleBtn(String title) {
+    bool isSel = _selectedCategory == title;
+    return GestureDetector(
+      onTap: () => setState(() => _selectedCategory = title),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+        decoration: BoxDecoration(
+          color: isSel ? Colors.white : Colors.transparent,
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Text(
+          title,
+          style: TextStyle(
+            color: isSel ? _primaryColor : Colors.white,
+            fontWeight: isSel ? FontWeight.bold : FontWeight.w500,
+            fontSize: 12,
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
       return const Center(child: CircularProgressIndicator());
     }
 
-    if (_wardenCategory == null || _wardenFeeStatus == null) {
+    if (_assignedHostels.isEmpty) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             const Icon(Icons.account_box, size: 64, color: Colors.grey),
             const SizedBox(height: 16),
-            const Text("Please set up your profile to view requests."),
+            const Text("You are not assigned to any hostels."),
             const SizedBox(height: 20),
             ElevatedButton(
-              onPressed: () => widget.onTabChange?.call(2), // Switch to profile tab
+              onPressed: () => widget.onTabChange?.call(2),
               child: const Text("Go to Profile"),
             ),
           ],
@@ -158,89 +180,148 @@ class _WardenHomeTabState extends State<WardenHomeTab> {
       );
     }
 
-    return Column(
-      children: [
-        // Dark Blue Curved Header
-        Stack(
-          clipBehavior: Clip.none,
+    final hostelsToQuery = _selectedHostel == 'All' ? _assignedHostels : [_selectedHostel];
+
+    // Stream of all pending requests for the warden's selected hostels
+    final stream = FirebaseFirestore.instance
+        .collection('leave_requests')
+        .where('hostelId', whereIn: hostelsToQuery)
+        .where('wardenStatus', isEqualTo: 'pending')
+        .where('status', isEqualTo: 'pending')
+        .snapshots();
+
+    return StreamBuilder<QuerySnapshot>(
+      stream: stream,
+      builder: (context, snapshot) {
+        int totalPending = 0;
+        final docs = snapshot.data?.docs ?? [];
+        Map<String, Map<String, int>> counts = {'Degree': {}, 'Diploma': {}};
+
+        for (var doc in docs) {
+          final data = doc.data() as Map<String, dynamic>;
+          final cat = CanonicalNames.canonicalizeCategory(data['category']);
+          final branch = CanonicalNames.canonicalizeBranch(data['branch'], cat);
+
+          totalPending++;
+          if (counts.containsKey(cat)) {
+            counts[cat]![branch] = (counts[cat]![branch] ?? 0) + 1;
+          }
+        }
+
+        final degreeDepts = [
+          {'name': 'IT & MSC-IT', 'icon': Icons.laptop},
+          {'name': 'B.VOC', 'icon': Icons.menu_book},
+          {'name': 'CSE', 'icon': Icons.desktop_mac},
+          {'name': 'BBA & MBA', 'icon': Icons.school},
+          {'name': 'Chemical', 'icon': Icons.science},
+          {'name': 'Electrical', 'icon': Icons.electrical_services},
+          {'name': 'Civil Engineering', 'icon': Icons.architecture},
+        ];
+
+        final diplomaDepts = [
+          {'name': 'Computer Engineering', 'icon': Icons.computer},
+          {'name': 'Mechanical Engineering', 'icon': Icons.settings},
+          {'name': 'Electrical Engineering', 'icon': Icons.electrical_services},
+          {'name': 'Chemical Engineering', 'icon': Icons.science},
+        ];
+
+        final currentDepts = _selectedCategory == 'Degree' ? degreeDepts : diplomaDepts;
+
+        return Column(
           children: [
-            Container(
-              width: double.infinity,
-              padding: EdgeInsets.only(
-                top: MediaQuery.of(context).padding.top + 16,
-                left: 24,
-                right: 24,
-                bottom: 60,
-              ),
-              decoration: const BoxDecoration(
-                color: _primaryColor,
-                borderRadius: BorderRadius.only(
-                  bottomLeft: Radius.circular(36),
-                  bottomRight: Radius.circular(36),
-                ),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Row(
-                          children: [
-                            if (_selectedDept != null)
-                               IconButton(
-                                 onPressed: () => setState(() => _selectedDept = null),
-                                 icon: const Icon(Icons.arrow_back_ios, color: Colors.white, size: 18),
-                                 padding: EdgeInsets.zero,
-                                 constraints: const BoxConstraints(),
-                               ),
-                            Flexible(
-                              child: Text(
-                                _selectedDept ?? "Warden Dashboard",
-                                style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                          ],
-                        ),
-                        Text(
-                          _currentWorkingCategory == 'Diploma' ? "All Students" : "$_wardenFeeStatus Students",
-                          style: const TextStyle(color: Colors.white70, fontSize: 13),
-                        ),
-                      ],
+            // ── Header Stack ───────────────────────────────────────────
+            Stack(
+              clipBehavior: Clip.none,
+              alignment: Alignment.bottomCenter,
+              children: [
+                Container(
+                  width: double.infinity,
+                  padding: EdgeInsets.only(
+                    top: MediaQuery.of(context).padding.top + 16,
+                    left: 20,
+                    right: 16,
+                    bottom: 65, // Room for the overlapping card
+                  ),
+                  decoration: const BoxDecoration(
+                    color: _primaryColor,
+                    borderRadius: BorderRadius.vertical(
+                      bottom: Radius.circular(40),
                     ),
                   ),
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Toggle
-                      FittedBox(
-                        child: Container(
-                          padding: const EdgeInsets.all(4),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
-                          ),
-                          child: Row(
-                            children: [
-                              _buildCategorySwitchButton("Degree"),
-                              _buildCategorySwitchButton("Diploma"),
-                            ],
-                          ),
+                      // Texts
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              "Warden Dashboard",
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            if (_assignedHostels.length > 1)
+                              SizedBox(
+                                height: 24,
+                                child: DropdownButtonHideUnderline(
+                                  child: DropdownButton<String>(
+                                    dropdownColor: _primaryColor,
+                                    isDense: true,
+                                    icon: const Icon(Icons.arrow_drop_down, color: Colors.white70),
+                                    value: _selectedHostel,
+                                    items: ['All', ..._assignedHostels].map((h) {
+                                      return DropdownMenuItem(
+                                        value: h,
+                                        child: Text(
+                                          h == 'All' ? 'All Hostels' : 'Hostel $h',
+                                          style: const TextStyle(color: Colors.white70, fontSize: 13),
+                                        ),
+                                      );
+                                    }).toList(),
+                                    onChanged: (val) {
+                                      if (val != null) setState(() => _selectedHostel = val);
+                                    },
+                                  ),
+                                ),
+                              )
+                            else if (_assignedHostels.isNotEmpty)
+                              Text(
+                                "Hostel: ${_assignedHostels.first}",
+                                style: const TextStyle(color: Colors.white70, fontSize: 13),
+                              ),
+                          ],
                         ),
                       ),
-                      const SizedBox(width: 6),
-                      // Logout
+                    // Toggle
+                    Container(
+                        padding: const EdgeInsets.all(2),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(24),
+                          border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            _buildToggleBtn('Degree'),
+                            _buildToggleBtn('Diploma'),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      // Power Button
                       GestureDetector(
                         onTap: () => FirebaseAuth.instance.signOut(),
                         child: Container(
                           padding: const EdgeInsets.all(8),
                           decoration: BoxDecoration(
                             color: Colors.white.withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(10),
+                            shape: BoxShape.circle,
                             border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
                           ),
                           child: const Icon(Icons.power_settings_new, color: Colors.white, size: 16),
@@ -248,261 +329,270 @@ class _WardenHomeTabState extends State<WardenHomeTab> {
                       ),
                     ],
                   ),
-                ],
-              ),
-            ),
-
-            // Floating PENDING card
-            Positioned(
-              bottom: -35,
-              left: 0,
-              right: 0,
-              child: Center(child: _buildPendingCard()),
-            ),
-          ],
-        ),
-
-        const SizedBox(height: 50),
-
-        // Home View: Grid or List
-        Expanded(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24),
-            child: _selectedDept == null ? _buildDepartmentGrid() : _buildRequestList(),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildDepartmentGrid() {
-    final depts = _currentWorkingCategory == 'Degree' 
-        ? WardenDepartmentScreen._degreeDepartments 
-        : WardenDepartmentScreen._diplomaDepartments;
-
-    return GridView.builder(
-      padding: const EdgeInsets.only(bottom: 24),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
-        crossAxisSpacing: 16,
-        mainAxisSpacing: 16,
-        childAspectRatio: 1.1,
-      ),
-      itemCount: depts.length,
-      itemBuilder: (context, index) {
-        final dept = depts[index];
-        return _buildDepartmentCard(dept['name'], dept['icon']);
-      },
-    );
-  }
-
-  Widget _buildDepartmentCard(String name, IconData icon) {
-    return StreamBuilder<QuerySnapshot>(
-      stream: FirebaseFirestore.instance
-          .collection('leave_requests')
-          .where('wardenStatus', isEqualTo: 'pending')
-          .snapshots(),
-      builder: (context, snapshot) {
-        if (!snapshot.hasData) return const SizedBox();
-
-        final docs = snapshot.data!.docs.where((doc) {
-          final data = doc.data() as Map<String, dynamic>;
-          final dCat = (data['category'] ?? '').toString().toLowerCase().trim();
-          final wCat = (_currentWorkingCategory ?? '').toString().toLowerCase().trim();
-          final dBranch = (data['branch'] ?? '').toString().trim();
-          final dBranchKey = dBranch.toLowerCase().replaceAll('.', '').replaceAll(' ', '');
-          final feeStatusInDoc = (data['feeStatus'] ?? '').toString().toLowerCase().trim();
-
-          // Only show active requests (not fully processed or expired)
-          if ((data['status'] ?? '') != 'pending') return false;
-          final endDate = (data['endDate'] as Timestamp?)?.toDate();
-          if (endDate != null && endDate.isBefore(DateTime.now())) return false;
-
-          // Category Filter
-          if (dCat != wCat) return false;
-
-          // Fee Status Filter
-          if (wCat == 'degree') {
-            final wStatus = (_wardenFeeStatus ?? '').toString().toLowerCase().trim();
-            if (feeStatusInDoc.isNotEmpty && feeStatusInDoc != wStatus) return false;
-          }
-
-          // Branch Filter
-          if (name == 'B.VOC') {
-            return dBranchKey == 'bvoc';
-          } else if (name == 'BBA & MBA') {
-            return dBranchKey == 'bbamba' || dBranchKey == 'bba' || dBranchKey == 'mba';
-          } else {
-            return dBranch == name;
-          }
-        }).toList();
-
-        final count = docs.length;
-        return GestureDetector(
-          onTap: () => setState(() => _selectedDept = name),
-          child: Container(
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(20),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.05),
-                  blurRadius: 10,
-                  offset: const Offset(0, 4),
                 ),
-              ],
-            ),
-            child: Stack(
-              children: [
-                Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: _primaryColor.withValues(alpha: 0.05),
-                          shape: BoxShape.circle,
+
+                // ── Floating PENDING Card ──────────────────────────────
+                Positioned(
+                  bottom: -45, // overlaps by 45px
+                  child: Container(
+                    width: 130,
+                    height: 90,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(20),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.08),
+                          blurRadius: 15,
+                          offset: const Offset(0, 5),
                         ),
-                        child: Icon(icon, color: _primaryColor, size: 28),
-                      ),
-                      const SizedBox(height: 12),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 8),
-                        child: Text(
-                          name,
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: _primaryColor),
+                      ],
+                    ),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Stack(
+                          clipBehavior: Clip.none,
+                          children: [
+                            const Icon(Icons.access_time_filled, color: _primaryColor, size: 32),
+                            if (totalPending > 0)
+                              Positioned(
+                                top: -4,
+                                right: -4,
+                                child: Container(
+                                  padding: const EdgeInsets.all(4),
+                                  decoration: const BoxDecoration(
+                                    color: Colors.red,
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: Text(
+                                    '$totalPending',
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                          ],
                         ),
-                      ),
-                    ],
-                  ),
-                ),
-                if (count > 0)
-                  Positioned(
-                    top: 12,
-                    right: 12,
-                    child: Container(
-                      width: 12,
-                      height: 12,
-                      decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle),
+                        const SizedBox(height: 8),
+                        const Text(
+                          "PENDING",
+                          style: TextStyle(
+                            color: _primaryColor,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 1.2,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
+                ),
               ],
             ),
-          ),
+
+            const SizedBox(height: 60),
+
+            // ── Grid of Departments ──────────────────────────────────
+            Expanded(
+              child: GridView.builder(
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
+                itemCount: currentDepts.length,
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 2,
+                  crossAxisSpacing: 16,
+                  mainAxisSpacing: 16,
+                  childAspectRatio: 1.05,
+                ),
+                itemBuilder: (context, index) {
+                  final dept = currentDepts[index];
+                  final String name = dept['name'] as String;
+                  final IconData icon = dept['icon'] as IconData;
+                  final int pendingCount = counts[_selectedCategory]?[name] ?? 0;
+
+                  return GestureDetector(
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => WardenDepartmentRequestsScreen(
+                            branch: name,
+                            category: _selectedCategory,
+                            assignedHostels: hostelsToQuery,
+                          ),
+                        ),
+                      );
+                    },
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(24),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.03),
+                            blurRadius: 10,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: Stack(
+                        clipBehavior: Clip.none,
+                        children: [
+                          Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(14),
+                                  decoration: BoxDecoration(
+                                    color: _primaryColor.withValues(alpha: 0.05),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: Icon(icon, color: _primaryColor, size: 30),
+                                ),
+                                const SizedBox(height: 12),
+                                Text(
+                                  name,
+                                  textAlign: TextAlign.center,
+                                  style: const TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600,
+                                    color: _primaryColor,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          // Red Dot Badge
+                          if (pendingCount > 0)
+                            const Positioned(
+                              top: 14,
+                              right: 14,
+                              child: CircleAvatar(
+                                radius: 5,
+                                backgroundColor: Colors.redAccent,
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
         );
       },
     );
   }
+}
 
-  Widget _buildRequestList() {
-    return StreamBuilder<QuerySnapshot>(
-      stream: FirebaseFirestore.instance
-          .collection('leave_requests')
-          .where('wardenStatus', isEqualTo: 'pending')
-          .snapshots(),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
-        }
+// ── Requests list for a specific Department + Category ──────────────────────
+class WardenDepartmentRequestsScreen extends StatelessWidget {
+  final String branch;
+  final String category;
+  final List<String> assignedHostels;
+  static const Color _primaryColor = Color(0xFF002244);
 
-        final allDocs = snapshot.data?.docs ?? [];
-        final filteredDocs = allDocs.where((doc) {
-          final data = doc.data() as Map<String, dynamic>;
-          final dCat = (data['category'] ?? '').toString().toLowerCase().trim();
-          final wCat = (_currentWorkingCategory ?? '').toString().toLowerCase().trim();
-          final dBranch = (data['branch'] ?? '').toString().trim();
-          final dBranchKey = dBranch.toLowerCase().replaceAll('.', '').replaceAll(' ', '');
-          final feeStatusInDoc = (data['feeStatus'] ?? '').toString().toLowerCase().trim();
+  const WardenDepartmentRequestsScreen({
+    super.key,
+    required this.branch,
+    required this.category,
+    required this.assignedHostels,
+  });
 
-          // Only show active requests
-          if ((data['status'] ?? '') != 'pending') return false;
-          final endDate = (data['endDate'] as Timestamp?)?.toDate();
-          if (endDate != null && endDate.isBefore(DateTime.now())) return false;
+  @override
+  Widget build(BuildContext context) {
+    // Note: We filter by branch in the query to optimize,
+    // and we will ensure the category matches in-memory if needed.
+    final stream = FirebaseFirestore.instance
+        .collection('leave_requests')
+        .where('hostelId', whereIn: assignedHostels)
+        .where('wardenStatus', isEqualTo: 'pending')
+        .where('status', isEqualTo: 'pending')
+        .snapshots();
 
-          if (dCat != wCat) return false;
-
-          if (wCat == 'degree') {
-            final wStatus = (_wardenFeeStatus ?? '').toString().toLowerCase().trim();
-            if (feeStatusInDoc.isNotEmpty && feeStatusInDoc != wStatus) return false;
+    return Scaffold(
+      backgroundColor: const Color(0xFFF5F5F5),
+      appBar: AppBar(
+        title: Text(branch, style: const TextStyle(fontSize: 16)),
+        backgroundColor: _primaryColor,
+        foregroundColor: Colors.white,
+      ),
+      body: StreamBuilder<QuerySnapshot>(
+        stream: stream,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
           }
-
-          if (_selectedDept == 'B.VOC') {
-            return dBranchKey == 'bvoc';
-          } else if (_selectedDept == 'BBA & MBA') {
-            return dBranchKey == 'bbamba' || dBranchKey == 'bba' || dBranchKey == 'mba';
-          } else {
-            return dBranch == _selectedDept;
-          }
-        }).toList();
-
-        if (filteredDocs.isEmpty) {
-          return Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.done_all, size: 64, color: Colors.grey[300]),
-                const SizedBox(height: 16),
-                const Text("No pending requests", style: TextStyle(color: Colors.grey)),
-              ],
-            ),
-          );
-        }
-
-        return ListView.builder(
-          padding: const EdgeInsets.only(bottom: 24),
-          itemCount: filteredDocs.length,
-          itemBuilder: (context, index) {
-            final doc = filteredDocs[index];
+          final docs = snapshot.data?.docs ?? [];
+          
+          // Filter matching branch & category properly using CanonicalNames
+          var filteredDocs = docs.where((doc) {
             final data = doc.data() as Map<String, dynamic>;
-            return _buildRequestCard(context, doc.id, data);
-          },
-        );
-      },
-    );
-  }
+            final docCat = CanonicalNames.canonicalizeCategory(data['category']);
+            final docBranch = CanonicalNames.canonicalizeBranch(data['branch'], docCat);
+            return docCat == category && docBranch == branch;
+          }).toList();
 
-  Widget _buildCategorySwitchButton(String label) {
-    bool isSelected = _currentWorkingCategory == label;
-    return GestureDetector(
-      onTap: () => setState(() {
-        _currentWorkingCategory = label;
-        _selectedDept = null; // Reset dept view when switching category
-      }),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-        decoration: BoxDecoration(
-          color: isSelected ? Colors.white : Colors.transparent,
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            color: isSelected ? _primaryColor : Colors.white,
-            fontSize: 11,
-            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-          ),
-        ),
+          // Sort in memory to avoid missing index or missing field errors
+          filteredDocs.sort((a, b) {
+            final tzA = (a.data() as Map<String, dynamic>)['createdAt'] as Timestamp?;
+            final tzB = (b.data() as Map<String, dynamic>)['createdAt'] as Timestamp?;
+            if (tzA == null && tzB == null) return 0;
+            if (tzA == null) return 1;
+            if (tzB == null) return -1;
+            return tzA.compareTo(tzB); // Oldest first
+          });
+
+          if (filteredDocs.isEmpty) {
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.done_all, size: 72, color: Colors.grey[300]),
+                  const SizedBox(height: 16),
+                  const Text("No pending requests", style: TextStyle(color: Colors.grey)),
+                ],
+              ),
+            );
+          }
+          
+          return ListView.builder(
+            padding: const EdgeInsets.all(16),
+            itemCount: filteredDocs.length,
+            itemBuilder: (context, index) {
+              final doc = filteredDocs[index];
+              final data = doc.data() as Map<String, dynamic>;
+              return _buildRequestCard(context, doc.id, data);
+            },
+          );
+        },
       ),
     );
   }
 
   Widget _buildRequestCard(BuildContext context, String docId, Map<String, dynamic> data) {
-    // We can reuse the existing card design or simplify it here.
-    // For now, let's navigate to the detail or approve directly
     return Card(
-      margin: const EdgeInsets.only(bottom: 16),
+      margin: const EdgeInsets.only(bottom: 14),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      elevation: 2,
       child: ListTile(
-        title: Text(data['name'] ?? 'Unknown Student', style: const TextStyle(fontWeight: FontWeight.bold)),
-        subtitle: Text("${data['branch']} | ${data['type']}"),
-        trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-        onTap: () {
-          // Navigate to a dedicated approve screen or dialog
-          // I will use a simple dialog for now to speed up implementation
-          _showApproveDialog(context, docId, data);
-        },
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        leading: CircleAvatar(
+          backgroundColor: _primaryColor.withValues(alpha: 0.1),
+          child: Text(
+            (data['name'] ?? 'S')[0].toUpperCase(),
+            style: const TextStyle(color: _primaryColor, fontWeight: FontWeight.bold),
+          ),
+        ),
+        title: Text(data['name'] ?? 'Unknown', style: const TextStyle(fontWeight: FontWeight.bold)),
+        subtitle: Text("${data['branch'] ?? ''} | Room ${data['room'] ?? ''} | ${data['type'] ?? ''}"),
+        trailing: const Icon(Icons.arrow_forward_ios, size: 14, color: Colors.grey),
+        onTap: () => _showApproveDialog(context, docId, data),
       ),
     );
   }
@@ -510,7 +600,8 @@ class _WardenHomeTabState extends State<WardenHomeTab> {
   void _showApproveDialog(BuildContext context, String docId, Map<String, dynamic> data) {
     showModalBottomSheet(
       context: context,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
       builder: (context) => Padding(
         padding: const EdgeInsets.all(24),
         child: Column(
@@ -518,10 +609,11 @@ class _WardenHomeTabState extends State<WardenHomeTab> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text("Request from ${data['name']}", style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 8),
-            Text("Branch: ${data['branch']}"),
-            Text("Room: ${data['room']}"),
-            const SizedBox(height: 16),
+            const SizedBox(height: 4),
+            Text("Hostel: ${data['hostelId'] ?? 'N/A'}   Room: ${data['room'] ?? 'N/A'}", style: TextStyle(color: Colors.grey[600])),
+            Text("Branch: ${data['branch'] ?? 'N/A'}", style: TextStyle(color: Colors.grey[600])),
+            Text("Type: ${data['type'] ?? 'N/A'}", style: TextStyle(color: Colors.grey[600])),
+            const SizedBox(height: 12),
             const Text("Reason:", style: TextStyle(fontWeight: FontWeight.bold)),
             Text(data['reason'] ?? 'N/A', style: const TextStyle(fontStyle: FontStyle.italic)),
             const SizedBox(height: 24),
@@ -529,44 +621,85 @@ class _WardenHomeTabState extends State<WardenHomeTab> {
               children: [
                 Expanded(
                   child: OutlinedButton(
-                    onPressed: () => _updateStatus(context, docId, 'rejected'),
-                    style: OutlinedButton.styleFrom(foregroundColor: Colors.red),
+                    onPressed: () => _updateStatus(context, docId, data, 'rejected'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.red,
+                      side: const BorderSide(color: Colors.red),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
                     child: const Text("REJECT"),
                   ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: ElevatedButton(
-                    onPressed: () => _updateStatus(context, docId, 'approved'),
-                    style: ElevatedButton.styleFrom(backgroundColor: _primaryColor, foregroundColor: Colors.white),
+                    onPressed: () => _updateStatus(context, docId, data, 'approved'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: _primaryColor,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
                     child: const Text("APPROVE"),
                   ),
                 ),
               ],
             ),
+            const SizedBox(height: 8),
           ],
         ),
       ),
     );
   }
 
-  Future<void> _updateStatus(BuildContext context, String docId, String status) async {
+  Future<void> _updateStatus(BuildContext context, String docId, Map<String, dynamic> data, String status) async {
     try {
-      final updateData = <String, dynamic>{
-        'wardenStatus': status,
-      };
-
+      final updateData = <String, dynamic>{'wardenStatus': status};
       if (status == 'approved') {
         updateData['rectorStatus'] = 'pending';
       } else {
         updateData['status'] = 'rejected';
       }
-
       await FirebaseFirestore.instance.collection('leave_requests').doc(docId).update(updateData);
+
+      // Send notifications
+      final studentUid = data['uid'] as String?;
+      final studentName = data['name'] ?? 'Student';
+      if (studentUid != null) {
+        if (status == 'approved') {
+          // Notify student: warden approved, now with rector
+          await NotificationRepository().sendNotification(
+            title: "Warden Approved ✅",
+            message: "Your leave request was approved by the Warden and is now pending Rector approval.",
+            receiverUid: studentUid,
+            type: 'leave_request',
+            relatedRequestId: docId,
+          );
+          // Notify rector
+          await NotificationRepository().sendNotification(
+            title: "New Approval Required",
+            message: "Warden approved $studentName's leave request. Please review.",
+            receiverUid: 'rector',
+            type: 'leave_request',
+            relatedRequestId: docId,
+          );
+        } else {
+          // Notify student: rejected
+          await NotificationRepository().sendNotification(
+            title: "Request Rejected ❌",
+            message: "Your leave request was rejected by the Warden.",
+            receiverUid: studentUid,
+            type: 'leave_request',
+            relatedRequestId: docId,
+          );
+        }
+      }
 
       if (context.mounted) {
         Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Request $status")));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(status == 'approved' ? "Request Approved & Forwarded to Rector" : "Request Rejected"),
+          backgroundColor: status == 'approved' ? Colors.green : Colors.red,
+        ));
       }
     } catch (e) {
       if (context.mounted) {
@@ -575,997 +708,7 @@ class _WardenHomeTabState extends State<WardenHomeTab> {
     }
   }
 
-  Widget _buildPendingCard() {
-    return StreamBuilder<QuerySnapshot>(
-      stream: FirebaseFirestore.instance
-          .collection('leave_requests')
-          .where('wardenStatus', isEqualTo: 'pending')
-          .snapshots(),
-      builder: (context, snapshot) {
-        if (!snapshot.hasData) return const SizedBox();
 
-        final docs = snapshot.data!.docs.where((doc) {
-          final data = doc.data() as Map<String, dynamic>;
-          final dCat = (data['category'] ?? '').toString().toLowerCase().trim();
-          final wCat = (_currentWorkingCategory ?? '').toString().toLowerCase().trim();
-          final feeStatusInDoc = (data['feeStatus'] ?? '').toString().toLowerCase().trim();
-
-          // Only count active, non-expired requests
-          if ((data['status'] ?? '') != 'pending') return false;
-          final endDate = (data['endDate'] as Timestamp?)?.toDate();
-          if (endDate != null && endDate.isBefore(DateTime.now())) return false;
-
-          if (dCat != wCat) return false;
-
-          if (wCat == 'degree') {
-            final wStatus = (_wardenFeeStatus ?? '').toString().toLowerCase().trim();
-            if (feeStatusInDoc.isNotEmpty && feeStatusInDoc != wStatus) return false;
-          }
-          return true;
-        }).toList();
-
-        final count = docs.length;
-        return Container(
-          padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.08),
-                blurRadius: 20,
-                offset: const Offset(0, 8),
-              ),
-            ],
-          ),
-          child: Column(
-            children: [
-              Stack(
-                alignment: Alignment.topRight,
-                children: [
-                  const Padding(
-                    padding: EdgeInsets.only(right: 8),
-                    child: Icon(
-                      Icons.access_time,
-                      size: 36,
-                      color: _primaryColor,
-                    ),
-                  ),
-                  if (count > 0)
-                    Container(
-                      padding: const EdgeInsets.all(6),
-                      decoration: const BoxDecoration(
-                        color: Colors.red,
-                        shape: BoxShape.circle,
-                      ),
-                      child: Text(
-                        count.toString(),
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-              const SizedBox(height: 4),
-              const Text(
-                "PENDING",
-                style: TextStyle(
-                  color: _primaryColor,
-                  fontSize: 13,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 1,
-                ),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-}
-
-// Category Card Widget with Red Dot
-class _CategoryCard extends StatelessWidget {
-  final String title;
-  final IconData icon;
-  final String category;
-  final VoidCallback onTap;
-
-  const _CategoryCard({
-    required this.title,
-    required this.icon,
-    required this.category,
-    required this.onTap,
-  });
-
-  static const Color _primaryColor = Color(0xFF002244);
-
-  @override
-  Widget build(BuildContext context) {
-    return StreamBuilder<QuerySnapshot>(
-      stream: FirebaseFirestore.instance
-          .collection('leave_requests')
-          .where('wardenStatus', isEqualTo: 'pending')
-          .where('status', isEqualTo: 'pending')
-          .where('category', isEqualTo: category)
-          .snapshots(),
-      builder: (context, snapshot) {
-        final hasRequests = snapshot.hasData && snapshot.data!.docs.isNotEmpty;
-
-        return GestureDetector(
-          onTap: onTap,
-          child: Container(
-            padding: const EdgeInsets.symmetric(vertical: 32, horizontal: 16),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(20),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.06),
-                  blurRadius: 16,
-                  offset: const Offset(0, 6),
-                ),
-              ],
-            ),
-            child: Stack(
-              clipBehavior: Clip.none,
-              children: [
-                // Red dot
-                if (hasRequests)
-                  Positioned(
-                    top: -20,
-                    right: -8,
-                    child: Container(
-                      width: 14,
-                      height: 14,
-                      decoration: const BoxDecoration(
-                        color: Colors.red,
-                        shape: BoxShape.circle,
-                      ),
-                    ),
-                  ),
-                Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(icon, size: 44, color: _primaryColor),
-                      const SizedBox(height: 12),
-                      Text(
-                        title,
-                        style: const TextStyle(
-                          color: _primaryColor,
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
-}
-
-// ============================================================
-// SCREEN 2: DEPARTMENT SELECTION
-// ============================================================
-class WardenDepartmentScreen extends StatelessWidget {
-  final String category;
-
-  const WardenDepartmentScreen({super.key, required this.category});
-
-  static const Color _primaryColor = Color(0xFF002244);
-
-  // Degree Departments
-  static const List<Map<String, dynamic>> _degreeDepartments = [
-    {'name': 'IT & MSC-IT', 'icon': Icons.computer},
-    {'name': 'B.VOC', 'icon': Icons.auto_stories},
-    {'name': 'CSE', 'icon': Icons.desktop_mac},
-    {'name': 'BBA & MBA', 'icon': Icons.school},
-    {'name': 'Chemical', 'icon': Icons.science},
-    {'name': 'Electrical', 'icon': Icons.electrical_services},
-    {'name': 'Pharmacy', 'icon': Icons.local_pharmacy},
-    {'name': 'Civil Engineering', 'icon': Icons.architecture},
-  ];
-
-  // Diploma Departments
-  static const List<Map<String, dynamic>> _diplomaDepartments = [
-    {'name': 'Electrical Engineering', 'icon': Icons.electrical_services},
-    {'name': 'Chemical Engineering', 'icon': Icons.science},
-    {'name': 'Information Technology', 'icon': Icons.computer},
-    {'name': 'Computer Engineering', 'icon': Icons.memory},
-    {'name': 'Mechanical Engineering', 'icon': Icons.settings},
-  ];
-
-  @override
-  Widget build(BuildContext context) {
-    final departments = category == 'Degree'
-        ? _degreeDepartments
-        : _diplomaDepartments;
-
-    return Scaffold(
-      backgroundColor: const Color(0xFFF5F5F5),
-      body: Column(
-        children: [
-          // Dark Blue Curved Header
-          Container(
-            width: double.infinity,
-            padding: EdgeInsets.only(
-              top: MediaQuery.of(context).padding.top + 16,
-              left: 24,
-              right: 24,
-              bottom: 30,
-            ),
-            decoration: const BoxDecoration(
-              color: _primaryColor,
-              borderRadius: BorderRadius.only(
-                bottomLeft: Radius.circular(36),
-                bottomRight: Radius.circular(36),
-              ),
-            ),
-            child: Row(
-              children: [
-                GestureDetector(
-                  onTap: () => Navigator.pop(context),
-                  child: Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.15),
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(
-                      Icons.arrow_back,
-                      color: Colors.white,
-                      size: 22,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        "Warden",
-                        style: TextStyle(color: Colors.white70, fontSize: 14),
-                      ),
-                      Text(
-                        category,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 22,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                GestureDetector(
-                  onTap: () => Navigator.pop(context, 2),
-                  child: Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.15),
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(
-                      Icons.person,
-                      color: Colors.white,
-                      size: 22,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                GestureDetector(
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) =>
-                            const NotificationScreen(userRole: 'warden'),
-                      ),
-                    );
-                  },
-                  child: Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.15),
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(
-                      Icons.notifications,
-                      color: Colors.white,
-                      size: 22,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          const SizedBox(height: 20),
-
-          // Department Grid
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: GridView.builder(
-                padding: const EdgeInsets.only(bottom: 24),
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 2,
-                  crossAxisSpacing: 16,
-                  mainAxisSpacing: 16,
-                  childAspectRatio: 1.2,
-                ),
-                itemCount: departments.length,
-                itemBuilder: (context, index) {
-                  final dept = departments[index];
-                  return _DepartmentCard(
-                    name: dept['name'],
-                    icon: dept['icon'],
-                    category: category,
-                    onTap: () async {
-                      final result = await Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => WardenDeptRequestsScreen(
-                            category: category,
-                            department: dept['name'],
-                          ),
-                        ),
-                      );
-                      if (!context.mounted) return;
-                      if (result is int) {
-                        Navigator.pop(context, result);
-                      }
-                    },
-                  );
-                },
-              ),
-            ),
-          ),
-        ],
-      ),
-      bottomNavigationBar: Container(
-        decoration: BoxDecoration(
-          color: Colors.white,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.08),
-              blurRadius: 20,
-              offset: const Offset(0, -5),
-            ),
-          ],
-        ),
-        child: BottomNavigationBar(
-          items: const <BottomNavigationBarItem>[
-            BottomNavigationBarItem(
-              icon: Icon(Icons.assignment),
-              label: 'Requests',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.report_problem_outlined),
-              label: 'Complaints',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.person_outline),
-              label: 'Profile',
-            ),
-          ],
-          currentIndex: 0,
-          selectedItemColor: _primaryColor,
-          unselectedItemColor: Colors.grey,
-          backgroundColor: Colors.white,
-          elevation: 0,
-          type: BottomNavigationBarType.fixed,
-          selectedFontSize: 12,
-          unselectedFontSize: 12,
-          onTap: (index) {
-            if (index == 0) {
-              Navigator.pop(context);
-            } else {
-              Navigator.pop(context, index);
-            }
-          },
-        ),
-      ),
-    );
-  }
-}
-
-// Department Card Widget with Red Dot
-class _DepartmentCard extends StatelessWidget {
-  final String name;
-  final IconData icon;
-  final String category;
-  final VoidCallback onTap;
-
-  const _DepartmentCard({
-    required this.name,
-    required this.icon,
-    required this.category,
-    required this.onTap,
-  });
-
-  static const Color _primaryColor = Color(0xFF002244);
-
-  @override
-  Widget build(BuildContext context) {
-    return StreamBuilder<QuerySnapshot>(
-      stream: FirebaseFirestore.instance
-          .collection('leave_requests')
-          .where('wardenStatus', isEqualTo: 'pending')
-          .where('status', isEqualTo: 'pending')
-          .where('category', isEqualTo: category)
-          .where('branch', isEqualTo: name)
-          .snapshots(),
-      builder: (context, snapshot) {
-        final hasRequests = snapshot.hasData && snapshot.data!.docs.isNotEmpty;
-
-        return GestureDetector(
-          onTap: onTap,
-          child: Container(
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(20),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.06),
-                  blurRadius: 16,
-                  offset: const Offset(0, 6),
-                ),
-              ],
-            ),
-            child: Stack(
-              children: [
-                // Red dot notification
-                if (hasRequests)
-                  Positioned(
-                    top: 12,
-                    right: 12,
-                    child: Container(
-                      width: 12,
-                      height: 12,
-                      decoration: const BoxDecoration(
-                        color: Colors.red,
-                        shape: BoxShape.circle,
-                      ),
-                    ),
-                  ),
-                Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(icon, size: 36, color: _primaryColor),
-                      const SizedBox(height: 10),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 8),
-                        child: Text(
-                          name,
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(
-                            color: _primaryColor,
-                            fontSize: 14,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
-}
-
-// ============================================================
-// SCREEN 3: DEPARTMENT REQUESTS (Approve / Reject)
-// ============================================================
-class WardenDeptRequestsScreen extends StatelessWidget {
-  final String category;
-  final String department;
-
-  const WardenDeptRequestsScreen({
-    super.key,
-    required this.category,
-    required this.department,
-  });
-
-  static const Color _primaryColor = Color(0xFF002244);
-
-  Future<void> _updateStatus(
-    BuildContext context,
-    String docId,
-    Map<String, dynamic> requestData,
-    String action,
-  ) async {
-    try {
-      final updateData = <String, dynamic>{};
-      if (action == 'approve') {
-        updateData['wardenStatus'] = 'approved';
-        updateData['rectorStatus'] = 'pending'; // Pass to Rector
-      } else {
-        updateData['wardenStatus'] = 'rejected';
-        updateData['status'] = 'rejected';
-      }
-
-      await FirebaseFirestore.instance
-          .collection('leave_requests')
-          .doc(docId)
-          .update(updateData);
-
-      // Send Notifications
-      final studentUid = requestData['uid'];
-      final studentName = requestData['name'] ?? 'Student';
-
-      if (action == 'approve') {
-        await NotificationRepository().sendNotification(
-          title: "Warden Approved Request",
-          message: "Your application is pending Rector approval.",
-          receiverUid: studentUid,
-          type: 'leave_request',
-          relatedRequestId: docId,
-        );
-        await NotificationRepository().sendNotification(
-          title: "Approvals Required",
-          message: "Warden approved $studentName's request.",
-          receiverUid: 'rector',
-          type: 'leave_request',
-          relatedRequestId: docId,
-        );
-      } else {
-        await NotificationRepository().sendNotification(
-          title: "Request Rejected",
-          message: "Warden rejected your leave application.",
-          receiverUid: studentUid,
-          type: 'leave_request',
-          relatedRequestId: docId,
-        );
-      }
-
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              action == 'approve'
-                  ? "Approved & Forwarded to Rector"
-                  : "Request Rejected",
-            ),
-            backgroundColor: action == 'approve' ? Colors.green : Colors.red,
-          ),
-        );
-      }
-    } catch (e) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Error: $e"), backgroundColor: Colors.red),
-        );
-      }
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF5F5F5),
-      body: Column(
-        children: [
-          // Header
-          Container(
-            width: double.infinity,
-            padding: EdgeInsets.only(
-              top: MediaQuery.of(context).padding.top + 16,
-              left: 24,
-              right: 24,
-              bottom: 24,
-            ),
-            decoration: const BoxDecoration(
-              color: _primaryColor,
-              borderRadius: BorderRadius.only(
-                bottomLeft: Radius.circular(36),
-                bottomRight: Radius.circular(36),
-              ),
-            ),
-            child: Row(
-              children: [
-                GestureDetector(
-                  onTap: () => Navigator.pop(context),
-                  child: Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.15),
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(
-                      Icons.arrow_back,
-                      color: Colors.white,
-                      size: 22,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        "$category • $department",
-                        style: const TextStyle(
-                          color: Colors.white70,
-                          fontSize: 13,
-                        ),
-                      ),
-                      const Text(
-                        "Leave Requests",
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 22,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          // Request List
-          Expanded(
-            child: StreamBuilder<QuerySnapshot>(
-              stream: FirebaseFirestore.instance
-                  .collection('leave_requests')
-                  .where('wardenStatus', isEqualTo: 'pending')
-                  .where('status', isEqualTo: 'pending')
-                  .where('category', isEqualTo: category)
-                  .where('branch', isEqualTo: department)
-                  .orderBy('createdAt', descending: false)
-                  .snapshots(),
-              builder: (context, snapshot) {
-                if (snapshot.hasError) {
-                  return Center(child: Text('Error: ${snapshot.error}'));
-                }
-
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
-                }
-
-                if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                  return Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.done_all, size: 64, color: Colors.grey[300]),
-                        const SizedBox(height: 16),
-                        Text(
-                          "No pending requests",
-                          style: TextStyle(
-                            color: Colors.grey[400],
-                            fontSize: 16,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          "All caught up! 🎉",
-                          style: TextStyle(
-                            color: Colors.grey[400],
-                            fontSize: 14,
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
-                }
-
-                return ListView.builder(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: snapshot.data!.docs.length,
-                  itemBuilder: (context, index) {
-                    final doc = snapshot.data!.docs[index];
-                    final data = doc.data() as Map<String, dynamic>;
-                    final startDate = (data['startDate'] as Timestamp).toDate();
-                    final endDate = (data['endDate'] as Timestamp).toDate();
-
-                    return Container(
-                      margin: const EdgeInsets.only(bottom: 16),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(16),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.05),
-                            blurRadius: 12,
-                            offset: const Offset(0, 4),
-                          ),
-                        ],
-                      ),
-                      child: Padding(
-                        padding: const EdgeInsets.all(20),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            // Student Info Row
-                            Row(
-                              children: [
-                                CircleAvatar(
-                                  radius: 24,
-                                  backgroundColor: _primaryColor.withValues(
-                                    alpha: 0.1,
-                                  ),
-                                  child: Text(
-                                    (data['name'] ?? 'S')[0].toUpperCase(),
-                                    style: const TextStyle(
-                                      color: _primaryColor,
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 18,
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(width: 14),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        data['name'] ?? 'Unknown Student',
-                                        style: const TextStyle(
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 16,
-                                          color: _primaryColor,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 2),
-                                      Text(
-                                        data['email'] ?? '',
-                                        style: TextStyle(
-                                          color: Colors.grey[500],
-                                          fontSize: 12,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 10,
-                                    vertical: 4,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: Colors.orange.withValues(alpha: 0.1),
-                                    borderRadius: BorderRadius.circular(20),
-                                  ),
-                                  child: Text(
-                                    data['type'] ?? 'Leave',
-                                    style: const TextStyle(
-                                      color: Colors.orange,
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-
-                            const SizedBox(height: 16),
-
-                            // Date Info
-                            Container(
-                              padding: const EdgeInsets.all(14),
-                              decoration: BoxDecoration(
-                                color: Colors.grey[50],
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Column(
-                                children: [
-                                  _buildDateRow(
-                                    Icons.logout,
-                                    "From:",
-                                    startDate,
-                                  ),
-                                  const SizedBox(height: 8),
-                                  _buildDateRow(Icons.login, "To:", endDate),
-                                  if (data['room'] != null) ...[
-                                    const Divider(height: 16),
-                                    Row(
-                                      children: [
-                                        Icon(
-                                          Icons.room,
-                                          size: 16,
-                                          color: Colors.grey[500],
-                                        ),
-                                        const SizedBox(width: 8),
-                                        Text(
-                                          "Room: ${data['room']}",
-                                          style: TextStyle(
-                                            color: Colors.grey[600],
-                                            fontSize: 13,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ],
-                                ],
-                              ),
-                            ),
-
-                            const SizedBox(height: 12),
-
-                            // Reason
-                            Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Icon(
-                                  Icons.notes,
-                                  size: 16,
-                                  color: Colors.grey[400],
-                                ),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: Text(
-                                    data['reason'] ?? 'N/A',
-                                    style: TextStyle(
-                                      fontSize: 13,
-                                      color: Colors.grey[600],
-                                      fontStyle: FontStyle.italic,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-
-                            const SizedBox(height: 16),
-
-                            // Action Buttons
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: OutlinedButton(
-                                    onPressed: () => _updateStatus(
-                                      context,
-                                      doc.id,
-                                      data,
-                                      'reject',
-                                    ),
-                                    style: OutlinedButton.styleFrom(
-                                      foregroundColor: Colors.red,
-                                      side: const BorderSide(
-                                        color: Colors.red,
-                                        width: 1.5,
-                                      ),
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(12),
-                                      ),
-                                      padding: const EdgeInsets.symmetric(
-                                        vertical: 12,
-                                      ),
-                                    ),
-                                    child: const Text(
-                                      "REJECT",
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 14,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: ElevatedButton(
-                                    onPressed: () => _updateStatus(
-                                      context,
-                                      doc.id,
-                                      data,
-                                      'approve',
-                                    ),
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: _primaryColor,
-                                      foregroundColor: Colors.white,
-                                      elevation: 0,
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(12),
-                                      ),
-                                      padding: const EdgeInsets.symmetric(
-                                        vertical: 12,
-                                      ),
-                                    ),
-                                    child: const Text(
-                                      "APPROVE",
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 14,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
-                    );
-                  },
-                );
-              },
-            ),
-          ),
-        ],
-      ),
-      bottomNavigationBar: Container(
-        decoration: BoxDecoration(
-          color: Colors.white,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.08),
-              blurRadius: 20,
-              offset: const Offset(0, -5),
-            ),
-          ],
-        ),
-        child: BottomNavigationBar(
-          items: const <BottomNavigationBarItem>[
-            BottomNavigationBarItem(
-              icon: Icon(Icons.assignment),
-              label: 'Requests',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.report_problem_outlined),
-              label: 'Complaints',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.person_outline),
-              label: 'Profile',
-            ),
-          ],
-          currentIndex: 0,
-          selectedItemColor: _primaryColor,
-          unselectedItemColor: Colors.grey,
-          backgroundColor: Colors.white,
-          elevation: 0,
-          type: BottomNavigationBarType.fixed,
-          selectedFontSize: 12,
-          unselectedFontSize: 12,
-          onTap: (index) {
-            if (index == 0) {
-              Navigator.popUntil(context, (route) => route.isFirst);
-            } else {
-              Navigator.pop(context, index);
-            }
-          },
-        ),
-      ),
-    );
-  }
-
-  Widget _buildDateRow(IconData icon, String label, DateTime date) {
-    return Row(
-      children: [
-        Icon(icon, size: 16, color: Colors.grey[500]),
-        const SizedBox(width: 8),
-        Text(label, style: TextStyle(color: Colors.grey[500], fontSize: 13)),
-        const SizedBox(width: 8),
-        Text(
-          "${date.day}/${date.month}/${date.year}  ${date.hour}:${date.minute.toString().padLeft(2, '0')}",
-          style: const TextStyle(
-            fontWeight: FontWeight.w600,
-            fontSize: 14,
-            color: _primaryColor,
-          ),
-        ),
-      ],
-    );
-  }
 }
 
 // ============================================================
@@ -1587,8 +730,6 @@ class _WardenProfileTabState extends State<WardenProfileTab> {
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _phoneController = TextEditingController();
   String? _profileImageUrl;
-  String? _selectedCategory;
-  String? _selectedFeeStatus;
 
   @override
   void initState() {
@@ -1609,8 +750,6 @@ class _WardenProfileTabState extends State<WardenProfileTab> {
                 _nameController.text = doc.data()?['name'] ?? "Warden";
                 _phoneController.text = doc.data()?['phone'] ?? "";
                 _profileImageUrl = doc.data()?['profileImageUrl'];
-                _selectedCategory = doc.data()?['category'];
-                _selectedFeeStatus = doc.data()?['feeStatus'];
               });
             }
           });
@@ -1663,8 +802,6 @@ class _WardenProfileTabState extends State<WardenProfileTab> {
           .update({
             'name': _nameController.text,
             'phone': _phoneController.text,
-            'category': _selectedCategory,
-            'feeStatus': _selectedFeeStatus,
             if (_profileImageUrl != null) 'profileImageUrl': _profileImageUrl,
           });
       setState(() => _isEditing = false);
@@ -1876,10 +1013,7 @@ class _WardenProfileTabState extends State<WardenProfileTab> {
                                 "Employee ID",
                                 "W-${user?.uid.substring(0, 5).toUpperCase() ?? 'XXXXX'}",
                               ),
-                              const Divider(height: 40),
-                              _buildCategorySelector(),
-                              const Divider(height: 40),
-                              _buildFeeStatusSelector(),
+
                             ],
                           ),
                         ),
@@ -2069,77 +1203,6 @@ class _WardenProfileTabState extends State<WardenProfileTab> {
           ),
         ),
       ],
-    );
-  }
-
-  Widget _buildCategorySelector() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Row(
-          children: [
-            Icon(Icons.school, color: _primaryColor, size: 24),
-            SizedBox(width: 16),
-            Text("Student Category", style: TextStyle(color: Colors.grey, fontSize: 12, fontWeight: FontWeight.w500)),
-          ],
-        ),
-        const SizedBox(height: 12),
-        Row(
-          children: [
-            _buildSelectionChip("Degree", _selectedCategory, (v) => setState(() => _selectedCategory = v)),
-            const SizedBox(width: 12),
-            _buildSelectionChip("Diploma", _selectedCategory, (v) => setState(() => _selectedCategory = v)),
-          ],
-        ),
-      ],
-    );
-  }
-
-  Widget _buildFeeStatusSelector() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Row(
-          children: [
-            Icon(Icons.payments, color: _primaryColor, size: 24),
-            SizedBox(width: 16),
-            Text("Fee Status", style: TextStyle(color: Colors.grey, fontSize: 12, fontWeight: FontWeight.w500)),
-          ],
-        ),
-        const SizedBox(height: 12),
-        Row(
-          children: [
-            _buildSelectionChip("Paid", _selectedFeeStatus, (v) => setState(() => _selectedFeeStatus = v)),
-            const SizedBox(width: 12),
-            _buildSelectionChip("Scholarship", _selectedFeeStatus, (v) => setState(() => _selectedFeeStatus = v)),
-          ],
-        ),
-      ],
-    );
-  }
-
-  Widget _buildSelectionChip(String label, String? current, Function(String) onSelect) {
-    bool isSelected = current == label;
-    bool isEditable = _isEditing;
-    
-    return GestureDetector(
-      onTap: isEditable ? () => onSelect(label) : null,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-        decoration: BoxDecoration(
-          color: isSelected ? _primaryColor : Colors.grey[100],
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: isSelected ? _primaryColor : Colors.grey[300]!),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            color: isSelected ? Colors.white : Colors.grey[700],
-            fontSize: 14,
-            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-          ),
-        ),
-      ),
     );
   }
 }

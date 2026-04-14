@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'repositories/notification_repository.dart';
 import 'complaints/admin_complaints_screen.dart';
 import 'attendance/attendance_taking_screen.dart';
-import 'auth_gate.dart';
 import 'utils/canonical_names.dart';
 
 class RectorDashboard extends StatefulWidget {

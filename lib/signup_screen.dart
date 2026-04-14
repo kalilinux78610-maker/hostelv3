@@ -35,40 +35,92 @@ class _SignUpScreenState extends State<SignUpScreen> {
       firebaseUser = userCredential.user;
       final uid = firebaseUser!.uid;
 
-      // 2. NOW Verify against Rector's list (User is authenticated, so rules should allow it)
+      // 2a. Check student_imports first
       final importDoc = await FirebaseFirestore.instance
           .collection('student_imports')
           .doc(email)
           .get();
 
-      if (!importDoc.exists) {
-        // If not in imports, delete the newly created auth user and throw error
-        await firebaseUser.delete();
-        throw "Your Gmail ($email) is not in our hostel records. Please contact your Rector.";
+      if (importDoc.exists) {
+        // ── STUDENT SIGNUP ──────────────────────────────────
+        final importData = importDoc.data()!;
+        await FirebaseFirestore.instance.collection('users').doc(uid).set({
+          'uid': uid,
+          'email': email,
+          'name': importData['name'],
+          'role': 'student',
+          'enrollmentNo': importData['enrollmentNo'] ?? '',
+          'gender': importData['gender'] ?? '',
+          'bloodGroup': importData['bloodGroup'] ?? '',
+          'mobile': importData['mobile'] ?? '',
+          'fatherMobile': importData['fatherMobile'] ?? '',
+          'motherMobile': importData['motherMobile'] ?? '',
+          'parentContact': importData['fatherMobile'] ?? '',
+          'institute': importData['institute'] ?? '',
+          'assignedHostel': importData['assignedHostel'],
+          'hostel': importData['hostel'],
+          'floor': importData['floor'] ?? '',
+          'room': importData['room'],
+          'category': CanonicalNames.canonicalizeCategory(importData['category'] ?? "Degree"),
+          'branch': CanonicalNames.canonicalizeBranch(importData['branch'] ?? "N/A", importData['category'] ?? "Degree"),
+          'year': importData['year'] ?? '',
+          'createdAt': FieldValue.serverTimestamp(),
+          'isVerified': false, // Start as false until email is verified
+          'authMethod': 'password',
+        });
+      } else {
+        // 2b. Not a student — check staff collection
+        final staffQuery = await FirebaseFirestore.instance
+            .collection('staff')
+            .where('email', isEqualTo: email)
+            .limit(1)
+            .get();
+
+        if (staffQuery.docs.isEmpty) {
+          // Not a student OR staff — block signup
+          await firebaseUser.delete();
+          throw "Your email ($email) is not registered. Please contact the Admin.";
+        }
+
+        // ── STAFF SIGNUP ──────────────────────────────────
+        final staffData = staffQuery.docs.first.data();
+        final String staffRole = staffData['role']?.toString().toLowerCase() ?? 'warden';
+
+        // Map staff role name to system role key
+        String systemRole = 'warden';
+        if (staffRole.contains('rector')) { systemRole = 'rector'; }
+        else if (staffRole.contains('warden')) { systemRole = 'warden'; }
+        else if (staffRole.contains('guard')) { systemRole = 'guard'; }
+        else if (staffRole.contains('hod')) { systemRole = 'hod'; }
+        else if (staffRole.contains('mess')) { systemRole = 'mess_manager'; }
+
+        await FirebaseFirestore.instance.collection('users').doc(uid).set({
+          'uid': uid,
+          'email': email,
+          'name': staffData['name'] ?? '',
+          'role': systemRole,
+          'mobile': staffData['mobile'] ?? '',
+          'assignedHostel': staffData['assignedHostel'],
+          'assignedHostels': staffData['assignedHostels'] ?? [],
+          'assignedShift': staffData['assignedShift'],
+          'assignedCategory': staffData['assignedCategory'],
+          'assignedBranch': staffData['assignedBranch'],
+          'createdAt': FieldValue.serverTimestamp(),
+          'isVerified': false, // Start as false until email is verified
+          'authMethod': 'password',
+        });
       }
 
-      final importData = importDoc.data()!;
-
-      // 3. Create the profile
-      await FirebaseFirestore.instance.collection('users').doc(uid).set({
-        'uid': uid,
-        'email': email,
-        'name': importData['name'],
-        'role': 'student',
-        'assignedHostel': importData['assignedHostel'],
-        'hostel': importData['hostel'],
-        'room': importData['room'],
-        'category': CanonicalNames.canonicalizeCategory(importData['category'] ?? "N/A"),
-        'branch': CanonicalNames.canonicalizeBranch(importData['branch'] ?? "N/A", importData['category'] ?? "N/A"),
-        'year': importData['year'],
-        'createdAt': FieldValue.serverTimestamp(),
-        'isVerified': true,
-        'authMethod': 'password',
-      });
+      // Send actual Firebase Email Verification
+      await firebaseUser.sendEmailVerification();
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Account Created & Verified!"), backgroundColor: Colors.green),
+          const SnackBar(
+            content: Text("Account Created! Please verify your email before logging in."),
+            backgroundColor: Colors.green,
+            duration: Duration(seconds: 5),
+          ),
         );
         Navigator.pop(context);
       }
@@ -102,7 +154,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        title: const Text("Enrollment Verification"),
+        title: const Text("Email Verification"),
         backgroundColor: Colors.white,
         elevation: 0,
         foregroundColor: const Color(0xFF002244),
@@ -116,12 +168,12 @@ class _SignUpScreenState extends State<SignUpScreen> {
               const Icon(Icons.verified_user_rounded, size: 80, color: Color(0xFF002244)),
               const SizedBox(height: 24),
               const Text(
-                "Manual Enrollment",
+                "Verify Email Address",
                 style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 12),
               const Text(
-                "Students must use their pre-registered Gmail address and create a password to claim their hostel room.",
+                "Students must use their pre-registered Gmail address to verify their identity and set a password.",
                 textAlign: TextAlign.center,
                 style: TextStyle(color: Colors.grey),
               ),
@@ -167,7 +219,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                       foregroundColor: Colors.white,
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     ),
-                    child: const Text("VERIFY & CREATE ACCOUNT", style: TextStyle(fontWeight: FontWeight.bold)),
+                    child: const Text("VERIFY EMAIL", style: TextStyle(fontWeight: FontWeight.bold)),
                   ),
                 ),
 

@@ -1,0 +1,16 @@
+Name,Enrollment No,Gender,Blood Group,Student Mobile,Email,Father Mobile,Mother Mobile,Institute,Department,Hostel,Floor,Room
+Aarav Sharma,22CE001,Male,B+,9876543210,aarav.sharma@gmail.com,9876500001,9876500002,RNGPIT,Computer Engineering,Boys Hostel 1,1,101
+Vihaan Patel,22IT002,Male,O+,9876543211,vihaan.patel@gmail.com,9876500003,9876500004,RNGPIT,Information Technology,Boys Hostel 1,1,102
+Rohan Singh,22CH003,Male,A+,9876543212,rohan.singh@gmail.com,9876500005,9876500006,NGPP,Chemical Engineering,Boys Hostel 1,2,201
+Arjun Verma,22CV004,Male,AB+,9876543213,arjun.verma@gmail.com,9876500007,9876500008,RNGPIT,Civil Engineering,Boys Hostel 2,1,101
+Karan Gupta,22EE005,Male,B-,9876543214,karan.gupta@gmail.com,9876500009,9876500010,NGPP,Electrical Engineering,Boys Hostel 2,1,102
+Rahul Kumar,22PH006,Male,O-,9876543215,rahul.kumar@gmail.com,9876500011,9876500012,RNGPIT,Pharmacy,Boys Hostel 2,2,201
+Sai Reddy,22BM007,Male,A-,9876543216,sai.reddy@gmail.com,9876500013,9876500014,RNGPIT,BBA & MBA,Boys Hostel 3,1,101
+Amit Das,22ME008,Male,AB-,9876543217,amit.das@gmail.com,9876500015,9876500016,NGPP,Mechanical Engineering,Boys Hostel 3,2,201
+Vikram Joshi,22CE009,Male,B+,9876543218,vikram.joshi@gmail.com,9876500017,9876500018,RNGPIT,Computer Engineering,Boys Hostel 4,1,101
+Aditya Mehta,22IT010,Male,O+,9876543219,aditya.mehta@gmail.com,9876500019,9876500020,NGPP,Information Technology,Boys Hostel 4,2,201
+Diya Sharma,22IT011,Female,B+,9876543220,diya.sharma@gmail.com,9876500021,9876500022,RNGPIT,Information Technology,Girls Hostel 1,1,101
+Priya Patel,22CE012,Female,O+,9876543221,priya.patel@gmail.com,9876500023,9876500024,RNGPIT,Computer Engineering,Girls Hostel 1,1,102
+Ananya Singh,22CH013,Female,A+,9876543222,ananya.singh@gmail.com,9876500025,9876500026,NGPP,Chemical Engineering,Girls Hostel 1,2,201
+Neha Verma,22CV014,Female,AB+,9876543223,neha.verma@gmail.com,9876500027,9876500028,NGPP,Civil Engineering,Girls Hostel 2,1,101
+Riya Gupta,22EE015,Female,B-,9876543224,riya.gupta@gmail.com,9876500029,9876500030,RNGPIT,Electrical,Girls Hostel 2,2,201

@@ -6,6 +6,7 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'auth_gate.dart';
 import 'firebase_options.dart';
 import 'services/push_notification_service.dart';
+import 'package:upgrader/upgrader.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -49,7 +50,15 @@ class MyApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF800000)),
         useMaterial3: true,
       ),
-      home: const AuthGate(),
+      home: UpgradeAlert(
+        upgrader: Upgrader(
+          durationUntilAlertAgain: const Duration(minutes: 5),
+        ),
+        showIgnore: false,
+        showLater: false,
+        barrierDismissible: false,
+        child: const AuthGate(),
+      ),
     );
   }
 }

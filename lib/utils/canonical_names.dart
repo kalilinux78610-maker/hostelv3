@@ -1,48 +1,54 @@
 class CanonicalNames {
   static String canonicalizeCategory(String? category) {
     if (category == null) return 'Degree';
-    if (['BTech', 'MTech', 'BCA', 'MCA'].contains(category)) {
+    final lower = category.trim().toLowerCase();
+    
+    if (lower == 'degree' || lower == 'btech' || lower == 'mtech' || lower == 'bca' || lower == 'mca') {
       return 'Degree';
     }
-    return category;
+    if (lower == 'diploma') {
+      return 'Diploma';
+    }
+    return 'Degree'; // default fallback
   }
 
   static String canonicalizeBranch(String? branch, String? category) {
     if (branch == null) return 'Unknown';
     final canonicalCategory = canonicalizeCategory(category);
+    final lowerBranch = branch.trim().toLowerCase();
 
     if (canonicalCategory == 'Degree') {
-      if (branch == 'Information Technology') {
+      if (lowerBranch == 'it' || lowerBranch == 'information technology' || lowerBranch.contains('msc-it')) {
         return 'IT & MSC-IT';
-      } else if (branch == 'Computer Science' || branch == 'Computer Engineering') {
+      } else if (lowerBranch == 'computer science' || lowerBranch == 'computer engineering' || lowerBranch == 'cse') {
         return 'CSE';
-      } else if (branch == 'Civil') {
+      } else if (lowerBranch == 'civil' || lowerBranch == 'civil engineering') {
         return 'Civil Engineering';
-      } else if (branch == 'Electrical') {
+      } else if (lowerBranch == 'electrical' || lowerBranch == 'electrical engineering') {
         return 'Electrical';
-      } else if (branch == 'Chemical') {
+      } else if (lowerBranch == 'chemical' || lowerBranch == 'chemical engineering') {
         return 'Chemical';
-      } else if (branch?.toLowerCase().replaceAll('.', '') == 'bvoc') {
+      } else if (lowerBranch.replaceAll('.', '') == 'bvoc') {
         return 'B.VOC';
-      } else if (branch?.toLowerCase().replaceAll(' ', '') == 'bba&mba' || 
-                 branch?.toLowerCase() == 'bba' || 
-                 branch?.toLowerCase() == 'mba') {
+      } else if (lowerBranch.replaceAll(' ', '') == 'bba&mba' || 
+                 lowerBranch == 'bba' || 
+                 lowerBranch == 'mba') {
         return 'BBA & MBA';
       }
     } else if (canonicalCategory == 'Diploma') {
-      if (branch == 'Computer Science' || branch == 'CSE') {
+      if (lowerBranch == 'computer science' || lowerBranch == 'cse' || lowerBranch == 'computer engineering') {
         return 'Computer Engineering';
       }
-      if (branch == 'Mechanical') {
+      if (lowerBranch == 'mechanical' || lowerBranch == 'mechanical engineering') {
         return 'Mechanical Engineering';
       }
-      if (branch == 'Electrical') {
+      if (lowerBranch == 'electrical' || lowerBranch == 'electrical engineering') {
         return 'Electrical Engineering';
       }
-      if (branch == 'Chemical') {
+      if (lowerBranch == 'chemical' || lowerBranch == 'chemical engineering') {
         return 'Chemical Engineering';
       }
     }
-    return branch;
+    return branch.trim();
   }
 }

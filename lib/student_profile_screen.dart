@@ -41,7 +41,7 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
         if (doc.exists) {
           _userData = doc.data();
           _mobileController.text = _userData?['mobile'] ?? '';
-          _parentPhoneController.text = _userData?['parentContact'] ?? '';
+          _parentPhoneController.text = _userData?['fatherMobile'] ?? _userData?['parentContact'] ?? '';
           _roomController.text = _userData?['room'] ?? '';
           _addressController.text = _userData?['address'] ?? '';
           if (mounted) setState(() {});
@@ -198,15 +198,34 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
                 ),
               ),
               const SizedBox(height: 24),
-              _buildReadOnlyField("Name", _userData?['name'] ?? 'N/A'),
-              _buildReadOnlyField("Email", _userData?['email'] ?? 'N/A'),
-              _buildReadOnlyField(
-                "Hostel",
-                _userData?['assignedHostel'] ?? 'N/A',
-              ),
-              const SizedBox(height: 20),
+
+              // ── IDENTITY CARD ──────────────────────────────
+              _sectionHeader('Identity'),
+              _buildReadOnlyField("Full Name", _userData?['name'] ?? 'N/A', Icons.person),
+              _buildReadOnlyField("Enrollment No.", _userData?['enrollmentNo'] ?? 'N/A', Icons.badge),
+              _buildReadOnlyField("Gender", _userData?['gender'] ?? 'N/A', Icons.wc),
+              _buildReadOnlyField("Blood Group", _userData?['bloodGroup'] ?? 'N/A', Icons.bloodtype),
+              _buildReadOnlyField("Email", _userData?['email'] ?? 'N/A', Icons.email),
+
+              // ── ACADEMIC CARD ──────────────────────────────
+              const SizedBox(height: 8),
+              _sectionHeader('Academic Details'),
+              _buildReadOnlyField("Institute", _userData?['institute'] ?? 'N/A', Icons.account_balance),
+              _buildReadOnlyField("Category", _userData?['category'] ?? 'N/A', Icons.school),
+              _buildReadOnlyField("Department", _userData?['branch'] ?? 'N/A', Icons.menu_book),
+              _buildReadOnlyField("Year", _userData?['year']?.toString() ?? 'N/A', Icons.calendar_today),
+
+              // ── HOSTEL CARD ──────────────────────────────
+              const SizedBox(height: 8),
+              _sectionHeader('Hostel Details'),
+              _buildReadOnlyField("Hostel", _userData?['hostel'] ?? _userData?['assignedHostel'] ?? 'N/A', Icons.home),
+              _buildReadOnlyField("Floor", _userData?['floor']?.toString() ?? 'N/A', Icons.layers),
+              _buildReadOnlyField("Room No.", _userData?['room'] ?? 'N/A', Icons.door_front_door),
+
+              const SizedBox(height: 16),
               const Divider(),
-              const SizedBox(height: 20),
+              const SizedBox(height: 8),
+              _sectionHeader('My Details (Editable)'),
 
               TextFormField(
                 controller: _roomController,
@@ -221,7 +240,7 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
                 controller: _mobileController,
                 keyboardType: TextInputType.phone,
                 decoration: _inputDecoration(
-                  "My Usage Mobile No.",
+                  "My Mobile No.",
                   Icons.phone_android,
                 ),
               ),
@@ -231,12 +250,12 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
                 controller: _parentPhoneController,
                 keyboardType: TextInputType.phone,
                 decoration: _inputDecoration(
-                  "Parent Contact No. (For Leave)",
+                  "Father Mobile (For Leave Requests)",
                   Icons.family_restroom,
                 ),
                 validator: (val) {
                   if (val == null || val.isEmpty) {
-                    return 'Parent contact is required for Leave Requests';
+                    return 'Father contact is required for Leave Requests';
                   }
                   if (val.length < 10) return 'Invalid number';
                   return null;
@@ -273,17 +292,37 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
     );
   }
 
-  Widget _buildReadOnlyField(String label, String value) {
+  Widget _sectionHeader(String title) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.only(bottom: 10, top: 4),
+      child: Text(
+        title.toUpperCase(),
+        style: const TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.bold,
+          color: Color(0xFF002244),
+          letterSpacing: 1.2,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildReadOnlyField(String label, String value, [IconData? icon]) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
       child: TextFormField(
         initialValue: value,
         readOnly: true,
         decoration: InputDecoration(
           labelText: label,
+          prefixIcon: icon != null ? Icon(icon, color: const Color(0xFF002244), size: 20) : null,
           filled: true,
           fillColor: Colors.grey[100],
-          border: const OutlineInputBorder(),
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10),
+            borderSide: BorderSide(color: Colors.grey.shade300),
+          ),
         ),
       ),
     );
