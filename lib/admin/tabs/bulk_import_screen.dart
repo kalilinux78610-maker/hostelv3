@@ -655,7 +655,7 @@ class _BulkImportScreenState extends State<BulkImportScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -825,7 +825,8 @@ class _BulkImportScreenState extends State<BulkImportScreen> {
               "Preview (First 5 Rows):",
               style: TextStyle(fontWeight: FontWeight.bold),
             ),
-            Expanded(
+            SizedBox(
+              height: 200,
               child: ListView.builder(
                 itemCount: _data.length > 5 ? 5 : _data.length,
                 itemBuilder: (context, index) {
