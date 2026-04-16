@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'guard_verify_screen.dart';
 
 class GuardScannerScreen extends StatefulWidget {
   const GuardScannerScreen({super.key});
@@ -292,108 +293,21 @@ class _GuardScannerScreenState extends State<GuardScannerScreen>
 
   Future<void> _showVerificationDialog(
       String docId, Map<String, dynamic> data, String name, String status) async {
-    bool isCheckOut = status == 'approved';
-    Color color = isCheckOut ? Colors.orange : Colors.green;
-    String actionLabel = isCheckOut ? "MARK CHECK-OUT" : "MARK CHECK-IN";
-
-    await showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => AlertDialog(
-        title: Text(isCheckOut ? "Verify Check-Out?" : "Verify Check-In?"),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text("Student: $name",
-                style:
-                    const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-            const SizedBox(height: 8),
-            Text("Reason: ${data['reason'] ?? 'N/A'}"),
-            Text("Destination: ${data['destination'] ?? 'N/A'}"),
-            const SizedBox(height: 16),
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: color.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: color),
-              ),
-              child: Row(
-                children: [
-                  Icon(isCheckOut ? Icons.exit_to_app : Icons.login,
-                      color: color),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      isCheckOut
-                          ? "Status: APPROVED (Not Out)"
-                          : "Status: CURRENTLY OUT",
-                      style:
-                          TextStyle(color: color, fontWeight: FontWeight.bold),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
+    // Navigate to the premium full-screen verify page
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => GuardVerifyScreen(
+          docId: docId,
+          data: data,
+          studentName: name,
+          status: status,
         ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-              setState(() {
-                _isProcessing = false;
-              });
-            },
-            child: const Text("CANCEL"),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-                backgroundColor: color, foregroundColor: Colors.white),
-            onPressed: () async {
-              final navigator = Navigator.of(context);
-              navigator.pop();
-              await _updatePassStatus(docId, isCheckOut);
-              if (mounted) navigator.pop();
-            },
-            child: Text(actionLabel),
-          ),
-        ],
       ),
     );
-  }
-
-  Future<void> _updatePassStatus(String docId, bool isCheckOut) async {
-    try {
-      if (isCheckOut) {
-        await FirebaseFirestore.instance
-            .collection('leave_requests')
-            .doc(docId)
-            .update({
-          'status': 'out',
-          'actualOutTime': FieldValue.serverTimestamp(),
-        });
-      } else {
-        await FirebaseFirestore.instance
-            .collection('leave_requests')
-            .doc(docId)
-            .update({
-          'status': 'completed',
-          'actualInTime': FieldValue.serverTimestamp(),
-        });
-      }
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-            content: Text(isCheckOut
-                ? "Checked OUT Successfully"
-                : "Checked IN Successfully")));
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text("Error: $e")));
-      }
+    // Reset so scanner is ready for next QR
+    if (mounted) {
+      setState(() => _isProcessing = false);
     }
   }
 }

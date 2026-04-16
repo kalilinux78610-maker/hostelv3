@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import 'repositories/notification_repository.dart';
 import 'hod_profile_screen.dart';
+import 'services/auth_service.dart';
 import 'utils/canonical_names.dart';
 
 class HodDashboardScreen extends StatefulWidget {
@@ -572,7 +573,7 @@ class _HodDashboardScreenState extends State<HodDashboardScreen> {
               ),
               const SizedBox(height: 12),
               OutlinedButton(
-                onPressed: () => FirebaseAuth.instance.signOut(),
+                onPressed: () => AuthService.signOut(),
                 child: const Text("Logout"),
               ),
             ],
@@ -686,7 +687,7 @@ class _HodDashboardScreenState extends State<HodDashboardScreen> {
                           children: [
                             // Logout Button
                             GestureDetector(
-                              onTap: () => FirebaseAuth.instance.signOut(),
+                              onTap: () => AuthService.signOut(),
                               child: Container(
                                 padding: const EdgeInsets.all(8),
                                 decoration: BoxDecoration(

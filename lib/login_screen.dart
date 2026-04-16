@@ -171,13 +171,31 @@ class _LoginScreenState extends State<LoginScreen>
       // Save/Clear Credentials based on Remember Me
       // "Remember Me" logic removed based on user request
 
-      // Save FCM Token
+      // Save FCM Token — clear stale copies first so other roles don't
+      // receive this device's push notifications after switching accounts.
       try {
         final token = await PushNotificationService().getFcmToken();
         if (token != null && userCredential.user != null) {
+          final currentUid = userCredential.user!.uid;
+
+          // Remove this token from any OTHER user document that still holds it
+          final staleQuery = await FirebaseFirestore.instance
+              .collection('users')
+              .where('fcmToken', isEqualTo: token)
+              .get();
+
+          final batch = FirebaseFirestore.instance.batch();
+          for (final doc in staleQuery.docs) {
+            if (doc.id != currentUid) {
+              batch.update(doc.reference, {'fcmToken': FieldValue.delete()});
+            }
+          }
+          await batch.commit();
+
+          // Now save the token to the current user
           await FirebaseFirestore.instance
               .collection('users')
-              .doc(userCredential.user!.uid)
+              .doc(currentUid)
               .set({'fcmToken': token}, SetOptions(merge: true));
         }
       } catch (e) {

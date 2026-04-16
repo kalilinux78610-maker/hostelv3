@@ -146,15 +146,30 @@ class _ApplyLeaveScreenState extends State<ApplyLeaveScreen> {
       final user = FirebaseAuth.instance.currentUser;
       if (user == null) throw Exception("User not logged in");
 
-      // ── Block if student already has an active request ──────────────
+      // ── Block only if student has a truly ACTIVE (live) request ────────
+      // Rule: REJECTED requests NEVER block — student can always reapply after rejection.
+      // Only 'pending' or 'approved' with a future endDate, or currently 'out', block.
+      final now = DateTime.now();
+
       final activeCheck = await FirebaseFirestore.instance
           .collection('leave_requests')
           .where('uid', isEqualTo: user.uid)
           .where('status', whereIn: ['pending', 'approved', 'out'])
-          .limit(1)
           .get();
 
-      if (activeCheck.docs.isNotEmpty) {
+      final blockingDoc = activeCheck.docs.where((doc) {
+        final data = doc.data();
+        final endDate = (data['endDate'] as Timestamp?)?.toDate();
+        final status = (data['status'] ?? '').toString();
+
+        // Student is currently outside — always block
+        if (status == 'out') return true;
+
+        // Block pending/approved only if the leave period is still in the future
+        return endDate != null && endDate.isAfter(now);
+      }).firstOrNull;
+
+      if (blockingDoc != null) {
         if (mounted) {
           setState(() => _isLoading = false);
           showDialog(
@@ -172,7 +187,7 @@ class _ApplyLeaveScreenState extends State<ApplyLeaveScreen> {
               ),
               content: const Text(
                 "You already have an active leave or outing request.\n\n"
-                "Please wait for it to be completed or rejected before submitting a new one.",
+                "Please wait for it to be completed before submitting a new one.",
               ),
               actions: [
                 TextButton(

@@ -79,7 +79,7 @@ s6UDRq7nykEUKEw83j0m3mg=
 
     // 2. Setup Local Notifications (for foreground display)
     const AndroidInitializationSettings initializationSettingsAndroid =
-        AndroidInitializationSettings('app_icon');
+        AndroidInitializationSettings('ic_notification');
 
     const InitializationSettings initializationSettings =
         InitializationSettings(android: initializationSettingsAndroid);
@@ -137,7 +137,7 @@ s6UDRq7nykEUKEw83j0m3mg=
           channelDescription: 'Notifications for Hostel v3',
           importance: Importance.max,
           priority: Priority.high,
-          icon: 'app_icon',
+          icon: 'ic_notification',
         );
     const NotificationDetails platformChannelSpecifics = NotificationDetails(
       android: androidDetails,
@@ -216,6 +216,8 @@ s6UDRq7nykEUKEw83j0m3mg=
               'priority': 'high',
               'notification': {
                 'channel_id': 'hostel_channel_id', // Must match local channel
+                'icon': 'ic_notification', // Monochromatic icon for system tray
+                'color': '#1565C0', // Accent color for the icon
               },
             },
           },

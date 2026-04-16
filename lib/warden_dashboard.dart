@@ -5,8 +5,9 @@ import 'package:image_picker/image_picker.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'dart:typed_data';
 
-import 'complaints/admin_complaints_screen.dart';
+import 'features/complaints/presentation/screens/admin_complaints_screen.dart';
 import 'repositories/notification_repository.dart';
+import 'services/auth_service.dart';
 import 'utils/canonical_names.dart';
 class WardenDashboard extends StatefulWidget {
   const WardenDashboard({super.key});
@@ -316,7 +317,7 @@ class _WardenHomeTabState extends State<WardenHomeTab> {
                       const SizedBox(width: 8),
                       // Power Button
                       GestureDetector(
-                        onTap: () => FirebaseAuth.instance.signOut(),
+                        onTap: () => AuthService.signOut(),
                         child: Container(
                           padding: const EdgeInsets.all(8),
                           decoration: BoxDecoration(
@@ -1071,7 +1072,7 @@ class _WardenProfileTabState extends State<WardenProfileTab> {
                                     ),
                                   ),
                                   onPressed: () async {
-                                    await FirebaseAuth.instance.signOut();
+                                    await AuthService.signOut();
                                     if (context.mounted) {
                                       Navigator.popUntil(
                                         context,

@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'tabs/activity_feed_tab.dart';
 import 'tabs/reports_tab.dart';
 import 'tabs/student_directory_screen.dart';
 import 'tabs/staff_management_screen.dart';
-
 import 'tabs/bulk_import_screen.dart';
+import '../services/auth_service.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
   const AdminDashboardScreen({super.key});
@@ -43,7 +42,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         actions: [
           IconButton(
             icon: const Icon(Icons.logout),
-            onPressed: () => FirebaseAuth.instance.signOut(),
+            onPressed: () => AuthService.signOut(),
           ),
         ],
       ),

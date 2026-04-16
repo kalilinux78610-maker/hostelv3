@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../services/auth_service.dart';
 
 class MessProfileScreen extends StatefulWidget {
   const MessProfileScreen({super.key});
@@ -91,7 +92,7 @@ class _MessProfileScreenState extends State<MessProfileScreen> {
   }
 
   Future<void> _logout() async {
-    await FirebaseAuth.instance.signOut();
+    await AuthService.signOut();
   }
 
   @override

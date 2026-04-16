@@ -1,6 +1,6 @@
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import '../mess_menu_editor_screen.dart';
+import '../services/auth_service.dart';
 import 'mess_profile_screen.dart';
 
 class MessManagerDashboard extends StatefulWidget {
@@ -22,7 +22,7 @@ class _MessManagerDashboardState extends State<MessManagerDashboard> {
 
   void _onItemTapped(int index) {
     if (index == 3) {
-      FirebaseAuth.instance.signOut();
+      AuthService.signOut();
       return;
     }
     setState(() {

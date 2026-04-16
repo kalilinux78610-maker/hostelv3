@@ -1,5 +1,4 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'rector_dashboard.dart';
 import 'warden_dashboard.dart';
@@ -8,6 +7,8 @@ import 'guard_dashboard_screen.dart';
 import 'admin/admin_dashboard_screen.dart';
 import 'mess/mess_manager_dashboard.dart';
 import 'hod_dashboard.dart';
+import 'services/auth_service.dart';
+import 'services/push_notification_service.dart';
 
 class RoleChecker extends StatefulWidget {
   final String uid;
@@ -28,6 +29,45 @@ class _RoleCheckerState extends State<RoleChecker> {
         .collection('users')
         .doc(widget.uid)
         .snapshots();
+    // Run stale-token cleanup every launch so currently-logged-in
+    // users also get cleaned up (not just on next login).
+    _cleanupStaleToken();
+  }
+
+  /// Removes this device's FCM token from any Firestore document
+  /// belonging to a DIFFERENT user (stale token from a previous login).
+  Future<void> _cleanupStaleToken() async {
+    try {
+      final token = await PushNotificationService().getFcmToken();
+      if (token == null) return;
+      final currentUid = widget.uid;
+
+      final staleQuery = await FirebaseFirestore.instance
+          .collection('users')
+          .where('fcmToken', isEqualTo: token)
+          .get();
+
+      final batch = FirebaseFirestore.instance.batch();
+      bool hasStaleDocs = false;
+      for (final doc in staleQuery.docs) {
+        if (doc.id != currentUid) {
+          batch.update(doc.reference, {'fcmToken': FieldValue.delete()});
+          hasStaleDocs = true;
+          debugPrint(
+            'RoleChecker: Removed stale FCM token from user ${doc.id}',
+          );
+        }
+      }
+      if (hasStaleDocs) await batch.commit();
+
+      // Ensure the token is registered under the current user
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(currentUid)
+          .set({'fcmToken': token}, SetOptions(merge: true));
+    } catch (e) {
+      debugPrint('RoleChecker: stale token cleanup failed — $e');
+    }
   }
 
 
@@ -162,7 +202,7 @@ class _RoleCheckerState extends State<RoleChecker> {
                 width: double.infinity,
                 child: ElevatedButton.icon(
                   onPressed: () async {
-                    await FirebaseAuth.instance.signOut();
+                    await AuthService.signOut();
                     try {
                       await FirebaseFirestore.instance.clearPersistence();
                     } catch (e) {

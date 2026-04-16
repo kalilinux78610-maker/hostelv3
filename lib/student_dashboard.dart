@@ -4,7 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 import 'apply_leave_screen.dart';
 import 'gate_pass_screen.dart';
-import 'complaints/student_complaints_screen.dart';
+import 'features/complaints/presentation/screens/student_complaints_screen.dart';
 import 'mess_menu_screen.dart';
 import 'student_profile_design_v2.dart';
 import 'notification_screen.dart';
@@ -410,19 +410,25 @@ class _RecentRequestsList extends StatefulWidget {
 }
 
 class _RecentRequestsListState extends State<_RecentRequestsList> {
-  // Rebuild every minute so expired requests disappear in real-time
+  // Rebuild every 30s so rejected cards disappear on time
   late final Stream<int> _ticker;
+
+  // Tracks when each rejected doc was first observed in the UI
+  final Map<String, DateTime> _rejectedFirstSeen = {};
+
+  // How long a rejected card stays visible before disappearing
+  static const _rejectedVisibleDuration = Duration(minutes: 5);
 
   @override
   void initState() {
     super.initState();
-    _ticker = Stream.periodic(const Duration(minutes: 1), (i) => i);
+    _ticker = Stream.periodic(const Duration(seconds: 30), (i) => i);
   }
 
   /// Filter requests — returns maps with 'docId' + all data fields.
   /// - 'completed' / 'cancelled' → skip
-  /// - Active (pending/approved/out) → show only the most recent non-expired one
-  /// - 'rejected' → always show so student sees the outcome
+  /// - Active (pending/approved/out) → show the most recent non-expired one
+  /// - 'rejected' → show for 5 minutes, then auto-disappear
   List<Map<String, dynamic>> _filterRequests(List<QueryDocumentSnapshot> docs) {
     final now = DateTime.now();
 
@@ -436,21 +442,39 @@ class _RecentRequestsListState extends State<_RecentRequestsList> {
       return bTime.compareTo(aTime);
     });
 
+    // Find the newest createdAt across ALL docs (any status)
+    // Used to detect if a newer request exists after a rejected one
+    DateTime newestOverall = DateTime(2000);
+    for (final doc in sorted) {
+      final raw = doc.data() as Map<String, dynamic>;
+      final t = (raw['createdAt'] as Timestamp?)?.toDate() ?? DateTime(2000);
+      if (t.isAfter(newestOverall)) newestOverall = t;
+    }
+
     Map<String, dynamic>? activeRequest;
     final List<Map<String, dynamic>> rejectedRequests = [];
 
     for (final doc in sorted) {
       final raw = doc.data() as Map<String, dynamic>;
-      // Inject docId so the card can act on it
       final data = {'docId': doc.id, ...raw};
       final status = (raw['status'] ?? '').toString();
       final endDate = (raw['endDate'] as Timestamp?)?.toDate();
+      final docTime = (raw['createdAt'] as Timestamp?)?.toDate() ?? DateTime(2000);
 
       // Skip finished / cancelled entries
       if (status == 'completed' || status == 'cancelled') continue;
 
       if (status == 'rejected') {
-        rejectedRequests.add(data);
+        // Hide rejected card immediately if ANY newer request was created after it
+        final hasNewerRequest = newestOverall.isAfter(docTime);
+        if (hasNewerRequest) continue;
+
+        // No newer request exists — show for 5 minutes so student sees the outcome
+        _rejectedFirstSeen.putIfAbsent(doc.id, () => now);
+        final elapsed = now.difference(_rejectedFirstSeen[doc.id]!);
+        if (elapsed < _rejectedVisibleDuration) {
+          rejectedRequests.add(data);
+        }
         continue;
       }
 
@@ -463,9 +487,11 @@ class _RecentRequestsListState extends State<_RecentRequestsList> {
 
     return [
       if (activeRequest != null) activeRequest,
-      ...rejectedRequests,
+      // Only show rejected if no active request AND no newer request of any kind
+      if (activeRequest == null) ...rejectedRequests,
     ];
   }
+
 
   @override
   Widget build(BuildContext context) {
@@ -492,10 +518,12 @@ class _RecentRequestsListState extends State<_RecentRequestsList> {
               stream: FirebaseFirestore.instance
                   .collection('leave_requests')
                   .where('uid', isEqualTo: widget.uid)
-                  .limit(10)
                   .snapshots(),
               builder: (context, snapshot) {
-                if (snapshot.hasError) return const Text("Error loading requests");
+                if (snapshot.hasError) {
+                  debugPrint("Dashboard Query Error: \${snapshot.error}");
+                  return const Text("Error loading requests");
+                }
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return const Center(child: CircularProgressIndicator());
                 }
@@ -966,11 +994,13 @@ class _TodayMessCardState extends State<_TodayMessCard> {
               // Meal Tabs: Breakfast | Lunch | Dinner
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Row(
-                  children: List.generate(_meals.length, (i) {
-                    final isSelected = _selectedMeal == i;
-                    return GestureDetector(
-                      onTap: () => setState(() => _selectedMeal = i),
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: List.generate(_meals.length, (i) {
+                      final isSelected = _selectedMeal == i;
+                      return GestureDetector(
+                        onTap: () => setState(() => _selectedMeal = i),
                       child: AnimatedContainer(
                         duration: const Duration(milliseconds: 200),
                         margin: const EdgeInsets.only(right: 10),
@@ -992,6 +1022,7 @@ class _TodayMessCardState extends State<_TodayMessCard> {
                       ),
                     );
                   }),
+                  ),
                 ),
               ),
 

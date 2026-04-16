@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'dart:typed_data';
+import 'services/auth_service.dart';
 
 class GuardProfileScreen extends StatefulWidget {
   const GuardProfileScreen({super.key});
@@ -352,7 +353,7 @@ class _GuardProfileScreenState extends State<GuardProfileScreen> {
                                     ),
                                   ),
                                   onPressed: () async {
-                                    await FirebaseAuth.instance.signOut();
+                                    await AuthService.signOut();
                                     if (context.mounted) {
                                       Navigator.popUntil(
                                         context,

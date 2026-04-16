@@ -1,4 +1,12 @@
 class CanonicalNames {
+  static String canonicalName(String? name) {
+    if (name == null || name.trim().isEmpty) return 'Unknown';
+    return name.trim().split(RegExp(r'\s+')).map((word) {
+      if (word.isEmpty) return '';
+      return word[0].toUpperCase() + word.substring(1).toLowerCase();
+    }).join(' ');
+  }
+
   static String canonicalizeCategory(String? category) {
     if (category == null) return 'Degree';
     final lower = category.trim().toLowerCase();

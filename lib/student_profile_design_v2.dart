@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:image_picker/image_picker.dart';
 import 'repositories/storage_repository.dart';
+import 'services/auth_service.dart';
 
 class StudentProfileDesignV2 extends StatefulWidget {
   const StudentProfileDesignV2({super.key});
@@ -298,7 +299,7 @@ class _StudentProfileDesignV2State extends State<StudentProfileDesignV2> {
                           height: 52,
                           child: ElevatedButton.icon(
                             onPressed: () async {
-                              await FirebaseAuth.instance.signOut();
+                              await AuthService.signOut();
                             },
                             icon: const Icon(Icons.logout),
                             label: const Text(

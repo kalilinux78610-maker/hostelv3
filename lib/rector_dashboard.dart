@@ -2,8 +2,9 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'repositories/notification_repository.dart';
-import 'complaints/admin_complaints_screen.dart';
+import 'features/complaints/presentation/screens/admin_complaints_screen.dart';
 import 'attendance/attendance_taking_screen.dart';
+import 'services/auth_service.dart';
 import 'utils/canonical_names.dart';
 
 class RectorDashboard extends StatefulWidget {
@@ -1427,7 +1428,7 @@ class ProfileTab extends StatelessWidget {
           SizedBox(
             width: double.infinity,
             child: ElevatedButton(
-              onPressed: () => FirebaseAuth.instance.signOut(),
+              onPressed: () => AuthService.signOut(),
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.red[50],
                 foregroundColor: Colors.red,
