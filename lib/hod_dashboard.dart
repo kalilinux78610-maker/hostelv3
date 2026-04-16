@@ -573,7 +573,14 @@ class _HodDashboardScreenState extends State<HodDashboardScreen> {
               ),
               const SizedBox(height: 12),
               OutlinedButton(
-                onPressed: () => AuthService.signOut(),
+                onPressed: () async {
+                  final shouldLogout = await showDialog<bool>(
+                    context: context,
+                    barrierDismissible: false,
+                    builder: (ctx) => _buildLogoutDialog(ctx),
+                  );
+                  if (shouldLogout == true) await AuthService.signOut();
+                },
                 child: const Text("Logout"),
               ),
             ],
@@ -687,7 +694,14 @@ class _HodDashboardScreenState extends State<HodDashboardScreen> {
                           children: [
                             // Logout Button
                             GestureDetector(
-                              onTap: () => AuthService.signOut(),
+                              onTap: () async {
+                                final shouldLogout = await showDialog<bool>(
+                                  context: context,
+                                  barrierDismissible: false,
+                                  builder: (ctx) => _buildLogoutDialog(ctx),
+                                );
+                                if (shouldLogout == true) await AuthService.signOut();
+                              },
                               child: Container(
                                 padding: const EdgeInsets.all(8),
                                 decoration: BoxDecoration(
@@ -864,4 +878,139 @@ class _HodDashboardScreenState extends State<HodDashboardScreen> {
         ],
       ),
     );
-  }}
+  }
+
+  // ── Logout Confirmation Dialog ──────────────────────────────
+  Widget _buildLogoutDialog(BuildContext ctx) {
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      elevation: 0,
+      child: Container(
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              Color(0xFF1a1a2e),
+              Color(0xFF16213e),
+              Color(0xFF0f3460),
+            ],
+          ),
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.4),
+              blurRadius: 20,
+              offset: const Offset(0, 6),
+            ),
+          ],
+        ),
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 22),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Clean Icon (no blur)
+            Container(
+              width: 56,
+              height: 56,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.redAccent.withValues(alpha: 0.15),
+                border: Border.all(
+                  color: Colors.redAccent.withValues(alpha: 0.5),
+                  width: 1.5,
+                ),
+              ),
+              child: const Icon(
+                Icons.power_settings_new,
+                color: Colors.redAccent,
+                size: 26,
+              ),
+            ),
+            const SizedBox(height: 16),
+            // Title
+            const Text(
+              'Logging Out?',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 19,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 0.3,
+              ),
+            ),
+            const SizedBox(height: 8),
+            // Subtitle
+            Text(
+              'Are you sure you want to\nlog out of your account?',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.55),
+                fontSize: 13,
+                height: 1.5,
+              ),
+            ),
+            const SizedBox(height: 22),
+            // Buttons Row
+            Row(
+              children: [
+                // Cancel Button
+                Expanded(
+                  child: GestureDetector(
+                    onTap: () => Navigator.of(ctx).pop(false),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.08),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: Colors.white.withValues(alpha: 0.15),
+                        ),
+                      ),
+                      child: const Text(
+                        'Cancel',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                // Logout Button
+                Expanded(
+                  child: GestureDetector(
+                    onTap: () => Navigator.of(ctx).pop(true),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [
+                            Color(0xFFFF416C),
+                            Color(0xFFFF4B2B),
+                          ],
+                        ),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Text(
+                        'Log Out',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
