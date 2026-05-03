@@ -107,6 +107,14 @@
 - [x] Edit name & phone number *(Done)*
 - [x] View enrollment, hostel, room, branch info *(Done)*
 - [x] **Logout confirmation dialog** — dark gradient popup 📅 16 Apr 2026 by Karan
+- [x] **Rejected leave card — dismiss (X) button** on top-right 📅 03 May 2026 by Karan
+  - Student can tap ❌ to hide rejected card from dashboard
+  - Badge gets right-padding to avoid overlap with X button
+- [x] **Rejected card dismiss — PERMANENT fix** 📅 03 May 2026 by Karan
+  - Firestore `status: 'dismissed'` update on tap (not just memory)
+  - `_filterRequests` now skips `dismissed` status
+  - Optimistic UI update via `_pendingDismiss` Set to avoid flicker
+  - Card never comes back even after hot reload or app restart
 
 ---
 
@@ -236,6 +244,20 @@
 - [x] Mess profile screen *(Done)*
 - [x] Mess menu display (student view) *(Done)*
 - [x] Mess menu editor (manager can update menu) *(Done)*
+- [x] **Logout confirmation dialog on Sign Out + AppBar icon** 📅 03 May 2026 by Karan
+  - Dark navy glassmorphism dialog (`#1A2540`)
+  - Red bordered logout icon
+  - Cancel (dark) + Log Out (red) buttons
+  - Both AppBar icon & bottom "Sign Out" button now use same `_showLogoutDialog()`
+- [x] **Default meal timings shown in menu editor** 📅 03 May 2026 by Karan
+  - Breakfast: 8:00 AM – 9:00 AM
+  - Lunch: 12:00 PM – 1:30 PM
+  - Dinner: 7:00 PM – 8:00 PM
+  - Shown as time chip with 🕐 icon below meal name in editor card header
+- [x] **Meal times synced across all student screens** 📅 03 May 2026 by Karan
+  - Fixed `student_dashboard.dart` Today's Mess card times
+  - Fixed `mess_menu_screen.dart` Full menu screen times
+  - All 3 files now show same consistent times
 - [ ] Meal attendance tracking *(Pending)*
 - [ ] Mess fee management *(Pending)*
 
@@ -299,7 +321,10 @@
 - [ ] Push all unpushed changes to GitHub
 - [ ] Notification badge count on dashboard icons
 - [ ] Mark notifications as read
-- [ ] Mess manager logout dialog (check `mess_profile_screen.dart`)
+- [x] ~~Mess manager logout dialog~~ ✅ Done 03 May 2026
+- [ ] **Security: Fill `.env` file with new FCM key** (push notifications currently using dotenv)
+- [ ] **Security: Revoke old Firebase service account key** (currently active — risk!)
+- [ ] **Security: Cloudinary unsigned preset** — convert to signed
 
 ## Medium Priority
 - [ ] HOD — no dedicated profile photo upload yet
@@ -342,6 +367,11 @@
 | 16 Apr 2026 | `feat: gate pass QR two-step check-in/check-out` | Karan |
 | 16 Apr 2026 | `feat: Add logout confirmation dialog to all profiles (Student, HOD, Warden, Rector, Guard)` | Karan |
 | 16 Apr 2026 | `feat: admin logout dialog + fix import tab overflow + add PROJECT_PROGRESS.md` | Karan *(pending)* |
+| 03 May 2026 | `feat: mess manager logout confirmation dialog (Sign Out + AppBar)` | Karan *(pending)* |
+| 03 May 2026 | `feat: student rejected leave card — dismiss X button to remove from view` | Karan *(pending)* |
+| 03 May 2026 | `fix: rejected card dismiss now permanent via Firestore status=dismissed` | Karan *(pending)* |
+| 03 May 2026 | `feat: default meal times (Breakfast/Lunch/Dinner) in editor + sync all screens` | Karan *(pending)* |
+| 03 May 2026 | `security: move FCM private key to .env + update .gitignore` | Karan *(pending)* |
 
 ---
 
@@ -401,7 +431,7 @@ lib/
 │
 ├── mess/
 │   ├── mess_manager_dashboard.dart    # Mess manager dashboard
-│   └── mess_profile_screen.dart       # Mess manager profile
+│   └── mess_profile_screen.dart       # Mess manager profile + logout dialog ✅
 │
 ├── features/
 │   └── complaints/                    # Complaints module

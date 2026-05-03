@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:googleapis_auth/auth_io.dart';
 import 'package:http/http.dart' as http;
@@ -17,45 +18,16 @@ class PushNotificationService {
       FlutterLocalNotificationsPlugin();
 
   // ---------------------------------------------------------------------------
-  // FCM V1 API CONFIGURATION
+  // FCM V1 API CONFIGURATION — loaded from .env (never hardcode here!)
+  // .env file is gitignored and never pushed to GitHub
   // ---------------------------------------------------------------------------
-  // Go to Firebase Console -> Project Settings -> Service Accounts
-  // click "Generate new private key". Open the JSON file.
-  // Copy the values below from that JSON file.
-  // ---------------------------------------------------------------------------
-  static const String _projectId = 'hostel-v3';
-  static const String _clientEmail =
-      'firebase-adminsdk-fbsvc@hostel-v3.iam.gserviceaccount.com';
-  static const String _privateKey = '''-----BEGIN PRIVATE KEY-----
-MIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQCvMf4jhp6wUjxw
-bnF39gYbscLW3PCjorf5m8tljVczRnqNB9v6cMKI+yd84FFp9vAAGIrOJhleri2W
-FayZ300e0JwNVKvHy6Y+zvawMxpZENnMjfR56ixFsYHajWtxIlZG/3QxRXt3reqr
-budjY4iGw9/Vm9RLzUAYgw9B7hWTSgKjxKVSJw+bruFwGPswiY9CKkW6ygPpxolS
-TBo1xyXSjgbL03hhQv1kH3EUFXPIZNs83woDgjNcWkf06Rqh+a8C/29Mg6lvkJnA
-HGuY3rodpPf5PFfVnynIdN6CKWhHhat8s9r+XsvZ7+qjgjOEF2VejC7W/+Z0KP52
-aZgtejrfAgMBAAECggEAL3BoEpKXUcNS3lbpnsQdr04ZJjk5Z/Xdv1cyYlM9c4L4
-GEwygsQZySHI9YWARiM5paz/mQa0A/FCIsvHqvrOVTPDrdBpm3ZHk+ZS4i9USR3I
-/BzMQF7qkgyYzudQWpgjqKHvgo//+M49JyKmwUDobSWI7Lx/Ze80Fe8XKJEhgnor
-LPGXGWV+2VJMJjDG7cRYeey+yVcWsvrasXjZaND1WdtIIIWBaQFPbfLwero++ryq
-AqZ28sI2I3hy05Sqk8OfXlhT70RtG9clyll6SB7GEtvw7b2GdWkdg0lkpGdFrFUc
-Ga8dYlLVr7fV9Z+jzs5dnaJoCojXrNDpOl4oZVwXQQKBgQDbfzip8TdI9oHMbNPC
-RCyE1/NYfd3malhZHSejU5HkS+4I0R9DMhRpyjLKwMqsyyYmDx30xu0XrIS5rKoz
-mu2Xv0kWdKzY4CcJNDIrE3ypqWwd7fl/qsFwGcGznAl73P0ar2qVHcqUM2uSVBx8
-UUQoq+2xrPtTtnCEJnK3J8lwDwKBgQDMVLBkWvStXAVVDmTMdl74YPblEl44/gmd
-z1xWUKWD2Aj0UR6kZlXz48ARXpdpS0PGWvUx1vq1385PTH6ElGrD8Q6SNLUGKZ7N
-FZr1dH1a5XbbWM6+KJ8wzgUFQCSRR5ycea+JT72tTJfwmLcHDaIKAWmUbwwDjkBW
-1dgy4Y+4MQKBgH6xnD9bYBHZV2prln8XYqr7CxcU77RDxeMKFQsM/bTMrwSf0G+0
-xFubvl2RkmrSh56IMz5KZCe6CJIzu7o1vtZMLx+rEOnN2DpTynFauiYkCKft6Ils
-QmM2Orw1YLQCBoYUomyX2YpZc8nuitKnBbSEKJrZwee78o4UszpM2NS5AoGAeBNY
-qVDuMqY+F/Lid2kkfE/3Jzy5FELtgcim2a6A5c7hzDmTiUb+QdnYOBzfW6g4RuuS
-5dwQ7yp7ggxQ2Tai20zgpDjHHLz+rkSBELeJJw5r35D7xbH3guW++4vrMVjlButX
-pZivvZSiQWhtPn7bd4fG9MyhQcGpu53ldFkrbTECgYEAqNlCwIJ0hGRT3fSYJHxz
-xgfEQDbSucu/eVZv/w4tpTn+MUJblQBeyt57Wablzdnz89b1u3pcryT4wuI3tFJP
-AyDcuwiFxC9ToJVjsB5L+2jaCII+YR+R5yc3vCsfraIbkVUGknUMdyRdhlwo7B62
-s6UDRq7nykEUKEw83j0m3mg=
------END PRIVATE KEY-----''';
-
-  static const String _clientId = '114924344665199922669';
+  static String get _projectId    => dotenv.env['FCM_PROJECT_ID']    ?? '';
+  static String get _clientEmail  => dotenv.env['FCM_CLIENT_EMAIL']  ?? '';
+  static String get _clientId     => dotenv.env['FCM_CLIENT_ID']     ?? '';
+  static String get _privateKeyId => dotenv.env['FCM_PRIVATE_KEY_ID'] ?? '';
+  // .env stores newlines as \n literal — convert back to real newlines
+  static String get _privateKey   => (dotenv.env['FCM_PRIVATE_KEY']  ?? '')
+      .replaceAll(r'\n', '\n');
 
   // Scopes required for FCM V1
   static const List<String> _scopes = [
@@ -153,8 +125,8 @@ s6UDRq7nykEUKEw83j0m3mg=
 
   // Generate Access Token for V1 API
   Future<String?> _getAccessToken() async {
-    if (_clientEmail == 'YOUR_CLIENT_EMAIL') {
-      debugPrint("WARNING: Service Account credentials not set.");
+    if (_clientEmail.isEmpty || _privateKey.isEmpty) {
+      debugPrint("WARNING: FCM credentials not set in .env file.");
       return null;
     }
 
@@ -162,7 +134,7 @@ s6UDRq7nykEUKEw83j0m3mg=
       final accountCredentials = ServiceAccountCredentials.fromJson({
         "type": "service_account",
         "project_id": _projectId,
-        "private_key_id": "393ed3c3e525680b33ace78a02fd7369bcae1c27",
+        "private_key_id": _privateKeyId,
         "private_key": _privateKey,
         "client_email": _clientEmail,
         "client_id": _clientId,
@@ -173,6 +145,7 @@ s6UDRq7nykEUKEw83j0m3mg=
         "client_x509_cert_url":
             "https://www.googleapis.com/robot/v1/metadata/x509/firebase-adminsdk-fbsvc%40hostel-v3.iam.gserviceaccount.com",
       });
+
 
       final authClient = await clientViaServiceAccount(
         accountCredentials,

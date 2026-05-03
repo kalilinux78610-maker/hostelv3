@@ -24,6 +24,13 @@ class _MessMenuEditorScreenState extends State<MessMenuEditorScreen> {
 
   final List<String> _meals = ['Breakfast', 'Lunch', 'Dinner'];
 
+  // Default meal timings
+  static const Map<String, String> _mealTimes = {
+    'Breakfast': '8:00 AM – 9:00 AM',
+    'Lunch':     '12:00 PM – 1:30 PM',
+    'Dinner':    '7:00 PM – 8:00 PM',
+  };
+
   // Text controllers: { 'Monday': { 'Breakfast': controller, ...}, ... }
   final Map<String, Map<String, TextEditingController>> _controllers = {};
 
@@ -433,25 +440,47 @@ class _MessMenuEditorScreenState extends State<MessMenuEditorScreen> {
               color: color.withValues(alpha: 0.08),
               borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
             ),
-            child: Row(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Icon(icon, color: color, size: 22),
-                const SizedBox(width: 10),
-                Text(meal, style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: color)),
-                const Spacer(),
-                // Upload button
-                isUploading
-                    ? SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2, color: color))
-                    : TextButton.icon(
-                        onPressed: () => _pickAndUploadImage(day, meal),
-                        icon: Icon(imageUrl != null ? Icons.edit_note : Icons.add_photo_alternate, size: 18, color: color),
-                        label: Text(imageUrl != null ? "Change Photo" : "Add Photo", style: TextStyle(fontSize: 13, color: color)),
-                        style: TextButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                          backgroundColor: color.withValues(alpha: 0.1),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                        ),
+                Row(
+                  children: [
+                    Icon(icon, color: color, size: 22),
+                    const SizedBox(width: 10),
+                    Text(meal, style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: color)),
+                    const Spacer(),
+                    // Upload button
+                    isUploading
+                        ? SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2, color: color))
+                        : TextButton.icon(
+                            onPressed: () => _pickAndUploadImage(day, meal),
+                            icon: Icon(imageUrl != null ? Icons.edit_note : Icons.add_photo_alternate, size: 18, color: color),
+                            label: Text(imageUrl != null ? "Change Photo" : "Add Photo", style: TextStyle(fontSize: 13, color: color)),
+                            style: TextButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                              backgroundColor: color.withValues(alpha: 0.1),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                            ),
+                          ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                // Time badge
+                Row(
+                  children: [
+                    Icon(Icons.access_time_rounded, size: 13, color: color.withValues(alpha: 0.7)),
+                    const SizedBox(width: 4),
+                    Text(
+                      _mealTimes[meal] ?? '',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                        color: color.withValues(alpha: 0.75),
+                        letterSpacing: 0.2,
                       ),
+                    ),
+                  ],
+                ),
               ],
             ),
           ),

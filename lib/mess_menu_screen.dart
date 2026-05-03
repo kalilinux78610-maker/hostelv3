@@ -138,7 +138,7 @@ class _MessMenuScreenState extends State<MessMenuScreen> {
         _buildMealCard(
           title: "Breakfast",
           icon: Icons.free_breakfast,
-          time: "07:30 AM - 09:00 AM",
+          time: "8:00 AM – 9:00 AM",
           items: items['Breakfast']?.isNotEmpty == true ? items['Breakfast']! : "Not available",
           color: Colors.orange,
           imageUrl: breakfastImg,
@@ -146,7 +146,7 @@ class _MessMenuScreenState extends State<MessMenuScreen> {
         _buildMealCard(
           title: "Lunch",
           icon: Icons.lunch_dining,
-          time: "12:30 PM - 02:00 PM",
+          time: "12:00 PM – 1:30 PM",
           items: items['Lunch']?.isNotEmpty == true ? items['Lunch']! : "Not available",
           color: Colors.green,
           imageUrl: lunchImg,
@@ -154,7 +154,7 @@ class _MessMenuScreenState extends State<MessMenuScreen> {
         _buildMealCard(
           title: "Dinner",
           icon: Icons.dinner_dining,
-          time: "07:30 PM - 09:00 PM",
+          time: "7:00 PM – 8:00 PM",
           items: items['Dinner']?.isNotEmpty == true ? items['Dinner']! : "Not available",
           color: _primaryColor,
           imageUrl: dinnerImg,

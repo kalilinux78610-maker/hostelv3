@@ -416,6 +416,9 @@ class _RecentRequestsListState extends State<_RecentRequestsList> {
   // Tracks when each rejected doc was first observed in the UI
   final Map<String, DateTime> _rejectedFirstSeen = {};
 
+  // Locally track IDs being dismissed (to avoid flicker before Firestore updates)
+  final Set<String> _pendingDismiss = {};
+
   // How long a rejected card stays visible before disappearing
   static const _rejectedVisibleDuration = Duration(minutes: 5);
 
@@ -461,10 +464,13 @@ class _RecentRequestsListState extends State<_RecentRequestsList> {
       final endDate = (raw['endDate'] as Timestamp?)?.toDate();
       final docTime = (raw['createdAt'] as Timestamp?)?.toDate() ?? DateTime(2000);
 
-      // Skip finished / cancelled entries
-      if (status == 'completed' || status == 'cancelled') continue;
+      // Skip finished / cancelled / dismissed entries
+      if (status == 'completed' || status == 'cancelled' || status == 'dismissed') continue;
 
       if (status == 'rejected') {
+        // Hide if student permanently dismissed it (Firestore or pending)
+        if (_pendingDismiss.contains(doc.id)) continue;
+
         // Hide rejected card immediately if ANY newer request was created after it
         final hasNewerRequest = newestOverall.isAfter(docTime);
         if (hasNewerRequest) continue;
@@ -490,6 +496,21 @@ class _RecentRequestsListState extends State<_RecentRequestsList> {
       // Only show rejected if no active request AND no newer request of any kind
       if (activeRequest == null) ...rejectedRequests,
     ];
+  }
+
+  /// Permanently dismiss a rejected card by updating Firestore status to 'dismissed'
+  Future<void> _dismissRejected(String docId) async {
+    // Immediately hide from UI (optimistic update)
+    setState(() => _pendingDismiss.add(docId));
+    try {
+      await FirebaseFirestore.instance
+          .collection('leave_requests')
+          .doc(docId)
+          .update({'status': 'dismissed'});
+    } catch (e) {
+      // If Firestore fails, keep it hidden in this session via _pendingDismiss
+      debugPrint('Dismiss failed: $e');
+    }
   }
 
 
@@ -619,7 +640,9 @@ class _RecentRequestsListState extends State<_RecentRequestsList> {
       }
     }
 
-    return Container(
+    final isRejected = status == 'rejected';
+
+    Widget cardWidget = Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.fromLTRB(18, 18, 18, 14),
       decoration: BoxDecoration(
@@ -648,19 +671,23 @@ class _RecentRequestsListState extends State<_RecentRequestsList> {
                   color: Color(0xFF1A1A2E),
                 ),
               ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
-                decoration: BoxDecoration(
-                  color: badgeBg,
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Text(
-                  badgeLabel,
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                    color: badgeColor,
-                    letterSpacing: 0.5,
+              // Badge (with right padding to leave room for X button on rejected)
+              Padding(
+                padding: EdgeInsets.only(right: isRejected ? 28.0 : 0),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                  decoration: BoxDecoration(
+                    color: badgeBg,
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    badgeLabel,
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: badgeColor,
+                      letterSpacing: 0.5,
+                    ),
                   ),
                 ),
               ),
@@ -712,6 +739,38 @@ class _RecentRequestsListState extends State<_RecentRequestsList> {
         ],
       ),
     );
+
+    // Wrap rejected card in a Stack with dismiss X button
+    if (isRejected && docId != null) {
+      return Stack(
+        children: [
+          cardWidget,
+          Positioned(
+            top: 6,
+            right: 6,
+            child: GestureDetector(
+              onTap: () => _dismissRejected(docId),
+              child: Container(
+                width: 26,
+                height: 26,
+                decoration: BoxDecoration(
+                  color: Colors.red.shade50,
+                  shape: BoxShape.circle,
+                  border: Border.all(color: Colors.red.shade200, width: 1),
+                ),
+                child: Icon(
+                  Icons.close_rounded,
+                  size: 16,
+                  color: Colors.red.shade400,
+                ),
+              ),
+            ),
+          ),
+        ],
+      );
+    }
+
+    return cardWidget;
   }
 
   String _monthName(int m) {
@@ -892,9 +951,9 @@ class _TodayMessCardState extends State<_TodayMessCard> {
 
   // Meal time labels
   final Map<String, String> _mealTimes = {
-    'Breakfast': '7:30 AM – 9:00 AM',
-    'Lunch': '12:30 PM – 2:30 PM',
-    'Dinner': '7:30 PM – 9:00 PM',
+    'Breakfast': '8:00 AM – 9:00 AM',
+    'Lunch': '12:00 PM – 1:30 PM',
+    'Dinner': '7:00 PM – 8:00 PM',
   };
 
   // Pick current meal automatically based on time

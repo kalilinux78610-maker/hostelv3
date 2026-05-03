@@ -43,3 +43,12 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# 🔐 Sensitive Firebase & Environment files — NEVER commit these
+android/app/google-services.json
+ios/Runner/GoogleService-Info.plist
+*.env
+.env*
+lib/firebase_options_secret.dart
+**/service_account*.json
+**/serviceAccount*.json
