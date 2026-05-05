@@ -13,6 +13,7 @@ class ComplaintEntity {
   final String? hostelId;
   final String? userCategory;
   final String? userBranch;
+  final String? imageUrl; // optional photo attachment
 
   const ComplaintEntity({
     required this.id,
@@ -29,5 +30,6 @@ class ComplaintEntity {
     this.hostelId,
     this.userCategory,
     this.userBranch,
+    this.imageUrl,
   });
 }

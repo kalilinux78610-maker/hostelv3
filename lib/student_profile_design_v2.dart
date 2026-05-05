@@ -16,6 +16,7 @@ class _StudentProfileDesignV2State extends State<StudentProfileDesignV2> {
   static const Color _primary = Color(0xFF002244);
 
   // Editable controllers
+  final _nameCtrl = TextEditingController();
   final _mobileCtrl = TextEditingController();
   final _fatherMobileCtrl = TextEditingController();
   final _motherMobileCtrl = TextEditingController();
@@ -27,6 +28,7 @@ class _StudentProfileDesignV2State extends State<StudentProfileDesignV2> {
 
   @override
   void dispose() {
+    _nameCtrl.dispose();
     _mobileCtrl.dispose();
     _fatherMobileCtrl.dispose();
     _motherMobileCtrl.dispose();
@@ -35,6 +37,7 @@ class _StudentProfileDesignV2State extends State<StudentProfileDesignV2> {
   }
 
   void _populateControllers(Map<String, dynamic>? data) {
+    _nameCtrl.text = data?['name'] ?? data?['fullName'] ?? '';
     _mobileCtrl.text = data?['mobile'] ?? data?['studentMobile'] ?? '';
     _fatherMobileCtrl.text = data?['fatherMobile'] ?? data?['parentContact'] ?? '';
     _motherMobileCtrl.text = data?['motherMobile'] ?? '';
@@ -46,6 +49,7 @@ class _StudentProfileDesignV2State extends State<StudentProfileDesignV2> {
     setState(() => _isSaving = true);
     try {
       await FirebaseFirestore.instance.collection('users').doc(uid).update({
+        'name': _nameCtrl.text.trim(),
         'mobile': _mobileCtrl.text.trim(),
         'studentMobile': _mobileCtrl.text.trim(),
         'fatherMobile': _fatherMobileCtrl.text.trim(),
@@ -210,6 +214,18 @@ class _StudentProfileDesignV2State extends State<StudentProfileDesignV2> {
                         else
                           // Editable contact form
                           _editCard([
+                            _editField(
+                              controller: _nameCtrl,
+                              label: 'Full Name',
+                              icon: Icons.person_outline,
+                              validator: (v) {
+                                if (v == null || v.trim().isEmpty) {
+                                  return 'Name is required';
+                                }
+                                return null;
+                              },
+                            ),
+                            const SizedBox(height: 14),
                             _editField(
                               controller: _mobileCtrl,
                               label: 'My Mobile No.',

@@ -17,6 +17,7 @@ class ComplaintModel extends ComplaintEntity {
     super.hostelId,
     super.userCategory,
     super.userBranch,
+    super.imageUrl, // ← added
   });
 
   factory ComplaintModel.fromMap(Map<String, dynamic> map) {
@@ -35,6 +36,7 @@ class ComplaintModel extends ComplaintEntity {
       hostelId: map['hostelId'],
       userCategory: map['userCategory'],
       userBranch: map['userBranch'],
+      imageUrl: map['imageUrl'], // ← read from Firestore
     );
   }
 
@@ -66,6 +68,9 @@ class ComplaintModel extends ComplaintEntity {
     if (userBranch != null) {
       map['userBranch'] = userBranch;
     }
+    if (imageUrl != null) {
+      map['imageUrl'] = imageUrl; // ← save to Firestore
+    }
 
     return map;
   }
@@ -86,6 +91,7 @@ class ComplaintModel extends ComplaintEntity {
       hostelId: entity.hostelId,
       userCategory: entity.userCategory,
       userBranch: entity.userBranch,
+      imageUrl: entity.imageUrl, // ← pass through
     );
   }
 }

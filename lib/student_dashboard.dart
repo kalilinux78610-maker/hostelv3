@@ -119,14 +119,25 @@ class StudentHomeTab extends StatelessWidget {
 
         final userData = snapshot.data?.data() as Map<String, dynamic>?;
 
-        // Extract Data
-        final name = userData?['name'] ?? "Student";
-        final room = userData?['room'] ?? "N/A";
-        final hostel =
-            userData?['assignedHostel'] ??
-            userData?['hostel'] ??
+        // Extract Data — multiple fallbacks to handle different field names
+        final name = userData?['name'] ??
+            userData?['fullName'] ??
+            userData?['displayName'] ??
+            user.displayName ??
+            "Student";
+
+        final room = userData?['room'] ??
+            userData?['roomNumber'] ??
+            userData?['roomNo'] ??
             "N/A";
+
+        final hostel = userData?['assignedHostel'] ??
+            userData?['hostel'] ??
+            userData?['hostelName'] ??
+            "N/A";
+
         final messStatus = userData?['messStatus'] ?? "Active";
+
 
         return SingleChildScrollView(
           child: Stack(

@@ -41,97 +41,65 @@ class _StudentComplaintsScreenState extends ConsumerState<StudentComplaintsScree
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: _kSurface,
-      body: NestedScrollView(
-        headerSliverBuilder: (context, _) => [
-          SliverAppBar(
-            expandedHeight: 130,
-            pinned: true,
-            backgroundColor: _kNavy,
-            foregroundColor: Colors.white,
-            elevation: 0,
-            flexibleSpace: FlexibleSpaceBar(
-              background: Container(
-                decoration: const BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [_kNavy, _kNavyMid],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                ),
-                child: SafeArea(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
-                    child: Row(
-                      children: [
-                        Container(
-                          width: 44,
-                          height: 44,
-                          decoration: BoxDecoration(
-                            color: _kAccent.withAlpha(46),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: const Icon(Icons.headset_mic_rounded,
-                              color: _kAccent, size: 22),
-                        ),
-                        const SizedBox(width: 14),
-                        const Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Text(
-                              'Complaints',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 20,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            Text(
-                              'File and track your complaints',
-                              style: TextStyle(
-                                color: Colors.white70,
-                                fontSize: 12,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ),
-            bottom: PreferredSize(
-              preferredSize: const Size.fromHeight(48),
-              child: Container(
-                color: _kNavy,
-                child: TabBar(
-                  controller: _tabController,
-                  indicatorColor: _kAccent,
-                  indicatorWeight: 3,
-                  labelColor: Colors.white,
-                  unselectedLabelColor: Colors.white54,
-                  labelStyle: const TextStyle(
-                      fontWeight: FontWeight.bold, fontSize: 13),
-                  tabs: const [
-                    Tab(text: 'New Complaint'),
-                    Tab(text: 'My Complaints'),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ],
-        body: TabBarView(
-          controller: _tabController,
+      appBar: AppBar(
+        backgroundColor: _kNavy,
+        foregroundColor: Colors.white,
+        elevation: 0,
+        automaticallyImplyLeading: false,
+        titleSpacing: 20,
+        title: Row(
           children: [
-            const FileComplaintScreen(),
-            const _ComplaintsList(),
+            Container(
+              width: 38,
+              height: 38,
+              decoration: BoxDecoration(
+                color: _kAccent.withAlpha(46),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(Icons.headset_mic_rounded,
+                  color: _kAccent, size: 20),
+            ),
+            const SizedBox(width: 12),
+            const Text(
+              'Complaints',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
           ],
         ),
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(48),
+          child: Container(
+            color: _kNavy,
+            child: TabBar(
+              controller: _tabController,
+              indicatorColor: _kAccent,
+              indicatorWeight: 3,
+              labelColor: Colors.white,
+              unselectedLabelColor: Colors.white54,
+              labelStyle: const TextStyle(
+                  fontWeight: FontWeight.bold, fontSize: 13),
+              tabs: const [
+                Tab(text: 'New Complaint'),
+                Tab(text: 'My Complaints'),
+              ],
+            ),
+          ),
+        ),
+      ),
+      body: TabBarView(
+        controller: _tabController,
+        children: [
+          const FileComplaintScreen(),
+          const _ComplaintsList(),
+        ],
       ),
     );
   }
+
 }
 
 class _ComplaintsList extends ConsumerWidget {
