@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../models/staff_model.dart';
 import '../../repositories/staff_repository.dart';
+import '../../services/auth_service.dart';
 
 // --- Screen 1: The Grid Dashboard --- //
 class StaffManagementScreen extends StatefulWidget {
@@ -131,101 +132,287 @@ class _StaffManagementScreenState extends State<StaffManagementScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: AppBar(
-        title: Text(
-          'Staff Management',
-          style: GoogleFonts.inter(fontWeight: FontWeight.w600),
-        ),
-        backgroundColor: const Color(0xFF002244),
-        foregroundColor: Colors.white,
-        actions: [
-          PopupMenuButton<String>(
-            onSelected: (value) {
-              if (value == 'seed') {
-                _seedDefaultStaff();
-              }
-            },
-            itemBuilder: (BuildContext context) {
-              return [
-                const PopupMenuItem<String>(
-                  value: 'seed',
-                  child: Text('Generate Default Staff'),
-                ),
-              ];
-            },
-          ),
-        ],
-      ),
+      backgroundColor: const Color(0xFFF8FAFC),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
-          : Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
+          : Column(
+              children: [
+                _buildHeader(context),
+                Expanded(
+                  child: ListView(
+                    padding: const EdgeInsets.all(20),
+                    children: [
+                      _buildRoleCard(context, 'Warden', 'View and manage warden\ndetails and permissions', Icons.shield, Colors.blue),
+                      const SizedBox(height: 16),
+                      _buildRoleCard(context, 'HOD', 'View and manage HOD\ndetails and permissions', Icons.school, Colors.green),
+                      const SizedBox(height: 16),
+                      _buildRoleCard(context, 'Rector', 'View and manage rector\ndetails and permissions', Icons.account_balance, Colors.orange),
+                      const SizedBox(height: 16),
+                      _buildRoleCard(context, 'Guard', 'View and manage guard\ndetails and permissions', Icons.badge, Colors.purple),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+    );
+  }
+
+  Widget _buildHeader(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(24, 60, 24, 30),
+      decoration: const BoxDecoration(
+        color: Color(0xFF0D1E3A),
+        borderRadius: BorderRadius.only(
+          bottomLeft: Radius.circular(30),
+          bottomRight: Radius.circular(30),
+        ),
+      ),
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          Positioned(
+            right: -30,
+            bottom: -50,
+            child: Icon(Icons.group, size: 160, color: Colors.white.withValues(alpha: 0.05)),
+          ),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Admin Dashboard', style: GoogleFonts.inter(color: Colors.white, fontSize: 14)),
+                    const SizedBox(height: 6),
+                    Text('Staff Management', style: GoogleFonts.inter(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 6),
+                    Text('Manage and view staff members', style: GoogleFonts.inter(color: Colors.blue[100], fontSize: 13)),
+                  ],
+                ),
+              ),
+              Column(
                 children: [
-                  Expanded(
-                    child: GridView.count(
-                      crossAxisCount:
-                          1, // Full width boxes as per drawing, or 2 for grid. The drawing suggests 1 vertical list of boxes. We will use a ListView of boxed items for the top level menus to exactly match the whiteboard-style drawing logic.
-                      childAspectRatio: 3.5, // Make them rectangular boxes
-                      mainAxisSpacing: 16,
-                      crossAxisSpacing: 16,
-                      children: [
-                        _buildRoleBox(
-                          context,
-                          'Warden',
-                          Icons.admin_panel_settings,
+                  Container(
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
+                    ),
+                    child: IconButton(
+                      icon: const Icon(Icons.logout, color: Colors.white, size: 20),
+                      onPressed: () async {
+                        final shouldLogout = await showDialog<bool>(
+                          context: context,
+                          barrierDismissible: false,
+                          builder: (ctx) => _buildLogoutDialog(ctx),
+                        );
+                        if (shouldLogout == true) await AuthService.signOut();
+                      },
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Container(
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
+                    ),
+                    child: PopupMenuButton<String>(
+                      icon: const Icon(Icons.more_vert, color: Colors.white, size: 20),
+                      color: Colors.white,
+                      onSelected: (value) {
+                        if (value == 'seed') _seedDefaultStaff();
+                      },
+                      itemBuilder: (context) => [
+                        const PopupMenuItem(
+                          value: 'seed',
+                          child: Text('Generate Default Staff', style: TextStyle(color: Colors.black)),
                         ),
-                        _buildRoleBox(context, 'HOD', Icons.school),
-                        _buildRoleBox(context, 'Rector', Icons.home_work),
-                        _buildRoleBox(context, 'Guard', Icons.security),
                       ],
                     ),
                   ),
                 ],
               ),
-            ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 
-  Widget _buildRoleBox(BuildContext context, String role, IconData icon) {
+  Widget _buildRoleCard(BuildContext context, String title, String subtitle, IconData icon, MaterialColor color) {
     return InkWell(
       onTap: () {
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) =>
-                StaffListScreen(role: role, repository: _repository),
+            builder: (context) => StaffListScreen(role: title, repository: _repository),
           ),
         );
       },
       borderRadius: BorderRadius.circular(16),
       child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: const Color(0xFFE0E0E0), width: 1.5),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withValues(alpha: 0.03),
-              blurRadius: 8,
+              blurRadius: 10,
               offset: const Offset(0, 4),
             ),
           ],
         ),
         child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, size: 28, color: const Color(0xFF002244)),
-            const SizedBox(width: 16),
-            Text(
-              role.toUpperCase(),
-              style: GoogleFonts.inter(
-                fontSize: 22,
-                fontWeight: FontWeight.bold,
-                letterSpacing: 1.2,
-                color: const Color(0xFF002244),
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: color[50],
+                shape: BoxShape.circle,
               ),
+              child: Icon(icon, size: 32, color: color[700]),
+            ),
+            const SizedBox(width: 20),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: GoogleFonts.inter(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: const Color(0xFF1E293B),
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    subtitle,
+                    style: GoogleFonts.inter(
+                      fontSize: 13,
+                      color: Colors.grey[500],
+                      height: 1.4,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: color[50],
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(Icons.arrow_forward_ios, size: 14, color: color[700]),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLogoutDialog(BuildContext ctx) {
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      elevation: 0,
+      child: Container(
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [Color(0xFF1a1a2e), Color(0xFF16213e), Color(0xFF0f3460)],
+          ),
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.4),
+              blurRadius: 20,
+              offset: const Offset(0, 6),
+            ),
+          ],
+        ),
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 22),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 56,
+              height: 56,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.redAccent.withValues(alpha: 0.15),
+                border: Border.all(
+                  color: Colors.redAccent.withValues(alpha: 0.5),
+                  width: 1.5,
+                ),
+              ),
+              child: const Icon(Icons.logout_rounded, color: Colors.redAccent, size: 26),
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'Logging Out?',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 19,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 0.3,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Are you sure you want to\nlog out of your account?',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.55),
+                fontSize: 13,
+                height: 1.5,
+              ),
+            ),
+            const SizedBox(height: 22),
+            Row(
+              children: [
+                Expanded(
+                  child: GestureDetector(
+                    onTap: () => Navigator.of(ctx).pop(false),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.08),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
+                      ),
+                      child: const Text(
+                        'Cancel',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 14),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: GestureDetector(
+                    onTap: () => Navigator.of(ctx).pop(true),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [Color(0xFFFF416C), Color(0xFFFF4B2B)],
+                        ),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Text(
+                        'Log Out',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ],
         ),

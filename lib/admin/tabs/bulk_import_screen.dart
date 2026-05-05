@@ -5,6 +5,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:csv/csv.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import '../../services/auth_service.dart';
 
 class BulkImportScreen extends StatefulWidget {
   const BulkImportScreen({super.key});
@@ -655,191 +656,388 @@ class _BulkImportScreenState extends State<BulkImportScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
+    return Scaffold(
+      backgroundColor: const Color(0xFFF8FAFC),
+      body: Column(
         children: [
-          // Instructions Card
-          Card(
-            color: Colors.blue[50],
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
+          _buildHeader(context),
+          Expanded(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(20),
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  const Text(
-                    "New CSV Format (13 columns):",
-                    style: TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 4),
-                  const Text(
-                    "Name, Enrollment No, Gender, Blood Group, Student Mobile, Email, Father Mobile, Mother Mobile, Institute, Department, Hostel, Floor, Room",
-                    style: TextStyle(fontSize: 12, color: Colors.blueGrey),
-                  ),
-                  const SizedBox(height: 6),
-                  const Text(
-                    "Institute: Use 'RNGPIT' for Degree, 'NGPP' for Diploma.",
-                    style: TextStyle(color: Colors.grey, fontSize: 12),
-                  ),
-                  const SizedBox(height: 4),
-                  const Text(
-                    "Note: Email MUST be unique and valid (e.g. user@gmail.com).",
-                    style: TextStyle(color: Colors.red),
-                  ),
+                  _buildFormatCard(),
+                  const SizedBox(height: 20),
+                  _buildUploadSection(),
+                  const SizedBox(height: 24),
+                  const Text("Demo Data Tools", style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Color(0xFF0D1E3A))),
+                  const SizedBox(height: 12),
+                  _buildDemoToolCard("Generate 300 Demo Students", "Create 300 random demo student records", Icons.bolt, Colors.orange, _generateDemoData),
+                  const SizedBox(height: 12),
+                  _buildDemoToolCard("Promote 'rector@demo.com'", "Make rector@demo.com as rector (demo)", Icons.campaign, Colors.blue, _generateDemoRector),
+                  const SizedBox(height: 12),
+                  _buildDemoToolCard("Delete All Students", "Permanently delete all student records", Icons.delete, Colors.red, _deleteAllStudents),
+                  const SizedBox(height: 12),
+                  _buildDemoToolCard("Clear All Requests & Complaints", "Remove all requests and complaints from the system", Icons.cleaning_services, Colors.purple, _clearOperationalData),
+                  const SizedBox(height: 24),
+                  if (_statusMessage.isNotEmpty)
+                    Text(
+                      _statusMessage,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: _failCount > 0 ? Colors.red : Colors.green,
+                      ),
+                    ),
+                  if (_errorLogs.isNotEmpty) ...[
+                    const SizedBox(height: 16),
+                    const Text("Errors:", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.red)),
+                    Container(
+                      height: 150,
+                      decoration: BoxDecoration(border: Border.all(color: Colors.red.shade200), borderRadius: BorderRadius.circular(8)),
+                      child: ListView.builder(
+                        padding: const EdgeInsets.all(8),
+                        itemCount: _errorLogs.length,
+                        itemBuilder: (context, index) => Text("• ${_errorLogs[index]}", style: TextStyle(color: Colors.red[800], fontSize: 12)),
+                      ),
+                    ),
+                  ],
+                  if (_data.isNotEmpty) ...[
+                    const SizedBox(height: 24),
+                    const Text("Preview (First 5 Rows):", style: TextStyle(fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 8),
+                    Container(
+                      height: 200,
+                      decoration: BoxDecoration(border: Border.all(color: Colors.grey[300]!), borderRadius: BorderRadius.circular(8), color: Colors.white),
+                      child: ListView.builder(
+                        itemCount: _data.length > 5 ? 5 : _data.length,
+                        itemBuilder: (context, index) {
+                          return ListTile(
+                            dense: true,
+                            title: Text(_data[index].join(', '), style: const TextStyle(fontSize: 12)),
+                            leading: CircleAvatar(radius: 12, child: Text("${index + 1}", style: const TextStyle(fontSize: 10))),
+                          );
+                        },
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ),
           ),
-          const SizedBox(height: 24),
+        ],
+      ),
+    );
+  }
 
-          if (_isLoading)
-            const Center(
+  Widget _buildHeader(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(24, 60, 24, 30),
+      decoration: const BoxDecoration(
+        color: Color(0xFF0D1E3A),
+        borderRadius: BorderRadius.only(
+          bottomLeft: Radius.circular(30),
+          bottomRight: Radius.circular(30),
+        ),
+      ),
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          Positioned(
+            right: -20,
+            bottom: -30,
+            child: Icon(Icons.cloud_upload, size: 140, color: Colors.white.withValues(alpha: 0.05)),
+          ),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('Admin Dashboard', style: TextStyle(color: Colors.white, fontSize: 14)),
+                    const SizedBox(height: 6),
+                    const Text('Import Students', style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 6),
+                    Text('Import student data using CSV', style: TextStyle(color: Colors.blue[100], fontSize: 13)),
+                  ],
+                ),
+              ),
+              Container(
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
+                ),
+                child: IconButton(
+                  icon: const Icon(Icons.logout, color: Colors.white, size: 20),
+                  onPressed: () async {
+                    final shouldLogout = await showDialog<bool>(
+                      context: context,
+                      barrierDismissible: false,
+                      builder: (ctx) => _buildLogoutDialog(ctx),
+                    );
+                    if (shouldLogout == true) await AuthService.signOut();
+                  },
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFormatCard() {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 10, offset: const Offset(0, 4))],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(color: Colors.blue[50], borderRadius: BorderRadius.circular(12)),
+                child: Icon(Icons.note_add, color: Colors.blue[600], size: 24),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text("New CSV Format (13 columns)", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: Color(0xFF0D1E3A))),
+                    const SizedBox(height: 4),
+                    Text("Name, Enrollment No, Gender, Blood Group, Student Mobile, Email, Father Mobile, Mother Mobile, Institute, Department, Hostel, Floor, Room", style: TextStyle(fontSize: 12, color: Colors.grey[600], height: 1.4)),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(color: Colors.blue[50], borderRadius: BorderRadius.circular(8)),
+            child: Row(
+              children: [
+                Icon(Icons.info_outline, color: Colors.blue[600], size: 16),
+                const SizedBox(width: 8),
+                Expanded(child: Text("Institute: Use 'RNGPIT' for Degree, 'NGPP' for Diploma.", style: TextStyle(fontSize: 12, color: Colors.blue[800]))),
+              ],
+            ),
+          ),
+          const SizedBox(height: 8),
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(color: Colors.red[50], borderRadius: BorderRadius.circular(8)),
+            child: Row(
+              children: [
+                Icon(Icons.warning_amber_rounded, color: Colors.red[600], size: 16),
+                const SizedBox(width: 8),
+                Expanded(child: Text("Note: Email MUST be unique and valid (e.g. user@gmail.com).", style: TextStyle(fontSize: 12, color: Colors.red[800]))),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildUploadSection() {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 30, horizontal: 20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.blue[200]!, width: 1.5),
+      ),
+      child: Column(
+        children: [
+          Icon(Icons.cloud_upload, size: 48, color: Colors.blue[400]),
+          const SizedBox(height: 12),
+          const Text("Select CSV File", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFF0D1E3A))),
+          const SizedBox(height: 4),
+          Text("Click to browse or drag & drop your CSV file here", style: TextStyle(fontSize: 12, color: Colors.grey[500])),
+          const SizedBox(height: 20),
+          ElevatedButton.icon(
+            onPressed: _pickFile,
+            icon: const Icon(Icons.upload_file, size: 18),
+            label: const Text("Choose CSV File"),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF0D1E3A),
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Text("Only CSV files are supported. Max file size: 10MB", style: TextStyle(fontSize: 11, color: Colors.grey[400])),
+          if (_data.isNotEmpty) ...[
+            const SizedBox(height: 20),
+            ElevatedButton(
+              onPressed: _uploadData,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.green,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              ),
+              child: Text("Import ${_data.length} Students Now"),
+            ),
+          ],
+          if (_isLoading) ...[
+            const SizedBox(height: 20),
+            const CircularProgressIndicator(),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDemoToolCard(String title, String subtitle, IconData icon, MaterialColor color, VoidCallback onTap) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+        decoration: BoxDecoration(
+          color: color[50],
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(color: color[600], shape: BoxShape.circle),
+              child: Icon(icon, color: Colors.white, size: 20),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
               child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  CircularProgressIndicator(),
-                  SizedBox(height: 16),
-                  Text("Uploading records..."),
+                  Text(title, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: color[800])),
+                  const SizedBox(height: 2),
+                  Text(subtitle, style: TextStyle(fontSize: 12, color: Colors.grey[600])),
                 ],
               ),
-            )
-          else
-            Column(
+            ),
+            Icon(Icons.arrow_forward_ios, size: 14, color: color[800]),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLogoutDialog(BuildContext ctx) {
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      elevation: 0,
+      child: Container(
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [Color(0xFF1a1a2e), Color(0xFF16213e), Color(0xFF0f3460)],
+          ),
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.4),
+              blurRadius: 20,
+              offset: const Offset(0, 6),
+            ),
+          ],
+        ),
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 22),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 56,
+              height: 56,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.redAccent.withValues(alpha: 0.15),
+                border: Border.all(
+                  color: Colors.redAccent.withValues(alpha: 0.5),
+                  width: 1.5,
+                ),
+              ),
+              child: const Icon(Icons.logout_rounded, color: Colors.redAccent, size: 26),
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'Logging Out?',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 19,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 0.3,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Are you sure you want to\nlog out of your account?',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.55),
+                fontSize: 13,
+                height: 1.5,
+              ),
+            ),
+            const SizedBox(height: 22),
+            Row(
               children: [
-                ElevatedButton.icon(
-                  onPressed: _pickFile,
-                  icon: const Icon(Icons.upload_file),
-                  label: const Text("Select CSV File"),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF002244),
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 32,
-                      vertical: 16,
+                Expanded(
+                  child: GestureDetector(
+                    onTap: () => Navigator.of(ctx).pop(false),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.08),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
+                      ),
+                      child: const Text(
+                        'Cancel',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 14),
+                      ),
                     ),
                   ),
                 ),
-                const SizedBox(height: 16),
-                if (_data.isNotEmpty)
-                  ElevatedButton(
-                    onPressed: _uploadData,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.green,
-                      foregroundColor: Colors.white,
+                const SizedBox(width: 10),
+                Expanded(
+                  child: GestureDetector(
+                    onTap: () => Navigator.of(ctx).pop(true),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [Color(0xFFFF416C), Color(0xFFFF4B2B)],
+                        ),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Text(
+                        'Log Out',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+                      ),
                     ),
-                    child: Text("Import ${_data.length} Students Now"),
-                  ),
-                const SizedBox(height: 32),
-                const Divider(),
-                const SizedBox(height: 16),
-                const Text(
-                  "Demo Data Tools",
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 8),
-                ElevatedButton.icon(
-                  onPressed: _generateDemoData,
-                  icon: const Icon(Icons.bolt),
-                  label: const Text("Generate 300 Demo Students"),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.orange[800],
-                    foregroundColor: Colors.white,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                ElevatedButton.icon(
-                  onPressed: _generateDemoRector,
-                  icon: const Icon(Icons.admin_panel_settings),
-                  label: const Text("Promote 'rector@demo.com'"),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.indigo,
-                    foregroundColor: Colors.white,
-                  ),
-                ),
-                const SizedBox(height: 32),
-                ElevatedButton.icon(
-                  onPressed: _deleteAllStudents,
-                  icon: const Icon(Icons.delete_forever),
-                  label: const Text("DELETE ALL STUDENTS"),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.red,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 32,
-                      vertical: 16,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                const Divider(),
-                const SizedBox(height: 16),
-                ElevatedButton.icon(
-                  onPressed: _clearOperationalData,
-                  icon: const Icon(Icons.cleaning_services),
-                  label: const Text("Clear All Requests & Complaints"),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.orange[800],
-                    foregroundColor: Colors.white,
                   ),
                 ),
               ],
             ),
-
-          const SizedBox(height: 24),
-          Text(
-            _statusMessage,
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-              color: _failCount > 0 ? Colors.red : Colors.green,
-            ),
-          ),
-
-          // Error Logs Section
-          if (_errorLogs.isNotEmpty) ...[
-            const SizedBox(height: 16),
-            const Text(
-              "Errors:",
-              style: TextStyle(fontWeight: FontWeight.bold, color: Colors.red),
-            ),
-            Container(
-              height: 150,
-              decoration: BoxDecoration(
-                border: Border.all(color: Colors.red.shade200),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: ListView.builder(
-                padding: const EdgeInsets.all(8),
-                itemCount: _errorLogs.length,
-                itemBuilder: (context, index) => Text(
-                  "• ${_errorLogs[index]}",
-                  style: TextStyle(color: Colors.red[800], fontSize: 12),
-                ),
-              ),
-            ),
           ],
-
-          if (_data.isNotEmpty) ...[
-            const Divider(),
-            const Text(
-              "Preview (First 5 Rows):",
-              style: TextStyle(fontWeight: FontWeight.bold),
-            ),
-            SizedBox(
-              height: 200,
-              child: ListView.builder(
-                itemCount: _data.length > 5 ? 5 : _data.length,
-                itemBuilder: (context, index) {
-                  return ListTile(
-                    dense: true,
-                    title: Text(_data[index].join(', ')),
-                    leading: CircleAvatar(child: Text("${index + 1}")),
-                  );
-                },
-              ),
-            ),
-          ],
-        ],
+        ),
       ),
     );
   }
