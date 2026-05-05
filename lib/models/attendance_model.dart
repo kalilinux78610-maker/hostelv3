@@ -50,7 +50,7 @@ class AttendanceRecord {
 }
 
 class DailyAttendance {
-  final String id; // format: 2024-03-06_BH1
+  final String id; // format: 2024-03-06_NGP
   final String hostelId;
   final DateTime date;
   final List<AttendanceRecord> records;

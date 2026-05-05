@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import '../../app_config.dart';
 
 class StudentDetailScreen extends StatefulWidget {
   final String uid;
@@ -56,11 +57,20 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
     String? selectedHostel =
         widget.data['assignedHostel']; // Use consistent key
     String? selectedBranch = widget.data['branch'];
+    final String category = widget.data['category'] ?? '';
+    final List<String> branchList = category == 'Degree'
+        ? AppConfig.degreeBranches
+        : category == 'Diploma'
+            ? AppConfig.diplomaBranches
+            : AppConfig.allBranches;
     String? selectedYear = widget.data['year'];
 
     // If assignedHostel is null, try fallback or default
     if (selectedHostel == null && widget.data['hostel'] != null) {
-      selectedHostel = _getShortHostelCode(widget.data['hostel']);
+      final rawHostel = widget.data['hostel'] as String;
+      selectedHostel = AppConfig.hostelCodes.containsKey(rawHostel) 
+          ? AppConfig.hostelCodes[rawHostel] 
+          : (AppConfig.hostelCodes.values.contains(rawHostel) ? rawHostel : null);
     }
 
     showDialog(
@@ -104,7 +114,7 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
                             ? selectedHostel
                             : null,
                         isDense: true,
-                        items: ['BH1', 'BH2', 'BH3', 'BH4', 'GH1', 'GH2']
+                        items: AppConfig.hostelCodes.values
                             .map(
                               (h) => DropdownMenuItem(value: h, child: Text(h)),
                             )
@@ -120,24 +130,19 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
                     decoration: const InputDecoration(labelText: 'Branch'),
                     child: DropdownButtonHideUnderline(
                       child: DropdownButton<String>(
-                        value: selectedBranch,
+                        value: branchList.contains(selectedBranch)
+                            ? selectedBranch
+                            : null,
                         isDense: true,
-                        items:
-                            [
-                                  'Computer Engineering',
-                                  'Information Technology',
-                                  'Mechanical Engineering',
-                                  'Civil Engineering',
-                                  'Electrical Engineering',
-                                  'Chemical Engineering',
-                                ]
-                                .map(
-                                  (b) => DropdownMenuItem(
-                                    value: b,
-                                    child: Text(b),
-                                  ),
-                                )
-                                .toList(),
+                        isExpanded: true,
+                        items: branchList
+                            .map(
+                              (b) => DropdownMenuItem(
+                                value: b,
+                                child: Text(b, overflow: TextOverflow.ellipsis),
+                              ),
+                            )
+                            .toList(),
                         onChanged: (val) =>
                             setState(() => selectedBranch = val),
                       ),
@@ -182,7 +187,7 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
                           'room': roomController.text.trim(),
                           'mobile': mobileController.text.trim(),
                           'assignedHostel': selectedHostel,
-                          'hostel': _getLongHostelName(selectedHostel),
+                          'hostel': AppConfig.getFullHostelName(selectedHostel),
                           'branch': selectedBranch,
                           'year': selectedYear,
                         });
@@ -226,37 +231,7 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
   }
 
   bool _isValidHostel(String? code) {
-    return ['BH1', 'BH2', 'BH3', 'BH4', 'GH1', 'GH2'].contains(code);
-  }
-
-  String? _getShortHostelCode(String? fullName) {
-    if (fullName == null) return null;
-    if (fullName.contains('Boys Hostel 1')) return 'BH1';
-    if (fullName.contains('Boys Hostel 2')) return 'BH2';
-    if (fullName.contains('Boys Hostel 3')) return 'BH3';
-    if (fullName.contains('Boys Hostel 4')) return 'BH4';
-    if (fullName.contains('Girls Hostel 1')) return 'GH1';
-    if (fullName.contains('Girls Hostel 2')) return 'GH2';
-    return null; // or return fullName if it's already short code and valid
-  }
-
-  String _getLongHostelName(String? code) {
-    switch (code) {
-      case 'BH1':
-        return 'Boys Hostel 1';
-      case 'BH2':
-        return 'Boys Hostel 2';
-      case 'BH3':
-        return 'Boys Hostel 3';
-      case 'BH4':
-        return 'Boys Hostel 4';
-      case 'GH1':
-        return 'Girls Hostel 1';
-      case 'GH2':
-        return 'Girls Hostel 2';
-      default:
-        return code ?? 'Unknown';
-    }
+    return AppConfig.hostelCodes.values.contains(code);
   }
 
   @override
@@ -266,9 +241,20 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
     final name = widget.data['name'] ?? email.split('@')[0];
     final room = widget.data['room'] ?? 'N/A';
     final branch = widget.data['branch'] ?? 'N/A';
+    final program = widget.data['program'] ?? 'N/A';
+    final institute = widget.data['institute'] ?? '';
+    final category = widget.data['category'] ?? 'N/A';
+    // Show real institute name if available, else fall back to category
+    final instituteDisplay = institute.isNotEmpty ? institute : category;
+    final enrollmentNo = widget.data['enrollmentNo'] ?? 'N/A';
+    final bloodGroup = widget.data['bloodGroup'] ?? 'N/A';
+    final gender = widget.data['gender'] ?? 'N/A';
     final mobile = widget.data['mobile'] ?? 'N/A';
+    final fatherMobile = widget.data['fatherMobile'] ?? 'N/A';
+    final motherMobile = widget.data['motherMobile'] ?? 'N/A';
     final guardian = widget.data['guardian_name'] ?? 'N/A';
-    final guardianMobile = widget.data['guardian_mobile'] ?? 'N/A';
+    final guardianMobile = widget.data['guardian_mobile'] ??
+        (fatherMobile != 'N/A' ? fatherMobile : 'N/A');
 
     return Scaffold(
       appBar: AppBar(
@@ -346,12 +332,30 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
             // Details Cards
             _buildSectionHeader("Academic Info"),
             _buildInfoCard([
-              _buildInfoRow(Icons.meeting_room, "Room No.", room),
+              _buildInfoRow(Icons.badge, "Enrollment No.", enrollmentNo),
+              const Divider(),
+              _buildInfoRow(
+                Icons.account_balance,
+                "Institute",
+                instituteDisplay,
+              ),
+              const Divider(),
+              _buildInfoRow(
+                Icons.library_books,
+                "Program",
+                program,
+              ),
               const Divider(),
               _buildInfoRow(
                 Icons.school,
-                "Branch/Year",
-                "$branch / Year ${widget.data['year'] ?? ''}",
+                "Department",
+                branch,
+              ),
+              const Divider(),
+              _buildInfoRow(
+                Icons.calendar_today,
+                "Year",
+                "Year ${widget.data['year'] ?? 'N/A'}",
               ),
               const Divider(),
               _buildInfoRow(
@@ -359,23 +363,39 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
                 "Hostel",
                 widget.data['hostel'] ??
                     (widget.data['assignedHostel'] != null
-                        ? _getLongHostelName(widget.data['assignedHostel'])
+                        ? AppConfig.getFullHostelName(widget.data['assignedHostel'])
                         : 'N/A'),
               ),
+              const Divider(),
+              _buildInfoRow(Icons.meeting_room, "Room No.", room),
+            ]),
+
+            const SizedBox(height: 24),
+            _buildSectionHeader("Personal Info"),
+            _buildInfoCard([
+              _buildInfoRow(Icons.person, "Gender", gender),
+              const Divider(),
+              _buildInfoRow(Icons.bloodtype, "Blood Group", bloodGroup),
             ]),
 
             const SizedBox(height: 24),
             _buildSectionHeader("Contact Info"),
             _buildInfoCard([
-              _buildInfoRow(Icons.phone, "Mobile", mobile),
+              _buildInfoRow(Icons.phone, "Student Mobile", mobile),
               const Divider(),
-              _buildInfoRow(Icons.person_outline, "Guardian", guardian),
+              _buildInfoRow(Icons.phone_android, "Father Mobile", fatherMobile),
               const Divider(),
-              _buildInfoRow(
-                Icons.phone_iphone,
-                "Guardian Mobile",
-                guardianMobile,
-              ),
+              _buildInfoRow(Icons.phone_android, "Mother Mobile", motherMobile),
+              if (guardian != 'N/A') ...[  
+                const Divider(),
+                _buildInfoRow(Icons.person_outline, "Guardian", guardian),
+                const Divider(),
+                _buildInfoRow(
+                  Icons.phone_iphone,
+                  "Guardian Mobile",
+                  guardianMobile,
+                ),
+              ],
             ]),
 
             const SizedBox(height: 32),

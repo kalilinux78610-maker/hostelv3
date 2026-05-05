@@ -1,8 +1,8 @@
-# Privacy Policy for HostelV3
+# Privacy Policy for SVPES eGate Pass
 
 Last updated: March 12, 2026
 
-HostelV3 ("we", "our", or "us") is committed to protecting your privacy. This Privacy Policy explains how we collect, use, and disclose your information when you use our mobile application (the "App").
+SVPES eGate Pass ("we", "our", or "us") is committed to protecting your privacy. This Privacy Policy explains how we collect, use, and disclose your information when you use our mobile application (the "App").
 
 ## 1. Information We Collect
 

@@ -16,7 +16,7 @@ class AppConfig {
   // ─────────────────────────────────────────────
   //  BRANDING
   // ─────────────────────────────────────────────
-  static const String appName = 'Hostel Mate';
+  static const String appName = 'SVPES eGate Pass';
   static const String orgName = 'RNGPIT';
   static const String footerText = 'v1.0.0 • RNGPIT Hostel';
   static const String developerCredit = 'RNGPIT Tech Team';
@@ -48,22 +48,22 @@ class AppConfig {
   //  HOSTEL CONFIGURATION
   // ─────────────────────────────────────────────
   static const List<String> hostels = [
-    'Boys Hostel 1',
-    'Boys Hostel 2',
-    'Boys Hostel 3',
-    'Boys Hostel 4',
-    'Girls Hostel 1',
-    'Girls Hostel 2',
+    "NGP Boy's Hostel",
+    "NGPP Boy's Hostel",
+    "Nilanbhai Vyas Boys' Hostel",
+    "Workshop Girl's Hostel",
+    "Sardar Hostel (Piplawali)",
+    "PJMF Girl's Hostel",
   ];
 
   /// Maps full hostel name → short code used in Firestore
   static const Map<String, String> hostelCodes = {
-    'Boys Hostel 1': 'BH1',
-    'Boys Hostel 2': 'BH2',
-    'Boys Hostel 3': 'BH3',
-    'Boys Hostel 4': 'BH4',
-    'Girls Hostel 1': 'GH1',
-    'Girls Hostel 2': 'GH2',
+    "NGP Boy's Hostel": "NGP",
+    "NGPP Boy's Hostel": "NGPP",
+    "Nilanbhai Vyas Boys' Hostel": "NVBH",
+    "Workshop Boy's Hostel": "WBH",
+    "Sardar Hostel (Piplawali)": "SH",
+    "Workshop Girl's Hostel": "PJMF",
   };
 
   /// Converts full hostel name to its short code
@@ -75,10 +75,45 @@ class AppConfig {
     return null;
   }
 
+  /// Converts short code to its full hostel name
+  static String getFullHostelName(String? code) {
+    if (code == null) return 'Unknown Hostel';
+    for (final entry in hostelCodes.entries) {
+      if (entry.value == code) return entry.key;
+    }
+    return code; // Fallback to code if not found
+  }
+
   // ─────────────────────────────────────────────
   //  ACADEMIC CONFIGURATION
   // ─────────────────────────────────────────────
-  static const List<String> branches = [
+
+  /// Degree branches — RNGPIT (B.TECH + M.Sc. + B.VOC)
+  static const List<String> degreeBranches = [
+    // ── B.Tech Engineering ────────────────────────
+    'Chemical Engineering',
+    'Civil Engineering',
+    'Computer Science & Engineering',
+    'Electrical Engineering',
+    'Information Technology',
+    'Mechanical Engineering',
+    // ── M.Sc. ────────────────────────────────────
+    'M.Sc. IT',
+    // ── Management ─────────────────────────────
+    'BBA',
+    'MBA',
+    // ── B.Voc ────────────────────────────────────
+    'B.Voc - Industrial Chemistry',
+    'B.Voc - Production Technology',
+    'B.Voc - Animation & VFX',
+    'B.Voc - Building and Construction',
+    'B.Voc - Software Development',
+    'B.Voc - Solar & Renewable Energy',
+    'B.Voc - Wealth Management',
+  ];
+
+  /// Diploma branches — NGPP
+  static const List<String> diplomaBranches = [
     'Computer Engineering',
     'Information Technology',
     'Mechanical Engineering',
@@ -86,6 +121,39 @@ class AppConfig {
     'Electrical Engineering',
     'Chemical Engineering',
   ];
+
+  /// All branches combined (used in filters showing all students regardless of category)
+  static const List<String> allBranches = [
+    // ── Engineering (shared by Degree & Diploma) ──
+    'Chemical Engineering',
+    'Civil Engineering',
+    'Computer Science & Engineering',
+    'Electrical Engineering',
+    'Information Technology',
+    'Mechanical Engineering',
+    // ── M.Sc. (Degree only) ───────────────────────
+    'M.Sc. IT',
+    // ── Management (Degree only) ──────────────────
+    'BBA',
+    'MBA',
+    // ── B.Voc (Degree only) ───────────────────────
+    'B.Voc - Industrial Chemistry',
+    'B.Voc - Production Technology',
+    'B.Voc - Animation & VFX',
+    'B.Voc - Building and Construction',
+    'B.Voc - Software Development',
+    'B.Voc - Solar & Renewable Energy',
+    'B.Voc - Wealth Management',
+  ];
+
+  /// Returns the correct branch list based on category
+  static List<String> getBranchesForCategory(String? category) {
+    if (category == 'Diploma') return diplomaBranches;
+    return degreeBranches; // Default to Degree
+  }
+
+  /// Legacy alias — use allBranches or getBranchesForCategory() instead
+  static const List<String> branches = allBranches;
 
   static const List<String> years = ['1', '2', '3', '4'];
 }

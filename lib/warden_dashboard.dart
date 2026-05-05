@@ -9,6 +9,7 @@ import 'features/complaints/presentation/screens/admin_complaints_screen.dart';
 import 'repositories/notification_repository.dart';
 import 'services/auth_service.dart';
 import 'utils/canonical_names.dart';
+import '../../app_config.dart';
 class WardenDashboard extends StatefulWidget {
   const WardenDashboard({super.key});
 
@@ -104,6 +105,7 @@ class _WardenHomeTabState extends State<WardenHomeTab> {
   bool _isLoading = true;
   String _selectedCategory = 'Degree';
   String _selectedHostel = 'All';
+  String? _wardenCategory;
 
   @override
   void initState() {
@@ -124,6 +126,10 @@ class _WardenHomeTabState extends State<WardenHomeTab> {
             }
             if (_assignedHostels.isEmpty && data['assignedHostel'] != null) {
               _assignedHostels.add(data['assignedHostel']);
+            }
+            _wardenCategory = data['assignedCategory'] ?? data['category'];
+            if (_wardenCategory == 'Degree' || _wardenCategory == 'Diploma') {
+              _selectedCategory = _wardenCategory!;
             }
             _isLoading = false;
           });
@@ -203,11 +209,15 @@ class _WardenHomeTabState extends State<WardenHomeTab> {
           final cat = CanonicalNames.canonicalizeCategory(data['category']);
           final branch = CanonicalNames.canonicalizeBranch(data['branch'], cat);
 
-          totalPending++;
           if (counts.containsKey(cat)) {
             counts[cat]![branch] = (counts[cat]![branch] ?? 0) + 1;
           }
         }
+        
+        // Calculate total pending only for the currently selected category
+        counts[_selectedCategory]?.values.forEach((deptCount) {
+          totalPending += deptCount;
+        });
 
         final degreeDepts = [
           {'name': 'IT & MSC-IT', 'icon': Icons.laptop},
@@ -216,6 +226,7 @@ class _WardenHomeTabState extends State<WardenHomeTab> {
           {'name': 'BBA & MBA', 'icon': Icons.school},
           {'name': 'Chemical', 'icon': Icons.science},
           {'name': 'Electrical', 'icon': Icons.electrical_services},
+          {'name': 'Pharmacy', 'icon': Icons.local_pharmacy},
           {'name': 'Civil Engineering', 'icon': Icons.architecture},
         ];
 
@@ -279,7 +290,7 @@ class _WardenHomeTabState extends State<WardenHomeTab> {
                                       return DropdownMenuItem(
                                         value: h,
                                         child: Text(
-                                          h == 'All' ? 'All Hostels' : 'Hostel $h',
+                                          h == 'All' ? 'All Hostels' : AppConfig.getFullHostelName(h),
                                           style: const TextStyle(color: Colors.white70, fontSize: 13),
                                         ),
                                       );
@@ -292,14 +303,15 @@ class _WardenHomeTabState extends State<WardenHomeTab> {
                               )
                             else if (_assignedHostels.isNotEmpty)
                               Text(
-                                "Hostel: ${_assignedHostels.first}",
+                                AppConfig.getFullHostelName(_assignedHostels.first),
                                 style: const TextStyle(color: Colors.white70, fontSize: 13),
                               ),
                           ],
                         ),
                       ),
                     // Toggle
-                    Container(
+                    if (_wardenCategory == null || _wardenCategory == 'Both')
+                      Container(
                         padding: const EdgeInsets.all(2),
                         decoration: BoxDecoration(
                           color: Colors.white.withValues(alpha: 0.1),
@@ -312,6 +324,22 @@ class _WardenHomeTabState extends State<WardenHomeTab> {
                             _buildToggleBtn('Degree'),
                             _buildToggleBtn('Diploma'),
                           ],
+                        ),
+                      )
+                    else
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Text(
+                          _wardenCategory!,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                          ),
                         ),
                       ),
                       const SizedBox(width: 8),
@@ -691,7 +719,7 @@ class WardenDepartmentRequestsScreen extends StatelessWidget {
           children: [
             Text("Request from ${data['name']}", style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             const SizedBox(height: 4),
-            Text("Hostel: ${data['hostelId'] ?? 'N/A'}   Room: ${data['room'] ?? 'N/A'}", style: TextStyle(color: Colors.grey[600])),
+            Text("Hostel: ${AppConfig.getFullHostelName(data['hostelId'])}   Room: ${data['room'] ?? 'N/A'}", style: TextStyle(color: Colors.grey[600])),
             Text("Branch: ${data['branch'] ?? 'N/A'}", style: TextStyle(color: Colors.grey[600])),
             Text("Type: ${data['type'] ?? 'N/A'}", style: TextStyle(color: Colors.grey[600])),
             const SizedBox(height: 12),

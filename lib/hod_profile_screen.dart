@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
+import 'app_config.dart';
 import 'student_profile_design_v2.dart'; // Import ProfileAvatarWidget
 
 class HodProfileScreen extends StatefulWidget {
@@ -26,23 +27,9 @@ class _HodProfileScreenState extends State<HodProfileScreen> {
   String? _photoUrl;
   bool _isDepartmentLocked = false;
 
-  // Sample Data for Dropdowns to match signup_screen.dart
+  // Categories and branches — sourced from AppConfig (single source of truth)
   final List<String> _categories = ['Degree', 'Diploma'];
-  final List<String> _branches = [
-    'IT & MSC-IT',
-    'B.VOC',
-    'CSE',
-    'BBA & MBA',
-    'Chemical',
-    'Electrical',
-    'Pharmacy',
-    'Civil Engineering',
-    'Electrical Engineering',
-    'Chemical Engineering',
-    'Information Technology',
-    'Computer Engineering',
-    'Mechanical Engineering',
-  ];
+  final List<String> _branches = List<String>.from(AppConfig.allBranches);
 
   @override
   void initState() {

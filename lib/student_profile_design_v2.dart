@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:image_picker/image_picker.dart';
 import 'repositories/storage_repository.dart';
 import 'services/auth_service.dart';
+import 'app_config.dart';
 
 class StudentProfileDesignV2 extends StatefulWidget {
   const StudentProfileDesignV2({super.key});
@@ -116,7 +117,8 @@ class _StudentProfileDesignV2State extends State<StudentProfileDesignV2> {
           final category = data?['category'] ?? 'N/A';
           final branch = data?['branch'] ?? 'N/A';
           final year = data?['year']?.toString() ?? 'N/A';
-          final hostel = data?['assignedHostel'] ?? data?['hostel'] ?? 'N/A';
+          final rawHostel = data?['assignedHostel'] ?? data?['hostel'] ?? 'N/A';
+          final hostel = rawHostel != 'N/A' ? AppConfig.getFullHostelName(rawHostel) : 'N/A';
           final floor = data?['floor']?.toString() ?? 'N/A';
           final room = data?['room'] ?? 'N/A';
           final mobile = data?['mobile'] ?? data?['studentMobile'] ?? 'Not set';

@@ -8,7 +8,6 @@ import 'file_complaint_screen.dart';
 
 // ─── Design tokens (consistent with FileComplaintScreen) ──────────────────────
 const _kNavy = Color(0xFF0A1628);
-const _kNavyMid = Color(0xFF1A2E4A);
 const _kAccent = Color(0xFFD4AF37);
 const _kSurface = Color(0xFFF7F9FC);
 const _kBorder = Color(0xFFE2E8F0);

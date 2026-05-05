@@ -7,56 +7,159 @@ class CanonicalNames {
     }).join(' ');
   }
 
+  // ─────────────────────────────────────────────────────────────────────────
+  //  CATEGORY (Degree / Diploma)
+  // ─────────────────────────────────────────────────────────────────────────
   static String canonicalizeCategory(String? category) {
     if (category == null) return 'Degree';
     final lower = category.trim().toLowerCase();
-    
-    if (lower == 'degree' || lower == 'btech' || lower == 'mtech' || lower == 'bca' || lower == 'mca') {
-      return 'Degree';
-    }
-    if (lower == 'diploma') {
-      return 'Diploma';
-    }
-    return 'Degree'; // default fallback
+
+    if (lower == 'diploma') return 'Diploma';
+
+    // Everything else → Degree
+    // Covers: degree, btech, b.tech, be, b.e, b.voc, bvoc,
+    //         mtech, bca, mca, bachelor of technology, etc.
+    return 'Degree';
   }
 
+  // ─────────────────────────────────────────────────────────────────────────
+  //  INSTITUTE → CATEGORY helper
+  //  Used by bulk_import to determine category from institute name
+  // ─────────────────────────────────────────────────────────────────────────
+  static String categoryFromInstitute(String? institute) {
+    if (institute == null) return 'Degree';
+    final lower = institute.trim().toLowerCase();
+    if (lower.contains('ngpp') || lower.contains('diploma')) return 'Diploma';
+    return 'Degree'; // RNGPIT, R.N.G. Patel, etc.
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  //  BRANCH — Maps raw CSV values → canonical AppConfig branch names
+  // ─────────────────────────────────────────────────────────────────────────
   static String canonicalizeBranch(String? branch, String? category) {
     if (branch == null) return 'Unknown';
     final canonicalCategory = canonicalizeCategory(category);
-    final lowerBranch = branch.trim().toLowerCase();
+    final lower = branch.trim().toLowerCase().replaceAll('.', '').trim();
 
+    // ── DEGREE (RNGPIT) ────────────────────────────────────────────────────
     if (canonicalCategory == 'Degree') {
-      if (lowerBranch == 'it' || lowerBranch == 'information technology' || lowerBranch.contains('msc-it')) {
-        return 'IT & MSC-IT';
-      } else if (lowerBranch == 'computer science' || lowerBranch == 'computer engineering' || lowerBranch == 'cse') {
-        return 'CSE';
-      } else if (lowerBranch == 'civil' || lowerBranch == 'civil engineering') {
-        return 'Civil Engineering';
-      } else if (lowerBranch == 'electrical' || lowerBranch == 'electrical engineering') {
-        return 'Electrical';
-      } else if (lowerBranch == 'chemical' || lowerBranch == 'chemical engineering') {
-        return 'Chemical';
-      } else if (lowerBranch.replaceAll('.', '') == 'bvoc') {
-        return 'B.VOC';
-      } else if (lowerBranch.replaceAll(' ', '') == 'bba&mba' || 
-                 lowerBranch == 'bba' || 
-                 lowerBranch == 'mba') {
-        return 'BBA & MBA';
+      // Computer Science & Engineering
+      if (lower == 'cse' ||
+          lower == 'computer science' ||
+          lower == 'computer engineering' ||
+          lower == 'computer science engineering' ||
+          lower == 'computer science & engineering' ||
+          lower == 'computer science and engineering' ||
+          lower == 'cs') {
+        return 'Computer Science & Engineering';
       }
-    } else if (canonicalCategory == 'Diploma') {
-      if (lowerBranch == 'computer science' || lowerBranch == 'cse' || lowerBranch == 'computer engineering') {
-        return 'Computer Engineering';
+      // Information Technology
+      if (lower == 'it' || lower == 'information technology') {
+        return 'Information Technology';
       }
-      if (lowerBranch == 'mechanical' || lowerBranch == 'mechanical engineering') {
+      // Mechanical Engineering
+      if (lower == 'mech' || lower == 'mechanical' || lower == 'mechanical engineering') {
         return 'Mechanical Engineering';
       }
-      if (lowerBranch == 'electrical' || lowerBranch == 'electrical engineering') {
+      // Civil Engineering
+      if (lower == 'civil' || lower == 'civil engineering' || lower == 'ce') {
+        return 'Civil Engineering';
+      }
+      // Electrical Engineering
+      if (lower == 'ele' ||
+          lower == 'elec' ||
+          lower == 'electrical' ||
+          lower == 'electrical engineering' ||
+          lower == 'ee') {
         return 'Electrical Engineering';
       }
-      if (lowerBranch == 'chemical' || lowerBranch == 'chemical engineering') {
+      // Chemical Engineering
+      if (lower == 'chem' ||
+          lower == 'chemical' ||
+          lower == 'chemical engineering' ||
+          lower == 'ch') {
+        return 'Chemical Engineering';
+      }
+      // M.Sc. IT
+      if (lower == 'msc it' ||
+          lower == 'msc-it' ||
+          lower == 'm sc it' ||
+          lower == 'mscit') {
+        return 'M.Sc. IT';
+      }
+      // BBA
+      if (lower == 'bba' || lower == 'bachelor of business administration') {
+        return 'BBA';
+      }
+      // MBA
+      if (lower == 'mba' || lower == 'master of business administration') {
+        return 'MBA';
+      }
+      // B.Voc — Software Development
+      if (lower == 'sd' ||
+          lower == 'software development' ||
+          lower.contains('software dev')) {
+        return 'B.Voc - Software Development';
+      }
+      // B.Voc — Industrial Chemistry
+      if (lower.contains('industrial chemistry') || lower == 'ic') {
+        return 'B.Voc - Industrial Chemistry';
+      }
+      // B.Voc — Production Technology
+      if (lower.contains('production technology') || lower == 'pt') {
+        return 'B.Voc - Production Technology';
+      }
+      // B.Voc — Animation & VFX
+      if (lower.contains('animation') || lower.contains('vfx')) {
+        return 'B.Voc - Animation & VFX';
+      }
+      // B.Voc — Building and Construction
+      if (lower.contains('building') || lower.contains('construction') || lower == 'bc') {
+        return 'B.Voc - Building and Construction';
+      }
+      // B.Voc — Solar & Renewable Energy
+      if (lower.contains('solar') || lower.contains('renewable')) {
+        return 'B.Voc - Solar & Renewable Energy';
+      }
+      // B.Voc — Wealth Management
+      if (lower.contains('wealth') || lower == 'wm') {
+        return 'B.Voc - Wealth Management';
+      }
+      // Generic B.Voc (no sub-specialization in CSV)
+      if (lower == 'bvoc' || lower == 'b voc' || lower == 'b-voc') {
+        return 'B.Voc - Software Development'; // default B.Voc fallback
+      }
+    }
+
+    // ── DIPLOMA (NGPP) ─────────────────────────────────────────────────────
+    else if (canonicalCategory == 'Diploma') {
+      if (lower == 'cse' ||
+          lower == 'cs' ||
+          lower == 'computer engineering' ||
+          lower == 'computer science') {
+        return 'Computer Engineering';
+      }
+      if (lower == 'it' || lower == 'information technology') {
+        return 'Information Technology';
+      }
+      if (lower == 'mech' || lower == 'mechanical' || lower == 'mechanical engineering') {
+        return 'Mechanical Engineering';
+      }
+      if (lower == 'civil' || lower == 'civil engineering' || lower == 'ce') {
+        return 'Civil Engineering';
+      }
+      if (lower == 'ele' ||
+          lower == 'elec' ||
+          lower == 'electrical' ||
+          lower == 'electrical engineering') {
+        return 'Electrical Engineering';
+      }
+      if (lower == 'chem' || lower == 'chemical' || lower == 'chemical engineering') {
         return 'Chemical Engineering';
       }
     }
+
+    // Fallback — return trimmed original value
     return branch.trim();
   }
 }

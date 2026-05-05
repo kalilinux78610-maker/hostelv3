@@ -5,6 +5,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:csv/csv.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import '../../app_config.dart';
+import '../../utils/canonical_names.dart';
 
 class BulkImportScreen extends StatefulWidget {
   const BulkImportScreen({super.key});
@@ -62,11 +64,14 @@ class _BulkImportScreenState extends State<BulkImportScreen> {
 
         // Remove Header if present (assuming Row 0 is header)
         if (csvTable.isNotEmpty) {
-          // Check if first row looks like header
+          // Check if first row looks like a header row
+          // Supports both old format (email at col 1) and new format (email at col 5)
           final firstCell = csvTable[0][0].toString().toLowerCase();
-          if (firstCell.contains('name') &&
-              (csvTable[0].length > 1 &&
-                  csvTable[0][1].toString().toLowerCase().contains('email'))) {
+          final hasEmailInCol1 = csvTable[0].length > 1 &&
+              csvTable[0][1].toString().toLowerCase().contains('email');
+          final hasEmailInCol5 = csvTable[0].length > 5 &&
+              csvTable[0][5].toString().toLowerCase().contains('email');
+          if (firstCell.contains('name') && (hasEmailInCol1 || hasEmailInCol5)) {
             csvTable.removeAt(0);
           }
         }
@@ -110,9 +115,10 @@ class _BulkImportScreenState extends State<BulkImportScreen> {
       for (var row in chunk) {
         rowOffset++;
         try {
-          // CSV format: Name(0), EnrollmentNo(1), Gender(2), BloodGroup(3),
+          // CSV format (14-col new format):
+          // Name(0), EnrollmentNo(1), Gender(2), BloodGroup(3),
           // StudentMobile(4), Email(5), FatherMobile(6), MotherMobile(7),
-          // Institute(8), Department(9), Hostel(10), Floor(11), Room(12)
+          // Institute(8), Program(9), Department(10), Hostel(11), Floor(12), Room(13)
           if (row.length < 2) {
             _failCount++;
             _errorLogs.add(
@@ -152,6 +158,7 @@ class _BulkImportScreenState extends State<BulkImportScreen> {
           String fatherMobile = '';
           String motherMobile = '';
           String institute = '';
+          String program = '';
           String branch = '';
           String hostel = '';
           String floor = '';
@@ -159,7 +166,7 @@ class _BulkImportScreenState extends State<BulkImportScreen> {
           String category = 'Degree';
 
           if (isNewFormat) {
-            // New 13-column format
+            // New 14-column format
             enrollmentNo = row.length > 1 ? row[1].toString().trim() : '';
             gender      = row.length > 2 ? row[2].toString().trim() : '';
             bloodGroup  = row.length > 3 ? row[3].toString().trim() : '';
@@ -167,14 +174,21 @@ class _BulkImportScreenState extends State<BulkImportScreen> {
             fatherMobile  = row.length > 6 ? row[6].toString().trim() : '';
             motherMobile  = row.length > 7 ? row[7].toString().trim() : '';
             institute   = row.length > 8 ? row[8].toString().trim() : '';
-            branch      = row.length > 9 ? row[9].toString().trim() : '';
-            hostel      = row.length > 10 ? row[10].toString().trim() : '';
-            floor       = row.length > 11 ? row[11].toString().trim() : '';
-            room        = row.length > 12 ? row[12].toString().trim() : '';
+            program     = row.length > 9 ? row[9].toString().trim() : '';
+            branch      = row.length > 10 ? row[10].toString().trim() : '';
+            hostel      = row.length > 11 ? row[11].toString().trim() : '';
+            floor       = row.length > 12 ? row[12].toString().trim() : '';
+            room        = row.length > 13 ? row[13].toString().trim() : '';
             // Map institute name to category
-            if (institute.toUpperCase() == 'RNGPIT') {
+            // Handles both short codes (RNGPIT, NGPP) and full/partial names
+            final instituteUpper = institute.toUpperCase();
+            if (instituteUpper.contains('RNGPIT') ||
+                instituteUpper.contains('R.N.G') ||
+                instituteUpper.contains('RNG PATEL') ||
+                instituteUpper.contains('R. N. G')) {
               category = 'Degree';
-            } else if (institute.toUpperCase() == 'NGPP') {
+            } else if (instituteUpper.contains('NGPP') ||
+                instituteUpper.contains('DIPLOMA')) {
               category = 'Diploma';
             } else {
               category = institute.isNotEmpty ? institute : 'Degree';
@@ -187,6 +201,9 @@ class _BulkImportScreenState extends State<BulkImportScreen> {
             category = row.length > 6 ? row[6].toString().trim() : 'Degree';
           }
 
+          // Canonicalize branch name to match AppConfig lists
+          branch = CanonicalNames.canonicalizeBranch(branch, category);
+
           final docRef = firestore.collection('student_imports').doc(email);
           batch.set(docRef, {
             'name': name,
@@ -198,6 +215,7 @@ class _BulkImportScreenState extends State<BulkImportScreen> {
             'fatherMobile': fatherMobile,
             'motherMobile': motherMobile,
             'institute': institute,
+            'program': program,
             'assignedHostel': _getShortHostelCode(hostel),
             'hostel': hostel,
             'floor': floor,
@@ -254,12 +272,16 @@ class _BulkImportScreenState extends State<BulkImportScreen> {
           updateData['parentContact']= row.length > 6 ? row[6].toString().trim() : '';
           updateData['institute']    = inst;
           updateData['category']     = cat;
-          updateData['branch']       = row.length > 9 ? row[9].toString().trim() : '';
-          final String hostelName    = row.length > 10 ? row[10].toString().trim() : '';
+          updateData['program']      = row.length > 9 ? row[9].toString().trim() : '';
+          
+          String rawBranch           = row.length > 10 ? row[10].toString().trim() : '';
+          updateData['branch']       = CanonicalNames.canonicalizeBranch(rawBranch, cat);
+          
+          final String hostelName    = row.length > 11 ? row[11].toString().trim() : '';
           updateData['hostel']       = hostelName;
           updateData['assignedHostel'] = _getShortHostelCode(hostelName);
-          updateData['floor']        = row.length > 11 ? row[11].toString().trim() : '';
-          updateData['room']         = row.length > 12 ? row[12].toString().trim() : '';
+          updateData['floor']        = row.length > 12 ? row[12].toString().trim() : '';
+          updateData['room']         = row.length > 13 ? row[13].toString().trim() : '';
         }
 
         if (updateData.isEmpty) continue;
@@ -300,14 +322,11 @@ class _BulkImportScreenState extends State<BulkImportScreen> {
     // Single batch for 300 items is fine (limit is 500)
     final batch = firestore.batch();
 
-    // Config: 4 Boys Hostels, 2 Girls Hostels
-    final boysHostels = [
-      'Boys Hostel 1',
-      'Boys Hostel 2',
-      'Boys Hostel 3',
-      'Boys Hostel 4',
-    ];
-    final girlsHostels = ['Girls Hostel 1', 'Girls Hostel 2'];
+    final boysHostels = AppConfig.hostels.where((h) => !h.toLowerCase().contains('girl')).toList();
+    if (boysHostels.isEmpty) boysHostels.addAll(AppConfig.hostels);
+    
+    final girlsHostels = AppConfig.hostels.where((h) => h.toLowerCase().contains('girl')).toList();
+    if (girlsHostels.isEmpty) girlsHostels.addAll(AppConfig.hostels);
     final branches = ['CS', 'IT', 'Mech', 'Civil', 'Elec'];
     final years = ['1', '2', '3', '4'];
 
@@ -432,7 +451,7 @@ class _BulkImportScreenState extends State<BulkImportScreen> {
 
       // Plan:
       // 1. Check if 'rector@demo.com' exists in `users`.
-      // 2. If yes, update role = 'rector', assignedHostel = 'BH1'.
+      // 2. If yes, update role = 'rector', assignedHostel = 'NGP'.
       // 3. If no, create a placeholder doc so "RoleChecker" might find it if they sign up?
       //    AuthWrapper checks Firestore AFTER Auth. So they must Auth first.
 
@@ -453,11 +472,11 @@ class _BulkImportScreenState extends State<BulkImportScreen> {
       if (query.docs.isNotEmpty) {
         await query.docs.first.reference.update({
           'role': 'rector',
-          'assignedHostel': 'BH1', // Default to Boys Hostel 1
+          'assignedHostel': AppConfig.hostelCodes.values.first,
         });
         setState(
           () => _statusMessage =
-              "Success! 'rector@demo.com' is now a Rector (BH1).",
+              "Success! 'rector@demo.com' is now a Rector (${AppConfig.hostelCodes.values.first}).",
         );
       } else {
         // If user doesn't exist in Firestore yet (maybe not registered),
@@ -644,13 +663,12 @@ class _BulkImportScreenState extends State<BulkImportScreen> {
   }
 
   String? _getShortHostelCode(String fullName) {
-    if (fullName.contains('Boys Hostel 1') || fullName == 'BH1') return 'BH1';
-    if (fullName.contains('Boys Hostel 2') || fullName == 'BH2') return 'BH2';
-    if (fullName.contains('Boys Hostel 3') || fullName == 'BH3') return 'BH3';
-    if (fullName.contains('Boys Hostel 4') || fullName == 'BH4') return 'BH4';
-    if (fullName.contains('Girls Hostel 1') || fullName == 'GH1') return 'GH1';
-    if (fullName.contains('Girls Hostel 2') || fullName == 'GH2') return 'GH2';
-    return null;
+    // Check if the input is already a short code
+    if (AppConfig.hostelCodes.values.contains(fullName)) {
+      return fullName;
+    }
+    // Otherwise, try to find it by full name
+    return AppConfig.getHostelCode(fullName);
   }
 
   @override
@@ -669,12 +687,12 @@ class _BulkImportScreenState extends State<BulkImportScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text(
-                    "New CSV Format (13 columns):",
+                    "New CSV Format (14 columns):",
                     style: TextStyle(fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 4),
                   const Text(
-                    "Name, Enrollment No, Gender, Blood Group, Student Mobile, Email, Father Mobile, Mother Mobile, Institute, Department, Hostel, Floor, Room",
+                    "Person Name, Enrollment No., Gender, Blood Group, Person Mobile 1, Person Email, Father Mobile No., Mother Mobile No., Institute, Program, Department, Hostel, Floor, Room",
                     style: TextStyle(fontSize: 12, color: Colors.blueGrey),
                   ),
                   const SizedBox(height: 6),

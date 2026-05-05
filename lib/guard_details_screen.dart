@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'app_config.dart';
 
 class GuardDetailsScreen extends StatefulWidget {
   const GuardDetailsScreen({super.key});
@@ -225,7 +226,7 @@ class _GuardDetailsScreenState extends State<GuardDetailsScreen> {
             const Divider(),
             const SizedBox(height: 16),
             _buildInfoRow(Icons.badge, "Enrollment", data['enrollment'] ?? 'N/A'),
-            _buildInfoRow(Icons.apartment, "Hostel", data['assignedHostel'] ?? data['hostel'] ?? 'N/A'),
+            _buildInfoRow(Icons.apartment, "Hostel", AppConfig.getFullHostelName(data['assignedHostel'] ?? data['hostel'])),
             _buildInfoRow(Icons.meeting_room, "Room", data['room'] ?? 'N/A'),
             _buildInfoRow(Icons.phone, "Student Mobile", data['mobile'] ?? 'N/A'),
             _buildInfoRow(Icons.family_restroom, "Parent Contact", data['parentContact'] ?? data['parentPhone'] ?? 'N/A'),

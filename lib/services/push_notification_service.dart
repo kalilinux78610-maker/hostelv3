@@ -106,7 +106,7 @@ class PushNotificationService {
         AndroidNotificationDetails(
           'hostel_channel_id',
           'Hostel Notifications',
-          channelDescription: 'Notifications for Hostel v3',
+          channelDescription: 'Notifications for SVPES eGate Pass',
           importance: Importance.max,
           priority: Priority.high,
           icon: 'ic_notification',

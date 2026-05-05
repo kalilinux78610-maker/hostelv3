@@ -5,7 +5,7 @@ class StaffMember {
   final String mobile;
   final bool isActive;
   final String? assignedShift; // 'Day', 'Night'
-  final String? assignedHostel; // 'BH1', 'GH1', etc.
+  final String? assignedHostel; // e.g., 'NGP', 'SH'
   final List<String>? assignedHostels; // For multi-hostel support (like Wardens)
   final String? assignedCategory; // 'Degree', 'Diploma' for HOD
   final String? assignedBranch; // e.g. 'IT & MSC-IT' for HOD

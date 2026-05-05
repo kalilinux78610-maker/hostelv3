@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../models/staff_model.dart';
 import '../../repositories/staff_repository.dart';
+import '../../app_config.dart';
 
 // --- Screen 1: The Grid Dashboard --- //
 class StaffManagementScreen extends StatefulWidget {
@@ -21,58 +22,58 @@ class _StaffManagementScreenState extends State<StaffManagementScreen> {
     try {
       final List<StaffMember> defaults = [
         StaffMember(
-          id: 'rector.bh1@hostel.com',
-          name: 'Rector BH1',
+          id: 'rector.ngp@hostel.com',
+          name: 'Rector NGP',
           role: 'Rector',
           mobile: '9999999991',
-          email: 'rector.bh1@hostel.com',
+          email: 'rector.ngp@hostel.com',
           isActive: true,
-          assignedHostel: 'BH1',
+          assignedHostel: 'NGP',
         ),
         StaffMember(
-          id: 'rector.bh2@hostel.com',
-          name: 'Rector BH2',
+          id: 'rector.ngpp@hostel.com',
+          name: 'Rector NGPP',
           role: 'Rector',
           mobile: '9999999992',
-          email: 'rector.bh2@hostel.com',
+          email: 'rector.ngpp@hostel.com',
           isActive: true,
-          assignedHostel: 'BH2',
+          assignedHostel: 'NGPP',
         ),
         StaffMember(
-          id: 'rector.bh3@hostel.com',
-          name: 'Rector BH3',
+          id: 'rector.nvbh@hostel.com',
+          name: 'Rector NVBH',
           role: 'Rector',
           mobile: '9999999996',
-          email: 'rector.bh3@hostel.com',
+          email: 'rector.nvbh@hostel.com',
           isActive: true,
-          assignedHostel: 'BH3',
+          assignedHostel: 'NVBH',
         ),
         StaffMember(
-          id: 'rector.bh4@hostel.com',
-          name: 'Rector BH4',
+          id: 'rector.wbh@hostel.com',
+          name: 'Rector WBH',
           role: 'Rector',
           mobile: '9999999997',
-          email: 'rector.bh4@hostel.com',
+          email: 'rector.wbh@hostel.com',
           isActive: true,
-          assignedHostel: 'BH4',
+          assignedHostel: 'WBH',
         ),
         StaffMember(
-          id: 'rector.gh1@hostel.com',
-          name: 'Rector GH1',
+          id: 'rector.sh@hostel.com',
+          name: 'Rector SH',
           role: 'Rector',
           mobile: '9999999993',
-          email: 'rector.gh1@hostel.com',
+          email: 'rector.sh@hostel.com',
           isActive: true,
-          assignedHostel: 'GH1',
+          assignedHostel: 'SH',
         ),
         StaffMember(
-          id: 'rector.gh2@hostel.com',
-          name: 'Rector GH2',
+          id: 'rector.pjmf@hostel.com',
+          name: 'Rector PJMF',
           role: 'Rector',
           mobile: '9999999998',
-          email: 'rector.gh2@hostel.com',
+          email: 'rector.pjmf@hostel.com',
           isActive: true,
-          assignedHostel: 'GH2',
+          assignedHostel: 'PJMF',
         ),
         StaffMember(
           id: 'warden@hostel.com',
@@ -295,7 +296,7 @@ class _StaffListScreenState extends State<StaffListScreen> {
                   decoration: const InputDecoration(labelText: 'Mobile Number'),
                 ),
                 const SizedBox(height: 12),
-                if (role.toUpperCase() == 'HOD') ...[
+                if (role.toUpperCase() == 'HOD' || role.toUpperCase() == 'WARDEN') ...[
                   DropdownButtonFormField<String>(
                     initialValue: category,
                     decoration: const InputDecoration(labelText: 'Category'),
@@ -370,9 +371,9 @@ class _StaffListScreenState extends State<StaffListScreen> {
                 Wrap(
                   spacing: 8,
                   runSpacing: 4,
-                  children: ['BH1', 'BH2', 'BH3', 'BH4', 'GH1', 'GH2'].map((String h) {
+                  children: AppConfig.hostelCodes.values.map((String h) {
                     return FilterChip(
-                      label: Text(h),
+                      label: Text(AppConfig.getFullHostelName(h)),
                       selected: assignedHostels.contains(h),
                       selectedColor: const Color(0xFF002244).withValues(alpha: 0.2),
                       checkmarkColor: const Color(0xFF002244),
@@ -458,7 +459,9 @@ class _StaffListScreenState extends State<StaffListScreen> {
                                   'assignedHostel': assignedHostels.isNotEmpty ? assignedHostels.first : null,
                                   'assignedHostels': assignedHostels,
                                   'category': category,
+                                  'assignedCategory': category,
                                   'branch': branch,
+                                  'assignedBranch': branch,
                                 });
                               }
                             }

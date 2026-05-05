@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'student_detail_screen.dart';
 import 'room_availability_screen.dart';
+import '../../app_config.dart';
 
 class StudentDirectoryScreen extends StatefulWidget {
   const StudentDirectoryScreen({super.key});
@@ -123,17 +124,17 @@ class _StudentDirectoryScreenState extends State<StudentDirectoryScreen> {
                   scrollDirection: Axis.horizontal,
                   child: Row(
                     children: [
-                      _buildDropdown(
-                        "Hostel",
-                        _selectedHostel,
-                        ["All", "Boys Hostel", "Girls Hostel"],
-                        (val) => setState(() => _selectedHostel = val!),
-                      ),
+                        _buildDropdown(
+                          "Hostel",
+                          _selectedHostel,
+                          ["All", ...AppConfig.hostels],
+                          (val) => setState(() => _selectedHostel = val!),
+                        ),
                       const SizedBox(width: 8),
                       _buildDropdown(
                         "Branch",
                         _selectedBranch,
-                        ["All", "CS", "IT", "Mech", "Civil", "Elec"],
+                        ["All", ...AppConfig.allBranches],
                         (val) => setState(() => _selectedBranch = val!),
                       ),
                       const SizedBox(width: 8),
@@ -191,17 +192,10 @@ class _StudentDirectoryScreenState extends State<StudentDirectoryScreen> {
                   if (!matchesSearch) return false;
 
                   // 2. Hostel Filter
-                  final hostel =
-                      data['hostel'] ?? 'Boys Hostel'; // Default/Mock
-                  if (_selectedHostel != "All" && hostel != _selectedHostel) {
-                    if (_selectedHostel == "Boys Hostel" &&
-                        !hostel.toString().contains("Boys")) {
-                      return false;
-                    }
-                    if (_selectedHostel == "Girls Hostel" &&
-                        !hostel.toString().contains("Girls")) {
-                      return false;
-                    }
+                  final String rawHostel = data['assignedHostel'] ?? data['hostel'] ?? '';
+                  final String fullHostelName = rawHostel.isNotEmpty ? AppConfig.getFullHostelName(rawHostel) : AppConfig.hostels.first;
+                  if (_selectedHostel != "All" && fullHostelName != _selectedHostel) {
+                    return false;
                   }
 
                   // 3. Branch Filter
@@ -398,13 +392,13 @@ class _StudentDirectoryScreenState extends State<StudentDirectoryScreen> {
     final room = data['room'] ?? 'Not Assigned';
     final isFlagged = data['isFlagged'] == true;
     final branch = data['branch'] ?? 'N/A';
+    final program = data['program'] ?? '';
+    
+    final branchDisplay = program.isNotEmpty ? '$program - $branch' : branch;
 
-    // Hostel field logic: check 'assignedHostel' (e.g. BH1) or 'hostel' (Boys Hostel X)
-    String hostelShort = data['assignedHostel'] ?? '';
-    if (hostelShort.isEmpty && data['hostel'] != null) {
-      // fallback, try to extract simplified code?
-      hostelShort = data['hostel'];
-    }
+    // Hostel field logic: resolve full name from code
+    final String rawHostel = data['assignedHostel'] ?? data['hostel'] ?? '';
+    final String displayHostel = AppConfig.getFullHostelName(rawHostel);
 
     return Card(
       elevation: 2,
@@ -427,7 +421,7 @@ class _StudentDirectoryScreenState extends State<StudentDirectoryScreen> {
         subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text("$branch | $email"),
+            Text("$branchDisplay | $email"),
             const SizedBox(height: 4),
             Row(
               children: [
@@ -452,7 +446,7 @@ class _StudentDirectoryScreenState extends State<StudentDirectoryScreen> {
                 Icon(Icons.meeting_room, size: 14, color: Colors.grey[600]),
                 const SizedBox(width: 4),
                 Text(
-                  "Room $room $hostelShort",
+                  "Room $room • $displayHostel",
                   style: TextStyle(fontSize: 12, color: Colors.grey[600]),
                 ),
               ],
@@ -490,6 +484,7 @@ class _StudentDirectoryScreenState extends State<StudentDirectoryScreen> {
     final nameController = TextEditingController();
     final emailController = TextEditingController();
     final roomController = TextEditingController();
+    final programController = TextEditingController();
     String? selectedCategory;
     String? selectedHostel;
     String? selectedBranch;
@@ -523,6 +518,11 @@ class _StudentDirectoryScreenState extends State<StudentDirectoryScreen> {
                   keyboardType: TextInputType.emailAddress,
                 ),
                 const SizedBox(height: 12),
+                TextField(
+                  controller: programController,
+                  decoration: const InputDecoration(labelText: 'Program (e.g. B.Tech, B.Voc)'),
+                ),
+                const SizedBox(height: 12),
                 InputDecorator(
                   decoration: const InputDecoration(labelText: 'Category'),
                   child: DropdownButtonHideUnderline(
@@ -550,26 +550,7 @@ class _StudentDirectoryScreenState extends State<StudentDirectoryScreen> {
                       value: selectedBranch,
                       isDense: true,
                       hint: const Text("Select Branch"),
-                      items: (selectedCategory == 'Degree'
-                              ? [
-                                  'IT & MSC-IT',
-                                  'B.VOC',
-                                  'CSE',
-                                  'BBA & MBA',
-                                  'Chemical',
-                                  'Electrical',
-                                  'Pharmacy',
-                                  'Civil Engineering',
-                                ]
-                              : selectedCategory == 'Diploma'
-                                  ? [
-                                      'Electrical Engineering',
-                                      'Chemical Engineering',
-                                      'Information Technology',
-                                      'Computer Engineering',
-                                      'Mechanical Engineering',
-                                    ]
-                                  : <String>[])
+                      items: AppConfig.getBranchesForCategory(selectedCategory)
                           .map(
                             (b) => DropdownMenuItem(value: b, child: Text(b)),
                           )
@@ -586,9 +567,9 @@ class _StudentDirectoryScreenState extends State<StudentDirectoryScreen> {
                       value: selectedHostel,
                       isDense: true,
                       hint: const Text("Select Hostel"),
-                      items: ['BH1', 'BH2', 'BH3', 'BH4', 'GH1', 'GH2']
+                      items: AppConfig.hostelCodes.values
                           .map(
-                            (h) => DropdownMenuItem(value: h, child: Text(h)),
+                            (h) => DropdownMenuItem(value: h, child: Text(AppConfig.getFullHostelName(h))),
                           )
                           .toList(),
                       onChanged: (val) => setState(() => selectedHostel = val),
@@ -664,6 +645,7 @@ class _StudentDirectoryScreenState extends State<StudentDirectoryScreen> {
                         'hostel': _getLongHostelName(selectedHostel),
                         'room': roomController.text.trim(),
                         'category': selectedCategory,
+                        'program': programController.text.trim(),
                         'branch': selectedBranch,
                         'year': selectedYear,
                         'feeStatus': selectedFeeStatus,
@@ -703,21 +685,10 @@ class _StudentDirectoryScreenState extends State<StudentDirectoryScreen> {
   }
 
   String _getLongHostelName(String? code) {
-    switch (code) {
-      case 'BH1':
-        return 'Boys Hostel 1';
-      case 'BH2':
-        return 'Boys Hostel 2';
-      case 'BH3':
-        return 'Boys Hostel 3';
-      case 'BH4':
-        return 'Boys Hostel 4';
-      case 'GH1':
-        return 'Girls Hostel 1';
-      case 'GH2':
-        return 'Girls Hostel 2';
-      default:
-        return code ?? '';
+    if (code == null) return '';
+    for (var entry in AppConfig.hostelCodes.entries) {
+      if (entry.value == code) return entry.key;
     }
+    return code;
   }
 }

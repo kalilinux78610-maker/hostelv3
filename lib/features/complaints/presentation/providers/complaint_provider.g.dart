@@ -55,7 +55,7 @@ final class ComplaintRemoteDataSourceProvider
 }
 
 String _$complaintRemoteDataSourceHash() =>
-    r'b9c73b09c5f0aa2ca443aeddf0e40660fad500ee';
+    r'64f7da3bff9297288799530197b323c38e6efe16';
 
 @ProviderFor(complaintRepository)
 final complaintRepositoryProvider = ComplaintRepositoryProvider._();
@@ -103,7 +103,7 @@ final class ComplaintRepositoryProvider
 }
 
 String _$complaintRepositoryHash() =>
-    r'4097b9a27a8ff83a7b61ba4b042805d99a418abe';
+    r'3c5007d537e0b5623d39be86b8732cc89a97f988';
 
 @ProviderFor(studentComplaints)
 final studentComplaintsProvider = StudentComplaintsFamily._();
@@ -162,7 +162,7 @@ final class StudentComplaintsProvider
   }
 }
 
-String _$studentComplaintsHash() => r'1d08b54ea62a84a8b857cdb24e795e3490232c9e';
+String _$studentComplaintsHash() => r'5c95cd97bc78ca5b5d523fae976a60a1a6f630ae';
 
 final class StudentComplaintsFamily extends $Family
     with $FunctionalFamilyOverride<Stream<List<ComplaintEntity>>, String> {
@@ -221,7 +221,7 @@ final class AllComplaintsProvider
   }
 }
 
-String _$allComplaintsHash() => r'37f44d0a2f34d0d60723ca6bc63d52983266c03e';
+String _$allComplaintsHash() => r'09848887551e9cc26fc8eae14cabc6f5070548a3';
 
 @ProviderFor(ComplaintAction)
 final complaintActionProvider = ComplaintActionProvider._();

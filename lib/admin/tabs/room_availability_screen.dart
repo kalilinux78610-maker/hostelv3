@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import '../../app_config.dart';
 
 class RoomAvailabilityScreen extends StatefulWidget {
   const RoomAvailabilityScreen({super.key});
@@ -11,14 +12,7 @@ class RoomAvailabilityScreen extends StatefulWidget {
 class _RoomAvailabilityScreenState extends State<RoomAvailabilityScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
-  final List<String> _hostels = [
-    'Boys Hostel 1',
-    'Boys Hostel 2',
-    'Boys Hostel 3',
-    'Boys Hostel 4',
-    'Girls Hostel 1',
-    'Girls Hostel 2',
-  ];
+  final List<String> _hostels = AppConfig.hostels;
 
   Map<String, Map<String, List<Map<String, dynamic>>>> _roomData = {};
   bool _isLoading = true;
@@ -50,14 +44,14 @@ class _RoomAvailabilityScreenState extends State<RoomAvailabilityScreen>
         final room = student['room'] as String? ?? 'Unknown';
 
         // Normalize hostel name logic if needed (Assuming exact match for now)
-        // If your DB uses short codes like BH1, we'd need a mapper.
+        // If your DB uses short codes like NGP, we'd need a mapper.
         // Assuming 'hostel' field stores full name "Boys Hostel 1" based on bulk import logic.
 
         String? matchedHostel;
         for (var h in _hostels) {
           // Flexible matching
           if (hostel.toLowerCase().contains(h.toLowerCase()) ||
-              (h.contains('Boys Hostel 1') && hostel == 'BH1')) {
+              AppConfig.hostelCodes[h] == hostel) {
             matchedHostel = h;
             break;
           }

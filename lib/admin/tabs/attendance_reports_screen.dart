@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../models/attendance_model.dart';
+import '../../app_config.dart';
 
 class AttendanceReportsScreen extends StatefulWidget {
   const AttendanceReportsScreen({super.key});
@@ -12,7 +13,6 @@ class AttendanceReportsScreen extends StatefulWidget {
 
 class _AttendanceReportsScreenState extends State<AttendanceReportsScreen> {
   String? _selectedHostel;
-  final List<String> _hostels = ['BH1', 'BH2', 'BH3', 'BH4', 'GH1', 'GH2'];
 
   @override
   Widget build(BuildContext context) {
@@ -81,8 +81,8 @@ class _AttendanceReportsScreenState extends State<AttendanceReportsScreen> {
               ),
               items: [
                 const DropdownMenuItem(value: null, child: Text("All Hostels")),
-                ..._hostels.map(
-                  (h) => DropdownMenuItem(value: h, child: Text(h)),
+                ...AppConfig.hostelCodes.values.map(
+                  (h) => DropdownMenuItem(value: h, child: Text(AppConfig.getFullHostelName(h))),
                 ),
               ],
               onChanged: (val) => setState(() => _selectedHostel = val),
@@ -109,7 +109,7 @@ class _AttendanceReportsScreenState extends State<AttendanceReportsScreen> {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: ExpansionTile(
         title: Text(
-          "${attendance.date.day}/${attendance.date.month}/${attendance.date.year} - ${attendance.hostelId}",
+          "${attendance.date.day}/${attendance.date.month}/${attendance.date.year} - ${AppConfig.getFullHostelName(attendance.hostelId)}",
           style: const TextStyle(fontWeight: FontWeight.bold),
         ),
         subtitle: Text(

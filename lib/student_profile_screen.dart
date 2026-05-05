@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'repositories/storage_repository.dart';
+import 'app_config.dart';
 
 class StudentProfileScreen extends StatefulWidget {
   const StudentProfileScreen({super.key});
@@ -218,7 +219,7 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
               // ── HOSTEL CARD ──────────────────────────────
               const SizedBox(height: 8),
               _sectionHeader('Hostel Details'),
-              _buildReadOnlyField("Hostel", _userData?['hostel'] ?? _userData?['assignedHostel'] ?? 'N/A', Icons.home),
+              _buildReadOnlyField("Hostel", (_userData?['assignedHostel'] ?? _userData?['hostel']) != null ? AppConfig.getFullHostelName(_userData?['assignedHostel'] ?? _userData?['hostel']) : 'N/A', Icons.home),
               _buildReadOnlyField("Floor", _userData?['floor']?.toString() ?? 'N/A', Icons.layers),
               _buildReadOnlyField("Room No.", _userData?['room'] ?? 'N/A', Icons.door_front_door),
 

@@ -12,6 +12,6 @@ void main() async {
       .limit(1)
       .get();
   for (var doc in snapshot.docs) {
-    print('LATEST REQ: ${doc.data()}');
+    debugPrint('LATEST REQ: ${doc.data()}');
   }
 }

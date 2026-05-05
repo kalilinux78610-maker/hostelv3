@@ -14,7 +14,6 @@ import '../providers/complaint_provider.dart';
 // ─── Design tokens ────────────────────────────────────────────────────────────
 const _kNavy = Color(0xFF0A1628);
 const _kNavyMid = Color(0xFF1A2E4A);
-const _kAccent = Color(0xFFD4AF37); // gold
 const _kSurface = Color(0xFFF7F9FC);
 const _kBorder = Color(0xFFE2E8F0);
 
@@ -131,12 +130,7 @@ class _FileComplaintScreenState extends ConsumerState<FileComplaintScreen>
       // Show loading in the provider if possible, or handle locally if needed for immediate feedback
       // In this refactored version, we'll use the ComplaintAction provider's state
       
-      // We still need user metadata from Firestore. 
-      // In a full refactor, this would be in a UserProvider.
-      // For now, we'll keep the fetch here but we SHOULD move it to a usecase eventually.
-      final firestore = ref.read(firestoreProvider);
-      final userDoc = await firestore.collection('users').doc(user.uid).get();
-      final userData = userDoc.data();
+      final userData = await ref.read(userDataProvider.future);
       final hostelId = userData?['assignedHostel'];
       final userCategory = userData?['category'];
       final userBranch = userData?['branch'];

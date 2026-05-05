@@ -6,6 +6,7 @@ import 'features/complaints/presentation/screens/admin_complaints_screen.dart';
 import 'attendance/attendance_taking_screen.dart';
 import 'services/auth_service.dart';
 import 'utils/canonical_names.dart';
+import 'app_config.dart';
 
 class RectorDashboard extends StatefulWidget {
   const RectorDashboard({super.key});
@@ -37,7 +38,7 @@ class _RectorDashboardState extends State<RectorDashboard> {
         final data = doc.data();
         if (mounted && data != null) {
           setState(() {
-            // Normalize to UpperCase to match "BH1" format
+            // Normalize to UpperCase
             String? rawHostel = data['assignedHostel'];
             _assignedHostel = rawHostel?.toUpperCase();
             _isLoading = false;
@@ -53,8 +54,8 @@ class _RectorDashboardState extends State<RectorDashboard> {
   List<Widget> get _widgetOptions => <Widget>[
     HomeTab(hostelId: _assignedHostel),
     AttendanceTakingScreen(
-      hostelId: _assignedHostel ?? "BH1",
-    ), // Default to BH1 for safer build
+      hostelId: _assignedHostel ?? AppConfig.hostelCodes.values.first,
+    ), // Default to first hostel code for safer build
     HostelStudentsTab(hostelId: _assignedHostel),
     HistoryTab(hostelId: _assignedHostel),
     AdminComplaintsScreen(hostelId: _assignedHostel),
@@ -129,14 +130,7 @@ class _RectorDashboardState extends State<RectorDashboard> {
                       isDense: true,
                       hint: const Text("Select Branch"),
                       items:
-                          [
-                                'Computer Engineering',
-                                'Information Technology',
-                                'Mechanical Engineering',
-                                'Civil Engineering',
-                                'Electrical Engineering',
-                                'Chemical Engineering',
-                              ]
+                          AppConfig.allBranches
                               .map(
                                 (b) =>
                                     DropdownMenuItem(value: b, child: Text(b)),
@@ -192,7 +186,7 @@ class _RectorDashboardState extends State<RectorDashboard> {
                         'name': nameController.text.trim(),
                         'email': emailController.text.trim().toLowerCase(),
                         'assignedHostel': _assignedHostel,
-                        'hostel': _getLongHostelName(_assignedHostel),
+                        'hostel': AppConfig.getFullHostelName(_assignedHostel),
                         'room': roomController.text.trim(),
                         'category': CanonicalNames.canonicalizeCategory(selectedCategory),
                         'branch': CanonicalNames.canonicalizeBranch(selectedBranch, selectedCategory),
@@ -231,24 +225,7 @@ class _RectorDashboardState extends State<RectorDashboard> {
     );
   }
 
-  String _getLongHostelName(String? code) {
-    switch (code) {
-      case 'BH1':
-        return 'Boys Hostel 1';
-      case 'BH2':
-        return 'Boys Hostel 2';
-      case 'BH3':
-        return 'Boys Hostel 3';
-      case 'BH4':
-        return 'Boys Hostel 4';
-      case 'GH1':
-        return 'Girls Hostel 1';
-      case 'GH2':
-        return 'Girls Hostel 2';
-      default:
-        return code ?? 'Unknown';
-    }
-  }
+
 
   @override
   Widget build(BuildContext context) {
@@ -1235,7 +1212,7 @@ class ProfileTab extends StatelessWidget {
               final data = snapshot.data!.data() as Map<String, dynamic>?;
               final name = data?['name'] ?? 'Rector';
               final role = data?['role'] ?? 'Rector';
-              final hostel = data?['assignedHostel'] ?? 'Unknown';
+              final hostel = AppConfig.getFullHostelName(data?['assignedHostel']);
               final mobile = data?['mobile'] ?? 'Not set';
 
               return Container(

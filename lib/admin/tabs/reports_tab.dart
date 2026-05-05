@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import '../../app_config.dart';
 import 'attendance_reports_screen.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
@@ -14,12 +15,7 @@ class ReportsTab extends StatefulWidget {
 
 class _ReportsTabState extends State<ReportsTab> {
   String? _selectedHostel;
-  final List<String> _hostels = [
-    'Boys Hostel A',
-    'Boys Hostel B',
-    'Girls Hostel A',
-    'Girls Hostel B',
-  ]; // Example hostels
+  final List<String> _hostels = AppConfig.hostels;
 
   @override
   Widget build(BuildContext context) {
@@ -133,15 +129,26 @@ class _ReportsTabState extends State<ReportsTab> {
         .where('status', isEqualTo: 'approved');
 
     if (_selectedHostel != null) {
-      outQuery = outQuery.where('hostelId', isEqualTo: _selectedHostel);
-      pendingQuery = pendingQuery.where('hostelId', isEqualTo: _selectedHostel);
+      final code = AppConfig.getHostelCode(_selectedHostel!);
+      outQuery = outQuery.where('hostelId', isEqualTo: code);
+      pendingQuery = pendingQuery.where('hostelId', isEqualTo: code);
       complaintsQuery = complaintsQuery.where(
         'hostelId',
-        isEqualTo: _selectedHostel,
+        isEqualTo: code,
       );
       approvedQuery = approvedQuery.where(
         'hostelId',
-        isEqualTo: _selectedHostel,
+        isEqualTo: code,
+      );
+    } else {
+      // Exclude passed records if necessary, though status handles it
+      outQuery = outQuery.where(
+        'hostelId',
+        isNotEqualTo: null,
+      );
+      pendingQuery = pendingQuery.where(
+        'hostelId',
+        isNotEqualTo: null,
       );
     }
 
@@ -230,7 +237,7 @@ class _ReportsTabState extends State<ReportsTab> {
     Query query = FirebaseFirestore.instance.collection('complaints');
 
     if (_selectedHostel != null) {
-      query = query.where('hostelId', isEqualTo: _selectedHostel);
+      query = query.where('hostelId', isEqualTo: AppConfig.getHostelCode(_selectedHostel!));
     }
 
     return StreamBuilder<QuerySnapshot>(
@@ -326,8 +333,9 @@ class _ReportsTabState extends State<ReportsTab> {
         .where('status', isEqualTo: 'pending');
 
     if (_selectedHostel != null) {
-      outQuery = outQuery.where('hostelId', isEqualTo: _selectedHostel);
-      pendingQuery = pendingQuery.where('hostelId', isEqualTo: _selectedHostel);
+      final code = AppConfig.getHostelCode(_selectedHostel!);
+      outQuery = outQuery.where('hostelId', isEqualTo: code);
+      pendingQuery = pendingQuery.where('hostelId', isEqualTo: code);
     }
 
     final outSnapshot = await outQuery.get();

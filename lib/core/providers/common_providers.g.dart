@@ -136,3 +136,44 @@ final class AuthStateProvider extends $FunctionalProvider<User?, User?, User?>
 }
 
 String _$authStateHash() => r'71463e1ae77d34839bfc19edaaacb1e15d974cac';
+
+@ProviderFor(userData)
+final userDataProvider = UserDataProvider._();
+
+final class UserDataProvider
+    extends
+        $FunctionalProvider<
+          AsyncValue<Map<String, dynamic>?>,
+          Map<String, dynamic>?,
+          FutureOr<Map<String, dynamic>?>
+        >
+    with
+        $FutureModifier<Map<String, dynamic>?>,
+        $FutureProvider<Map<String, dynamic>?> {
+  UserDataProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'userDataProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$userDataHash();
+
+  @$internal
+  @override
+  $FutureProviderElement<Map<String, dynamic>?> $createElement(
+    $ProviderPointer pointer,
+  ) => $FutureProviderElement(pointer);
+
+  @override
+  FutureOr<Map<String, dynamic>?> create(Ref ref) {
+    return userData(ref);
+  }
+}
+
+String _$userDataHash() => r'26ea9af0db6c4fcd9e65aad0e9697fc7b3bf2f52';

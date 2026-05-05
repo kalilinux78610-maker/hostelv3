@@ -235,7 +235,7 @@ class _ComplaintCard extends ConsumerWidget {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   DropdownButtonFormField<String>(
-                    value: status,
+                    initialValue: status,
                     decoration: const InputDecoration(labelText: 'Status', border: OutlineInputBorder()),
                     items: const [
                       DropdownMenuItem(value: 'Pending', child: Text('Pending', style: TextStyle(color: Colors.orange))),
