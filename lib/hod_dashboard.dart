@@ -147,289 +147,260 @@ class _HodDashboardScreenState extends State<HodDashboardScreen> {
     }
   }
 
-  Widget _buildDateRow(IconData icon, String label, DateTime date) {
-    return Row(
-      children: [
-        Icon(icon, size: 16, color: Colors.grey[600]),
-        const SizedBox(width: 8),
-        Text(label, style: TextStyle(color: Colors.grey[600], fontSize: 13)),
-        const SizedBox(width: 4),
-        Text(
-          "${date.day}/${date.month}/${date.year} ${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}",
-          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-        ),
-      ],
+  Widget _buildImageStatCard({
+    required String title,
+    required Color color,
+    required IconData icon,
+    required Query query,
+    required bool Function(Map<String, dynamic>) filter,
+    required String actionText,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFF0A2E54), // Darker inner pill for cards
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.15),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(icon, color: color, size: 20),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  title,
+                  style: const TextStyle(color: Colors.white70, fontSize: 11, fontWeight: FontWeight.w600),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          StreamBuilder<QuerySnapshot>(
+            stream: query.snapshots(),
+            builder: (context, snapshot) {
+              if (!snapshot.hasData) {
+                return const Text("...", style: TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.bold));
+              }
+              final count = snapshot.data!.docs.where((d) => filter(d.data() as Map<String, dynamic>)).length;
+              return Text(
+                count.toString().padLeft(2, '0'),
+                style: TextStyle(color: color, fontSize: 28, fontWeight: FontWeight.bold),
+              );
+            },
+          ),
+          const SizedBox(height: 8),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                actionText,
+                style: const TextStyle(color: Colors.white54, fontSize: 10),
+              ),
+              const Icon(Icons.chevron_right, color: Colors.white54, size: 14),
+            ],
+          ),
+        ],
+      ),
     );
   }
 
+  String _formatDate(DateTime date) {
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    return "${date.day} ${months[date.month - 1]} ${date.year}";
+  }
+
   Widget _buildLeavesTab() {
-    // Only query by hodStatus to avoid ANY composite index requirements
-    Query query = FirebaseFirestore.instance
-        .collection('leave_requests')
-        .where('hodStatus', isEqualTo: 'pending');
+    Query query = FirebaseFirestore.instance.collection('leave_requests').where('hodStatus', isEqualTo: 'pending');
 
     return StreamBuilder<QuerySnapshot>(
       stream: query.snapshots(),
       builder: (context, snapshot) {
-        if (snapshot.hasError) {
-          return Center(child: Text('Error: ${snapshot.error}'));
-        }
-
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
         }
 
-        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-          return const Center(child: Text("No requests found in database."));
-        }
-
-        // 1. Fetch all pending HOD docs
-        List<QueryDocumentSnapshot> docs = snapshot.data!.docs.toList();
+        List<QueryDocumentSnapshot> docs = snapshot.hasData ? snapshot.data!.docs.toList() : [];
         
-        // 2. Filter in-memory by status, type, and branch only
-        //    Category toggle controls which "view" the HOD is in but
-        //    branch is the authoritative filter for ownership.
         docs = docs.where((doc) {
           final data = doc.data() as Map<String, dynamic>;
-          final isPending = data['status'] == 'pending';
-          final isHome = data['type'] == 'Home';
-
-          final docBranch = CanonicalNames.canonicalizeBranch(
-            data['branch']?.toString() ?? '',
-            data['category']?.toString() ?? '',
-          );
-
-          // Branch must match. Category toggle is just a UI view switcher.
+          final docBranch = CanonicalNames.canonicalizeBranch(data['branch']?.toString() ?? '', data['category']?.toString() ?? '');
           final branchMatch = (_branch == null || _branch!.isEmpty) || (docBranch == _branch);
-
-          return isPending && isHome && branchMatch;
+          return data['status'] == 'pending' && data['type'] == 'Home' && branchMatch;
         }).toList();
 
-        if (docs.isEmpty) {
-          return Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.done_all, size: 64, color: Colors.grey[300]),
-                const SizedBox(height: 16),
-                Text(
-                  "No pending leave requests",
-                  style: TextStyle(
-                    color: Colors.grey[600],
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  "Filtering for: $_branch",
-                  style: TextStyle(color: Colors.grey[400], fontSize: 13),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  "Only 'Home' type requests appear here.\nOuting requests go directly to Rector.",
-                  textAlign: TextAlign.center,
-                  style: TextStyle(color: Colors.grey[400], fontSize: 12),
-                ),
-              ],
-            ),
-          );
-        }
-
-        // 3. Sort in-memory by createdAt
         docs.sort((a, b) {
-          final aData = a.data() as Map<String, dynamic>;
-          final bData = b.data() as Map<String, dynamic>;
-          final aTime = (aData['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now();
-          final bTime = (bData['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now();
+          final aTime = ((a.data() as Map<String, dynamic>)['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now();
+          final bTime = ((b.data() as Map<String, dynamic>)['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now();
           return aTime.compareTo(bTime);
         });
 
-        return ListView.builder(
-          padding: const EdgeInsets.all(16),
-          itemCount: docs.length,
-          itemBuilder: (context, index) {
-            final doc = docs[index];
-            final data = doc.data() as Map<String, dynamic>;
-            final startDate = (data['startDate'] as Timestamp).toDate();
-            final endDate = (data['endDate'] as Timestamp).toDate();
-
-            return Container(
-              margin: const EdgeInsets.only(bottom: 16),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.05),
-                    blurRadius: 12,
-                    offset: const Offset(0, 4),
+        return Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.only(left: 20, right: 20, top: 20, bottom: 10),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text("Pending Requests", style: TextStyle(color: Color(0xFF001833), fontSize: 16, fontWeight: FontWeight.bold)),
+                  Row(
+                    children: [
+                      Text("View all", style: TextStyle(color: Colors.blue[700], fontSize: 13, fontWeight: FontWeight.w600)),
+                      Icon(Icons.chevron_right, color: Colors.blue[700], size: 16),
+                    ],
                   ),
                 ],
               ),
-              child: Padding(
-                padding: const EdgeInsets.all(20),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Student Info Row
-                    Row(
-                      children: [
-                        CircleAvatar(
-                          radius: 24,
-                          backgroundColor: _primaryColor.withValues(alpha: 0.1),
-                          child: Text(
-                            (data['name'] ?? 'S')[0].toUpperCase(),
-                            style: const TextStyle(
-                              color: _primaryColor,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 18,
-                            ),
+            ),
+            if (docs.isEmpty)
+              Expanded(
+                child: Center(
+                  child: Text("No pending requests", style: TextStyle(color: Colors.grey[500])),
+                ),
+              )
+            else
+              Expanded(
+                child: ListView.builder(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  itemCount: docs.length,
+                  itemBuilder: (context, index) {
+                    final doc = docs[index];
+                    final data = doc.data() as Map<String, dynamic>;
+                    final startDate = (data['startDate'] as Timestamp).toDate();
+                    final endDate = (data['endDate'] as Timestamp).toDate();
+
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 16),
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(20),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.03),
+                            blurRadius: 10,
+                            offset: const Offset(0, 4),
                           ),
-                        ),
-                        const SizedBox(width: 14),
-                        Expanded(
-                          child: Column(
+                        ],
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(
-                                data['name'] ?? 'Unknown Student',
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 16,
-                                  color: _primaryColor,
+                              CircleAvatar(
+                                radius: 22,
+                                backgroundColor: Colors.blue.withValues(alpha: 0.1),
+                                child: Text(
+                                  (data['name'] ?? 'S')[0].toUpperCase(),
+                                  style: const TextStyle(color: Colors.blue, fontWeight: FontWeight.bold, fontSize: 18),
                                 ),
                               ),
-                              const SizedBox(height: 2),
-                              Text(
-                                data['email'] ?? '',
-                                style: TextStyle(
-                                  color: Colors.grey[500],
-                                  fontSize: 12,
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        Text(
+                                          data['name'] ?? 'Unknown Student',
+                                          style: const TextStyle(color: Color(0xFF001833), fontWeight: FontWeight.bold, fontSize: 15),
+                                        ),
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                          decoration: BoxDecoration(
+                                            color: Colors.orange.withValues(alpha: 0.1),
+                                            borderRadius: BorderRadius.circular(12),
+                                          ),
+                                          child: const Text(
+                                            "Pending",
+                                            style: TextStyle(color: Colors.orange, fontSize: 10, fontWeight: FontWeight.bold),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      "${data['branch'] ?? 'N/A'} • Room ${data['room'] ?? 'N/A'}",
+                                      style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                                    ),
+                                    const SizedBox(height: 8),
+                                    Row(
+                                      children: [
+                                        Icon(Icons.calendar_today, size: 14, color: Colors.grey[500]),
+                                        const SizedBox(width: 6),
+                                        Text(
+                                          "${_formatDate(startDate)} - ${_formatDate(endDate)}",
+                                          style: TextStyle(color: Colors.grey[700], fontSize: 12),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 6),
+                                    Text(
+                                      "Reason: ${data['reason'] ?? 'N/A'}",
+                                      style: TextStyle(color: Colors.grey[800], fontSize: 12, fontWeight: FontWeight.w500),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              const Icon(Icons.chevron_right, color: Colors.grey, size: 20),
+                            ],
+                          ),
+                          const Padding(
+                            padding: EdgeInsets.symmetric(vertical: 12),
+                            child: Divider(height: 1, color: Color(0xFFEEEEEE)),
+                          ),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: OutlinedButton(
+                                  onPressed: () => _updateStatus(context, doc.id, data, 'reject'),
+                                  style: OutlinedButton.styleFrom(
+                                    foregroundColor: Colors.red,
+                                    side: BorderSide(color: Colors.red.withValues(alpha: 0.3)),
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                    padding: const EdgeInsets.symmetric(vertical: 10),
+                                  ),
+                                  child: const Text("Reject", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: ElevatedButton(
+                                  onPressed: () => _updateStatus(context, doc.id, data, 'approve'),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: const Color(0xFF001833),
+                                    foregroundColor: Colors.white,
+                                    elevation: 0,
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                    padding: const EdgeInsets.symmetric(vertical: 10),
+                                  ),
+                                  child: const Text("Approve", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
                                 ),
                               ),
                             ],
                           ),
-                        ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 4,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.orange.withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: Text(
-                            data['type'] ?? 'Leave',
-                            style: const TextStyle(
-                              color: Colors.orange,
-                              fontSize: 11,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-
-                    const SizedBox(height: 16),
-
-                    // Date Info
-                    Container(
-                      padding: const EdgeInsets.all(14),
-                      decoration: BoxDecoration(
-                        color: Colors.grey[50],
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Column(
-                        children: [
-                          _buildDateRow(Icons.logout, "From:", startDate),
-                          const SizedBox(height: 8),
-                          _buildDateRow(Icons.login, "To:", endDate),
                         ],
                       ),
-                    ),
-
-                    const SizedBox(height: 12),
-
-                    // Reason
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Icon(Icons.notes, size: 16, color: Colors.grey[400]),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            data['reason'] ?? 'N/A',
-                            style: TextStyle(
-                              fontSize: 13,
-                              color: Colors.grey[600],
-                              fontStyle: FontStyle.italic,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-
-                    const SizedBox(height: 16),
-
-                    // Action Buttons
-                    Row(
-                      children: [
-                        Expanded(
-                          child: OutlinedButton(
-                            onPressed: () =>
-                                _updateStatus(context, doc.id, data, 'reject'),
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: Colors.red,
-                              side: const BorderSide(
-                                color: Colors.red,
-                                width: 1.5,
-                              ),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              padding: const EdgeInsets.symmetric(vertical: 12),
-                            ),
-                            child: const Text(
-                              "REJECT",
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 14,
-                              ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: ElevatedButton(
-                            onPressed: () =>
-                                _updateStatus(context, doc.id, data, 'approve'),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: _primaryColor,
-                              foregroundColor: Colors.white,
-                              elevation: 0,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              padding: const EdgeInsets.symmetric(vertical: 12),
-                            ),
-                            child: const Text(
-                              "APPROVE",
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 14,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
+                    );
+                  },
                 ),
               ),
-            );
-          },
+          ],
         );
       },
     );
@@ -437,106 +408,348 @@ class _HodDashboardScreenState extends State<HodDashboardScreen> {
 
   Widget _buildGatePassesTab() {
     return StreamBuilder<QuerySnapshot>(
-      stream: FirebaseFirestore.instance
-          .collection('leave_requests')
-          .where('status', isEqualTo: 'approved')
-          .snapshots(),
+      stream: FirebaseFirestore.instance.collection('leave_requests').where('status', isEqualTo: 'approved').snapshots(),
       builder: (context, snapshot) {
-        if (snapshot.hasError) {
-          return Center(child: Text('Error: ${snapshot.error}'));
-        }
-
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
         }
 
-        // 1. Fetch docs and filter in-memory to avoid index errors
-        List<QueryDocumentSnapshot> docs = snapshot.data!.docs.where((doc) {
+        List<QueryDocumentSnapshot> docs = snapshot.hasData ? snapshot.data!.docs.where((doc) {
           final data = doc.data() as Map<String, dynamic>;
-          return data['type'] == 'Home' &&
-                 data['category'] == _category &&
-                 data['branch'] == _branch;
-        }).toList();
+          return data['type'] == 'Home' && data['category'] == _category && data['branch'] == _branch;
+        }).toList() : [];
 
-        if (docs.isEmpty) {
-          return Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.directions_run, size: 64, color: Colors.grey[300]),
-                const SizedBox(height: 16),
-                Text(
-                  "No active gate passes",
-                  style: TextStyle(color: Colors.grey[400], fontSize: 16),
-                ),
-              ],
-            ),
-          );
-        }
-
-        // 2. Sort descending in memory
         docs.sort((a, b) {
-          final aTime = (a.data() as Map<String, dynamic>)['createdAt'] as Timestamp?;
-          final bTime = (b.data() as Map<String, dynamic>)['createdAt'] as Timestamp?;
-          if (aTime == null || bTime == null) return 0;
+          final aTime = ((a.data() as Map<String, dynamic>)['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now();
+          final bTime = ((b.data() as Map<String, dynamic>)['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now();
           return bTime.compareTo(aTime);
         });
 
-        return ListView.builder(
-          padding: const EdgeInsets.all(16),
-          itemCount: docs.length,
-          itemBuilder: (context, index) {
-            final doc = docs[index];
-            final data = doc.data() as Map<String, dynamic>;
-            final endDate = (data['endDate'] as Timestamp).toDate();
+        return Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.only(left: 20, right: 20, top: 20, bottom: 10),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text("Currently Gate Passed", style: TextStyle(color: Color(0xFF001833), fontSize: 16, fontWeight: FontWeight.bold)),
+                  Row(
+                    children: [
+                      Text("View all", style: TextStyle(color: Colors.blue[700], fontSize: 13, fontWeight: FontWeight.w600)),
+                      Icon(Icons.chevron_right, color: Colors.blue[700], size: 16),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            if (docs.isEmpty)
+              Expanded(
+                child: Center(
+                  child: Text("No active gate passes", style: TextStyle(color: Colors.grey[500])),
+                ),
+              )
+            else
+              Expanded(
+                child: ListView.builder(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  itemCount: docs.length,
+                  itemBuilder: (context, index) {
+                    final data = docs[index].data() as Map<String, dynamic>;
+                    final startDate = (data['startDate'] as Timestamp).toDate();
+                    final endDate = (data['endDate'] as Timestamp).toDate();
 
-            return Card(
-              margin: const EdgeInsets.only(bottom: 12),
-              shape: RoundedRectangleBorder(
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 16),
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(20),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.03),
+                            blurRadius: 10,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          CircleAvatar(
+                            radius: 22,
+                            backgroundColor: Colors.pink.withValues(alpha: 0.1),
+                            child: Text(
+                              (data['name'] ?? 'S')[0].toUpperCase(),
+                              style: const TextStyle(color: Colors.pink, fontWeight: FontWeight.bold, fontSize: 18),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Text(
+                                      data['name'] ?? 'Unknown Student',
+                                      style: const TextStyle(color: Color(0xFF001833), fontWeight: FontWeight.bold, fontSize: 15),
+                                    ),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                      decoration: BoxDecoration(
+                                        color: Colors.green.withValues(alpha: 0.1),
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      child: const Text(
+                                        "Home",
+                                        style: TextStyle(color: Colors.green, fontSize: 10, fontWeight: FontWeight.bold),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  "${data['branch'] ?? 'N/A'} • Room ${data['room'] ?? 'N/A'}",
+                                  style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                                ),
+                                const SizedBox(height: 8),
+                                Row(
+                                  children: [
+                                    Icon(Icons.location_on_outlined, size: 14, color: Colors.grey[500]),
+                                    const SizedBox(width: 4),
+                                    Text("Home", style: TextStyle(color: Colors.grey[600], fontSize: 12)),
+                                    const SizedBox(width: 12),
+                                    Icon(Icons.calendar_today, size: 14, color: Colors.grey[500]),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      "${_formatDate(startDate)} - ${_formatDate(endDate)}",
+                                      style: TextStyle(color: Colors.grey[700], fontSize: 12),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+              ),
+            // Info Note at the bottom
+            Container(
+              margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.blue.withValues(alpha: 0.05),
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: ListTile(
-                leading: CircleAvatar(
-                  backgroundColor: _primaryColor.withValues(alpha: 0.1),
-                  child: Icon(Icons.qr_code_2, color: _primaryColor),
+              child: Row(
+                children: [
+                  Icon(Icons.info, color: Colors.blue[700], size: 20),
+                  const SizedBox(width: 12),
+                  const Expanded(
+                    child: Text(
+                      "Note: Only 'Home' type requests appear here.\nOuting requests go directly to Rector.",
+                      style: TextStyle(color: Color(0xFF001833), fontSize: 11),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildPremiumHeader(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.only(
+        top: MediaQuery.of(context).padding.top + 16,
+        bottom: 24,
+        left: 20,
+        right: 20,
+      ),
+      decoration: const BoxDecoration(
+        color: Color(0xFF001833),
+        borderRadius: BorderRadius.only(
+          bottomLeft: Radius.circular(32),
+          bottomRight: Radius.circular(32),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Top Row: Menu & Notification
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Icon(Icons.menu, color: Colors.white70, size: 28),
+              Stack(
+                children: [
+                  const Icon(Icons.notifications_none, color: Colors.white70, size: 28),
+                  Positioned(
+                    right: 2,
+                    top: 2,
+                    child: Container(
+                      width: 10,
+                      height: 10,
+                      decoration: const BoxDecoration(
+                        color: Colors.redAccent,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
+          // Profile Row
+          Row(
+            children: [
+              GestureDetector(
+                onTap: () async {
+                  final result = await Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const HodProfileScreen()),
+                  );
+                  if (result == true) _loadHodProfile();
+                },
+                child: CircleAvatar(
+                  radius: 28,
+                  backgroundColor: Colors.white,
+                  backgroundImage: _photoUrl != null ? NetworkImage(_photoUrl!) : null,
+                  child: _photoUrl == null
+                      ? const Icon(Icons.person, color: Color(0xFF001833), size: 32)
+                      : null,
                 ),
-                title: Text(
-                  data['name'] ?? 'Student',
-                  style: const TextStyle(fontWeight: FontWeight.bold),
-                ),
-                subtitle: Column(
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(data['type'] ?? 'Leave'),
+                    const Text(
+                      "Welcome back,",
+                      style: TextStyle(color: Colors.white70, fontSize: 12),
+                    ),
+                    const SizedBox(height: 4),
                     Text(
-                      "To: ${endDate.day}/${endDate.month} ${endDate.hour}:${endDate.minute.toString().padLeft(2, '0')}",
-                      style: const TextStyle(fontSize: 12, color: Colors.grey),
+                      _name != null && _name!.isNotEmpty ? _name! : 'Professor',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      _branch ?? '',
+                      style: const TextStyle(color: Colors.white60, fontSize: 12),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ],
                 ),
-                trailing: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 4,
-                  ),
+              ),
+              GestureDetector(
+                onTap: () async {
+                  final shouldLogout = await showDialog<bool>(
+                    context: context,
+                    barrierDismissible: false,
+                    builder: (ctx) => _buildLogoutDialog(ctx),
+                  );
+                  if (shouldLogout == true) await AuthService.signOut();
+                },
+                child: Container(
+                  padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: Colors.green.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(12),
+                    color: Colors.transparent,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: Colors.redAccent.withValues(alpha: 0.3), width: 1.5),
                   ),
-                  child: const Text(
-                    "APPROVED",
-                    style: TextStyle(
-                      color: Colors.green,
-                      fontSize: 10,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
+                  child: const Icon(Icons.power_settings_new, color: Colors.redAccent, size: 22),
                 ),
               ),
-            );
-          },
-        );
-      },
+            ],
+          ),
+          const SizedBox(height: 32),
+          // Stat Cards
+          Row(
+            children: [
+              Expanded(
+                child: _buildImageStatCard(
+                  title: "Pending Requests",
+                  color: Colors.orange,
+                  icon: Icons.hourglass_empty,
+                  query: FirebaseFirestore.instance.collection('leave_requests').where('hodStatus', isEqualTo: 'pending'),
+                  filter: (data) => data['type'] == 'Home' && data['category'] == _category && data['branch'] == _branch,
+                  actionText: "Awaiting your approval",
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: _buildImageStatCard(
+                  title: "Gate Passed",
+                  color: Colors.greenAccent,
+                  icon: Icons.directions_run,
+                  query: FirebaseFirestore.instance.collection('leave_requests').where('status', isEqualTo: 'approved'),
+                  filter: (data) => data['type'] == 'Home' && data['category'] == _category && data['branch'] == _branch,
+                  actionText: "Currently out on pass",
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
+          // Pill TabBar
+          Container(
+            height: 50,
+            decoration: BoxDecoration(
+              color: const Color(0xFF0A2E54),
+              borderRadius: BorderRadius.circular(25),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+            ),
+            child: TabBar(
+              indicatorSize: TabBarIndicatorSize.tab,
+              dividerColor: Colors.transparent,
+              indicator: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(25),
+              ),
+              labelColor: const Color(0xFF001833),
+              unselectedLabelColor: Colors.white70,
+              labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+              tabs: const [
+                Tab(
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.description, size: 18),
+                      SizedBox(width: 8),
+                      Text("Requests"),
+                    ],
+                  ),
+                ),
+                Tab(
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.credit_card, size: 18),
+                      SizedBox(width: 8),
+                      Text("Passes"),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -592,211 +805,10 @@ class _HodDashboardScreenState extends State<HodDashboardScreen> {
     return DefaultTabController(
       length: 2,
       child: Scaffold(
-        backgroundColor: const Color(0xFFF8F9FA), // Slightly lighter background
+        backgroundColor: const Color(0xFFF4F6F9), // Slightly lighter background
         body: Column(
           children: [
-            // Enhanced Header Section
-            Container(
-              width: double.infinity,
-              padding: EdgeInsets.only(
-                top: MediaQuery.of(context).padding.top + 20,
-                bottom: 20,
-              ),
-              decoration: BoxDecoration(
-                color: _primaryColor,
-                borderRadius: const BorderRadius.only(
-                  bottomLeft: Radius.circular(32),
-                  bottomRight: Radius.circular(32),
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: _primaryColor.withValues(alpha: 0.3),
-                    blurRadius: 15,
-                    offset: const Offset(0, 8),
-                  ),
-                ],
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Top Navbar (Profile & Icons)
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 24),
-                    child: Row(
-                      children: [
-                        GestureDetector(
-                          onTap: () async {
-                            final result = await Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => const HodProfileScreen(),
-                              ),
-                            );
-                            if (result == true) {
-                              _loadHodProfile();
-                            }
-                          },
-                          child: Container(
-                            padding: const EdgeInsets.all(2),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              shape: BoxShape.circle,
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.orange.withValues(alpha: 0.5),
-                                  blurRadius: 8,
-                                  spreadRadius: 1,
-                                ),
-                              ],
-                            ),
-                            child: CircleAvatar(
-                              radius: 20,
-                              backgroundColor: Colors.white,
-                              backgroundImage: _photoUrl != null
-                                  ? NetworkImage(_photoUrl!)
-                                  : null,
-                              child: _photoUrl == null
-                                  ? const Icon(
-                                      Icons.person,
-                                      color: _primaryColor,
-                                    )
-                                  : null,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text(
-                                "Welcome back,",
-                                style: TextStyle(
-                                  color: Colors.white70,
-                                  fontSize: 12,
-                                  letterSpacing: 0.5,
-                                ),
-                              ),
-                              Text(
-                                "${_name != null && _name!.isNotEmpty ? _name : 'Professor'} • $_branch",
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        // Action Row: Logout
-                        Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            // Logout Button
-                            GestureDetector(
-                              onTap: () async {
-                                final shouldLogout = await showDialog<bool>(
-                                  context: context,
-                                  barrierDismissible: false,
-                                  builder: (ctx) => _buildLogoutDialog(ctx),
-                                );
-                                if (shouldLogout == true) await AuthService.signOut();
-                              },
-                              child: Container(
-                                padding: const EdgeInsets.all(8),
-                                decoration: BoxDecoration(
-                                  color: Colors.redAccent.withValues(alpha: 0.1),
-                                  borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(
-                                    color: Colors.redAccent.withValues(alpha: 0.3),
-                                  ),
-                                ),
-                                child: const Icon(
-                                  Icons.power_settings_new,
-                                  color: Colors.redAccent,
-                                  size: 18,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  const SizedBox(height: 24),
-
-                  // Quick Stats Row (StreamBuilder to get live count)
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: _buildStatCard(
-                            label: "Pending Reqs",
-                            icon: Icons.hourglass_empty,
-                            color: Colors.orange,
-                            query: FirebaseFirestore.instance
-                                .collection('leave_requests')
-                                .where('hodStatus', isEqualTo: 'pending'),
-                            filter: (data) => data['type'] == 'Home' && data['category'] == _category && data['branch'] == _branch,
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: _buildStatCard(
-                            label: "Gate Passes",
-                            icon: Icons.directions_run,
-                            color: Colors.green,
-                            query: FirebaseFirestore.instance
-                                .collection('leave_requests')
-                                .where('status', isEqualTo: 'approved'),
-                            filter: (data) => data['type'] == 'Home' && data['category'] == _category && data['branch'] == _branch,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  const SizedBox(height: 24),
-
-                  // Custom TabBar
-                  Container(
-                    margin: const EdgeInsets.symmetric(horizontal: 24),
-                    decoration: BoxDecoration(
-                      color: Colors.black.withValues(alpha: 0.2),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: TabBar(
-                      indicatorSize: TabBarIndicatorSize.tab,
-                      indicator: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(20),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.1),
-                            blurRadius: 4,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
-                      ),
-                      labelColor: _primaryColor,
-                      unselectedLabelColor: Colors.white70,
-                      labelStyle: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 13,
-                      ),
-                      padding: const EdgeInsets.all(4),
-                      tabs: const [
-                        Tab(text: "Requests"),
-                        Tab(text: "Passes"),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
+            _buildPremiumHeader(context),
             // Tab Views
             Expanded(
               child: TabBarView(
@@ -805,77 +817,6 @@ class _HodDashboardScreenState extends State<HodDashboardScreen> {
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  // Helper widget for Stat Cards
-  Widget _buildStatCard({
-    required String label,
-    required IconData icon,
-    required Color color,
-    required Query query,
-    required bool Function(Map<String, dynamic>) filter,
-  }) {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.2),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Icon(icon, color: color, size: 20),
-              ),
-              StreamBuilder<QuerySnapshot>(
-                stream: query.snapshots(),
-                builder: (context, snapshot) {
-                  if (snapshot.hasData) {
-                    final validDocsCount = snapshot.data!.docs
-                        .where((d) => filter(d.data() as Map<String, dynamic>))
-                        .length;
-                    return Text(
-                      "$validDocsCount",
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    );
-                  }
-                  return const SizedBox(
-                    width: 24,
-                    height: 24,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: Colors.white54,
-                    ),
-                  );
-                },
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Text(
-            label,
-            style: const TextStyle(
-              color: Colors.white60,
-              fontSize: 13,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ],
       ),
     );
   }
