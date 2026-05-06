@@ -126,10 +126,11 @@ class PushNotificationService {
   // Generate Access Token for V1 API
   Future<String?> _getAccessToken() async {
     if (_clientEmail.isEmpty || _privateKey.isEmpty) {
-      debugPrint("WARNING: FCM credentials not set in .env file.");
+      debugPrint("⚠️ FCM WARNING: Credentials not set in .env file.");
       return null;
     }
 
+    AutoRefreshingAuthClient? authClient;
     try {
       final accountCredentials = ServiceAccountCredentials.fromJson({
         "type": "service_account",
@@ -146,16 +147,15 @@ class PushNotificationService {
             "https://www.googleapis.com/robot/v1/metadata/x509/firebase-adminsdk-fbsvc%40hostel-v3.iam.gserviceaccount.com",
       });
 
-
-      final authClient = await clientViaServiceAccount(
-        accountCredentials,
-        _scopes,
-      );
-
-      return authClient.credentials.accessToken.data;
+      authClient = await clientViaServiceAccount(accountCredentials, _scopes);
+      final token = authClient.credentials.accessToken.data;
+      debugPrint("✅ FCM Access token acquired successfully.");
+      return token;
     } catch (e) {
-      debugPrint("Error generating access token: $e");
+      debugPrint("❌ FCM Error generating access token: $e");
       return null;
+    } finally {
+      authClient?.close(); // Always close to prevent connection leak
     }
   }
 
@@ -166,8 +166,12 @@ class PushNotificationService {
     required String toToken,
   }) async {
     final accessToken = await _getAccessToken();
-    if (accessToken == null) return;
+    if (accessToken == null) {
+      debugPrint("❌ FCM: Skipping push — no access token.");
+      return;
+    }
 
+    debugPrint("📤 FCM: Sending to token ${toToken.substring(0, 20)}...");
     try {
       final response = await http.post(
         Uri.parse(
@@ -188,9 +192,9 @@ class PushNotificationService {
             'android': {
               'priority': 'high',
               'notification': {
-                'channel_id': 'hostel_channel_id', // Must match local channel
-                'icon': 'ic_notification', // Monochromatic icon for system tray
-                'color': '#1565C0', // Accent color for the icon
+                'channel_id': 'hostel_channel_id',
+                'icon': 'ic_notification',
+                'color': '#1565C0',
               },
             },
           },
@@ -198,14 +202,14 @@ class PushNotificationService {
       );
 
       if (response.statusCode == 200) {
-        debugPrint("V1 Notification sent successfully");
+        debugPrint("✅ FCM: Push notification sent! Title: \"$title\"");
       } else {
         debugPrint(
-          "Failed to send V1 notification: ${response.statusCode} - ${response.body}",
+          "❌ FCM Error ${response.statusCode}: ${response.body}",
         );
       }
     } catch (e) {
-      debugPrint("Error sending V1 push notification: $e");
+      debugPrint("❌ FCM Exception: $e");
     }
   }
 }
