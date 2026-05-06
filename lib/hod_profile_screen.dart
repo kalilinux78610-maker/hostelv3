@@ -148,27 +148,39 @@ class _HodProfileScreenState extends State<HodProfileScreen> {
     TextInputType type = TextInputType.text,
   }) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 20),
+      padding: const EdgeInsets.only(bottom: 16),
       child: TextFormField(
         controller: controller,
         keyboardType: type,
+        style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 16),
         decoration: InputDecoration(
           labelText: label,
-          prefixIcon: Icon(icon, color: _primaryColor),
+          labelStyle: TextStyle(color: Colors.grey.shade500, fontSize: 12, fontWeight: FontWeight.normal),
+          prefixIcon: Container(
+            margin: const EdgeInsets.all(8),
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: Colors.blue.shade50,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(icon, color: Colors.blue.shade700, size: 20),
+          ),
+          suffixIcon: Icon(Icons.edit, color: Colors.blue.shade600, size: 18),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(16),
-            borderSide: BorderSide(color: Colors.grey.shade300),
+            borderSide: BorderSide(color: Colors.grey.shade200),
           ),
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(16),
-            borderSide: BorderSide(color: Colors.grey.shade300),
+            borderSide: BorderSide(color: Colors.grey.shade200),
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(16),
-            borderSide: const BorderSide(color: _primaryColor, width: 2),
+            borderSide: BorderSide(color: Colors.blue.shade400, width: 1.5),
           ),
           filled: true,
           fillColor: Colors.white,
+          contentPadding: const EdgeInsets.symmetric(vertical: 16),
         ),
         validator: (value) => value!.isEmpty ? 'This field is required' : null,
       ),
@@ -189,7 +201,7 @@ class _HodProfileScreenState extends State<HodProfileScreen> {
         : items;
 
     return Padding(
-      padding: const EdgeInsets.only(bottom: 20),
+      padding: const EdgeInsets.only(bottom: 16),
       child: DropdownButtonFormField<String>(
         initialValue: value,
         items: safeItems
@@ -197,23 +209,35 @@ class _HodProfileScreenState extends State<HodProfileScreen> {
             .toList(),
         onChanged: isLocked ? null : onChanged,
         isExpanded: true,
+        icon: Icon(Icons.keyboard_arrow_down, color: Colors.grey.shade600),
+        style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 16, color: Colors.black87),
         decoration: InputDecoration(
           labelText: label,
-          prefixIcon: Icon(icon, color: _primaryColor),
+          labelStyle: TextStyle(color: Colors.grey.shade500, fontSize: 12, fontWeight: FontWeight.normal),
+          prefixIcon: Container(
+            margin: const EdgeInsets.all(8),
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: Colors.blue.shade50,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(icon, color: Colors.blue.shade700, size: 20),
+          ),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(16),
-            borderSide: BorderSide(color: Colors.grey.shade300),
+            borderSide: BorderSide(color: Colors.grey.shade200),
           ),
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(16),
-            borderSide: BorderSide(color: Colors.grey.shade300),
+            borderSide: BorderSide(color: Colors.grey.shade200),
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(16),
-            borderSide: const BorderSide(color: _primaryColor, width: 2),
+            borderSide: BorderSide(color: Colors.blue.shade400, width: 1.5),
           ),
           filled: true,
           fillColor: Colors.white,
+          contentPadding: const EdgeInsets.symmetric(vertical: 16),
         ),
       ),
     );
@@ -243,12 +267,12 @@ class _HodProfileScreenState extends State<HodProfileScreen> {
                 children: [
                   Container(
                     width: double.infinity,
-                    padding: const EdgeInsets.only(bottom: 40, top: 20),
+                    padding: const EdgeInsets.only(bottom: 12, top: 0),
                     decoration: const BoxDecoration(
                       color: _primaryColor,
                       borderRadius: BorderRadius.only(
-                        bottomLeft: Radius.circular(40),
-                        bottomRight: Radius.circular(40),
+                        bottomLeft: Radius.circular(20),
+                        bottomRight: Radius.circular(20),
                       ),
                     ),
                     child: Column(
@@ -260,7 +284,7 @@ class _HodProfileScreenState extends State<HodProfileScreen> {
                             shape: BoxShape.circle,
                             boxShadow: [
                               BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.2),
+                                color: Colors.black.withValues(alpha: 0.1),
                                 blurRadius: 10,
                                 spreadRadius: 2,
                               ),
@@ -269,12 +293,22 @@ class _HodProfileScreenState extends State<HodProfileScreen> {
                           child: ProfileAvatarWidget(
                             photoUrl: _photoUrl,
                             uid: FirebaseAuth.instance.currentUser?.uid,
+                            radius: 36,
                           ),
                         ),
-                        const SizedBox(height: 16),
+                        const SizedBox(height: 8),
+                        Text(
+                          _nameController.text.isNotEmpty ? _nameController.text : "HOD Profile",
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
                         const Text(
-                          "Manage Your Details",
-                          style: TextStyle(color: Colors.white70, fontSize: 16),
+                          "Manage your profile information",
+                          style: TextStyle(color: Colors.white70, fontSize: 13),
                         ),
                       ],
                     ),
@@ -286,56 +320,81 @@ class _HodProfileScreenState extends State<HodProfileScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text(
-                            "Personal Information",
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                              color: _primaryColor,
-                            ),
+                          Row(
+                            children: [
+                              Icon(Icons.person, color: Colors.blue.shade700, size: 22),
+                              const SizedBox(width: 8),
+                              const Text(
+                                "Personal Information",
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  color: _primaryColor,
+                                ),
+                              ),
+                            ],
                           ),
                           const SizedBox(height: 16),
 
                           _buildTextField(
                             _nameController,
                             "Full Name",
-                            Icons.person_outline,
+                            Icons.person,
                           ),
                           _buildTextField(
                             _phoneController,
                             "Phone Number",
-                            Icons.phone_outlined,
+                            Icons.phone,
                             type: TextInputType.phone,
                           ),
 
-                          const Divider(height: 30),
+                          const Divider(height: 30, color: Colors.black12),
 
-                          const Text(
-                            "Department Information",
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                              color: _primaryColor,
-                            ),
+                          Row(
+                            children: [
+                              Icon(Icons.domain, color: Colors.blue.shade700, size: 22),
+                              const SizedBox(width: 8),
+                              const Text(
+                                "Department Information",
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  color: _primaryColor,
+                                ),
+                              ),
+                            ],
                           ),
                           const SizedBox(height: 16),
 
                           if (_isDepartmentLocked)
-                            const Padding(
-                              padding: EdgeInsets.only(bottom: 16),
-                              child: Text(
-                                "Department details cannot be changed once set. Please contact admin if you need to update them.",
-                                style: TextStyle(
-                                  color: Colors.redAccent,
-                                  fontSize: 12,
-                                  fontStyle: FontStyle.italic,
-                                ),
+                            Container(
+                              margin: const EdgeInsets.only(bottom: 20),
+                              padding: const EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                color: Colors.orange.shade50,
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Icon(Icons.info_outline, color: Colors.orange.shade800),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Text(
+                                      "Department details cannot be changed once set.\nPlease contact admin if you need to update them.",
+                                      style: TextStyle(
+                                        color: Colors.orange.shade900,
+                                        fontSize: 13,
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
 
                           _buildDropdown(
                             "Category (e.g. BTech)",
-                            Icons.category_outlined,
+                            Icons.school,
                             _category,
                             _categories,
                             (val) => setState(() => _category = val),
@@ -344,28 +403,22 @@ class _HodProfileScreenState extends State<HodProfileScreen> {
 
                           _buildDropdown(
                             "Branch (e.g. Computer Science)",
-                            Icons.business_outlined,
+                            Icons.business,
                             _branch,
                             _branches,
                             (val) => setState(() => _branch = val),
                             isLocked: _isDepartmentLocked,
                           ),
 
-                          const SizedBox(height: 30),
+                          const SizedBox(height: 20),
 
                           SizedBox(
                             width: double.infinity,
                             height: 55,
-                            child: ElevatedButton(
+                            child: ElevatedButton.icon(
                               onPressed: _isSaving ? null : _saveProfile,
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: _primaryColor,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(16),
-                                ),
-                                elevation: 5,
-                              ),
-                              child: _isSaving
+                              icon: _isSaving ? const SizedBox.shrink() : const Icon(Icons.save_outlined, color: Colors.white),
+                              label: _isSaving
                                   ? const SizedBox(
                                       height: 24,
                                       width: 24,
@@ -375,14 +428,20 @@ class _HodProfileScreenState extends State<HodProfileScreen> {
                                       ),
                                     )
                                   : const Text(
-                                      "SAVE PROFILE",
+                                      "Save Profile",
                                       style: TextStyle(
                                         fontSize: 16,
                                         fontWeight: FontWeight.bold,
                                         color: Colors.white,
-                                        letterSpacing: 1.2,
                                       ),
                                     ),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.blue.shade600,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                elevation: 0,
+                              ),
                             ),
                           ),
                           const SizedBox(height: 20),

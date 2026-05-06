@@ -527,8 +527,9 @@ class _StudentProfileDesignV2State extends State<StudentProfileDesignV2> {
 class ProfileAvatarWidget extends StatefulWidget {
   final String? photoUrl;
   final String? uid;
+  final double radius;
 
-  const ProfileAvatarWidget({super.key, this.photoUrl, this.uid});
+  const ProfileAvatarWidget({super.key, this.photoUrl, this.uid, this.radius = 50});
 
   @override
   State<ProfileAvatarWidget> createState() => _ProfileAvatarWidgetState();
@@ -594,11 +595,11 @@ class _ProfileAvatarWidgetState extends State<ProfileAvatarWidget> {
               ],
             ),
             child: CircleAvatar(
-              radius: 50,
+              radius: widget.radius,
               backgroundColor: Colors.white,
               backgroundImage: widget.photoUrl != null ? NetworkImage(widget.photoUrl!) : null,
               child: widget.photoUrl == null
-                  ? const Icon(Icons.person, size: 50, color: Color(0xFF002244))
+                  ? Icon(Icons.person, size: widget.radius, color: const Color(0xFF002244))
                   : null,
             ),
           ),
@@ -610,13 +611,13 @@ class _ProfileAvatarWidgetState extends State<ProfileAvatarWidget> {
             bottom: 0,
             right: 0,
             child: Container(
-              padding: const EdgeInsets.all(6),
+              padding: EdgeInsets.all(widget.radius * 0.12),
               decoration: BoxDecoration(
                 color: const Color(0xFF002244),
                 shape: BoxShape.circle,
                 border: Border.all(color: Colors.white, width: 2),
               ),
-              child: const Icon(Icons.camera_alt, color: Colors.white, size: 16),
+              child: Icon(Icons.camera_alt, color: Colors.white, size: widget.radius * 0.32),
             ),
           ),
         ],
