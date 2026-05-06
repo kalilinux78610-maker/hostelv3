@@ -117,6 +117,16 @@ class AttendanceService {
         .set(attendance.toMap());
   }
 
+  // Fetch a specific day's attendance
+  Future<DailyAttendance?> getDailyAttendance(String hostelId, DateTime date) async {
+    final docId = generateDocId(hostelId, date);
+    final doc = await _firestore.collection('daily_attendance').doc(docId).get();
+    if (doc.exists && doc.data() != null) {
+      return DailyAttendance.fromMap(doc.id, doc.data()!);
+    }
+    return null;
+  }
+
   // Get attendance history for a specific hostel
   Stream<QuerySnapshot> getAttendanceHistory(String hostelId) {
     return _firestore

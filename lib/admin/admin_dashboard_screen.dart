@@ -34,50 +34,86 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Admin Dashboard'),
-        backgroundColor: _primaryColor,
-        foregroundColor: Colors.white,
-        automaticallyImplyLeading: false,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.logout),
-            onPressed: () async {
-              final shouldLogout = await showDialog<bool>(
-                context: context,
-                barrierDismissible: false,
-                builder: (ctx) => _buildLogoutDialog(ctx),
-              );
-              if (shouldLogout == true) await AuthService.signOut();
-            },
-          ),
-        ],
-      ),
+      backgroundColor: const Color(0xFFF3F4F6),
+      appBar: (_selectedIndex == 0 || _selectedIndex == 1 || _selectedIndex == 2 || _selectedIndex == 4)
+          ? null
+          : AppBar(
+              title: const Text('Admin Dashboard'),
+              backgroundColor: _primaryColor,
+              foregroundColor: Colors.white,
+              automaticallyImplyLeading: false,
+              actions: [
+                IconButton(
+                  icon: const Icon(Icons.logout),
+                  onPressed: () async {
+                    final shouldLogout = await showDialog<bool>(
+                      context: context,
+                      barrierDismissible: false,
+                      builder: (ctx) => _buildLogoutDialog(ctx),
+                    );
+                    if (shouldLogout == true) await AuthService.signOut();
+                  },
+                ),
+              ],
+            ),
       body: _widgetOptions.elementAt(_selectedIndex),
-      bottomNavigationBar: BottomNavigationBar(
-        type: BottomNavigationBarType.fixed, // Added for >3 items
-        items: const <BottomNavigationBarItem>[
-          BottomNavigationBarItem(
-            icon: Icon(Icons.rss_feed),
-            label: 'Activity',
-          ),
-          BottomNavigationBarItem(icon: Icon(Icons.people), label: 'Directory'),
-          BottomNavigationBarItem(icon: Icon(Icons.badge), label: 'Staff'),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.bar_chart),
-            label: 'Reports',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.upload_file),
-            label: 'Import',
-          ),
-        ],
-        currentIndex: _selectedIndex,
-        selectedItemColor: _primaryColor,
-        onTap: _onItemTapped,
+      bottomNavigationBar: Container(
+        decoration: BoxDecoration(
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.05),
+              blurRadius: 10,
+              offset: const Offset(0, -5),
+            ),
+          ],
+        ),
+        child: BottomNavigationBar(
+          backgroundColor: Colors.white,
+          type: BottomNavigationBarType.fixed, // Added for >3 items
+          items: <BottomNavigationBarItem>[
+            _buildNavItem(Icons.rss_feed, 'Activity', 0),
+            _buildNavItem(Icons.people, 'Directory', 1),
+            _buildNavItem(Icons.badge, 'Staff', 2),
+            _buildNavItem(Icons.bar_chart, 'Reports', 3),
+            _buildNavItem(Icons.upload_file, 'Import', 4),
+          ],
+          currentIndex: _selectedIndex,
+          selectedItemColor: const Color(0xFF1E3A8A), // Match design dark blue
+          unselectedItemColor: Colors.grey[500],
+          selectedLabelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+          unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.normal, fontSize: 12),
+          onTap: _onItemTapped,
+          elevation: 0,
+        ),
       ),
     );
   }
+
+  BottomNavigationBarItem _buildNavItem(IconData icon, String label, int index) {
+    final isSelected = _selectedIndex == index;
+    return BottomNavigationBarItem(
+      icon: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (isSelected)
+            Container(
+              height: 3,
+              width: 24,
+              decoration: BoxDecoration(
+                color: const Color(0xFF1E3A8A),
+                borderRadius: BorderRadius.circular(2),
+              ),
+              margin: const EdgeInsets.only(bottom: 4),
+            )
+          else
+            const SizedBox(height: 7),
+          Icon(icon),
+        ],
+      ),
+      label: label,
+    );
+  }
+
 
   Widget _buildLogoutDialog(BuildContext ctx) {
     return Dialog(

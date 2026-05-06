@@ -21,55 +21,138 @@ class _AdminComplaintsScreenState extends ConsumerState<AdminComplaintsScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF7F9FC),
-      appBar: AppBar(
-        title: const Text('Manage Complaints'),
-        backgroundColor: const Color(0xFF002244),
-        foregroundColor: Colors.white,
-        elevation: 0,
-      ),
       body: Column(
         children: [
-          _buildFilterBar(),
+          _buildPremiumHeader(),
           Expanded(child: _buildComplaintsList()),
         ],
       ),
     );
   }
 
-  Widget _buildFilterBar() {
-    return Container(
-      color: const Color(0xFF002244),
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: Row(
-          children: [
-            _buildFilterChip('All'),
-            const SizedBox(width: 8),
-            _buildFilterChip('Pending', color: Colors.orange),
-            const SizedBox(width: 8),
-            _buildFilterChip('Resolved', color: Colors.green),
-          ],
+  Widget _buildPremiumHeader() {
+    final complaintsAsync = ref.watch(allComplaintsProvider);
+    int allCount = 0;
+    int pendingCount = 0;
+    int resolvedCount = 0;
+
+    if (complaintsAsync.hasValue) {
+      final allData = complaintsAsync.value!.where((c) => widget.hostelId == null || c.hostelId == widget.hostelId).toList();
+      allCount = allData.length;
+      pendingCount = allData.where((c) => c.status == 'Pending').length;
+      resolvedCount = allData.where((c) => c.status == 'Resolved').length;
+    }
+
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        // Dark Blue Background Header
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.fromLTRB(24, 60, 24, 40),
+          decoration: const BoxDecoration(
+            color: Color(0xFF0A1628),
+          ),
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              Positioned(
+                right: -20,
+                bottom: -40,
+                child: Icon(Icons.announcement_rounded, size: 140, color: Colors.white.withAlpha(10)),
+              ),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text('Manage Complaints', style: TextStyle(color: Colors.white, fontSize: 26, fontWeight: FontWeight.bold)),
+                        const SizedBox(height: 6),
+                        Text(
+                          'View, track and resolve student complaints',
+                          style: TextStyle(color: Colors.blue[100], fontSize: 13),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Container(
+                    decoration: BoxDecoration(
+                      color: Colors.white.withAlpha(26),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.white.withAlpha(50)),
+                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    child: const Row(
+                      children: [
+                        Icon(Icons.tune, color: Colors.white, size: 16),
+                        SizedBox(width: 6),
+                        Text("Filter", style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 13)),
+                      ],
+                    ),
+                  )
+                ],
+              ),
+            ],
+          ),
         ),
-      ),
+        // Floating Filter Bar
+        Positioned(
+          bottom: -25,
+          left: 16,
+          right: 16,
+          child: Container(
+            height: 50,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: [
+                BoxShadow(color: Colors.black.withAlpha(15), blurRadius: 10, offset: const Offset(0, 5)),
+              ],
+            ),
+            child: Row(
+              children: [
+                Expanded(child: _buildFilterTab('All', allCount, Icons.check_circle, Colors.blue)),
+                Container(width: 1, color: Colors.grey.withAlpha(30), height: 30),
+                Expanded(child: _buildFilterTab('Pending', pendingCount, Icons.access_time_filled, Colors.orange)),
+                Container(width: 1, color: Colors.grey.withAlpha(30), height: 30),
+                Expanded(child: _buildFilterTab('Resolved', resolvedCount, Icons.check_circle_outline, Colors.green)),
+              ],
+            ),
+          ),
+        ),
+      ],
     );
   }
 
-  Widget _buildFilterChip(String label, {Color? color}) {
+  Widget _buildFilterTab(String label, int count, IconData icon, Color activeColor) {
     final isSelected = _filter == label;
-    return ChoiceChip(
-      label: Text(label),
-      selected: isSelected,
-      onSelected: (selected) {
-        if (selected) setState(() => _filter = label);
-      },
-      selectedColor: color ?? Colors.white,
-      labelStyle: TextStyle(
-        color: isSelected ? (color != null ? Colors.white : const Color(0xFF002244)) : Colors.white70,
-        fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+    return InkWell(
+      onTap: () => setState(() => _filter = label),
+      child: Container(
+        decoration: BoxDecoration(
+          color: isSelected ? activeColor.withAlpha(15) : Colors.transparent,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Center(
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 14, color: isSelected ? activeColor : Colors.grey),
+              const SizedBox(width: 6),
+              Text(
+                '$label ($count)',
+                style: TextStyle(
+                  color: isSelected ? activeColor : Colors.grey[600],
+                  fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                  fontSize: 13,
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
-      backgroundColor: Colors.white.withAlpha(26),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
     );
   }
 
@@ -85,11 +168,11 @@ class _AdminComplaintsScreenState extends ConsumerState<AdminComplaintsScreen> {
         }).toList();
 
         if (filteredData.isEmpty) {
-          return const Center(child: Text('No complaints found'));
+          return const Center(child: Text('No complaints found', style: TextStyle(color: Colors.grey)));
         }
 
         return ListView.builder(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+          padding: const EdgeInsets.only(top: 40, left: 16, right: 16, bottom: 20),
           itemCount: filteredData.length,
           itemBuilder: (context, index) => _ComplaintCard(complaint: filteredData[index]),
         );
@@ -108,112 +191,121 @@ class _ComplaintCard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final isResolved = complaint.status == 'Resolved';
     final statusColor = isResolved ? Colors.green : Colors.orange;
+    final statusBgColor = isResolved ? Colors.green.withAlpha(20) : Colors.orange.withAlpha(20);
+    final commentBgColor = isResolved ? Colors.blue.withAlpha(15) : Colors.orange.withAlpha(15);
+    final commentBorderColor = isResolved ? Colors.blue.withAlpha(30) : Colors.orange.withAlpha(30);
+    final commentTitleColor = isResolved ? Colors.blue[700]! : Colors.orange[800]!;
+    final statusIcon = isResolved ? Icons.check_circle_outline : Icons.access_time;
 
-    return Card(
+    return Container(
       margin: const EdgeInsets.only(bottom: 16),
-      elevation: 0,
-      shape: RoundedRectangleBorder(
+      decoration: BoxDecoration(
+        color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        side: BorderSide(color: Colors.grey.withAlpha(26)),
+        border: Border.all(color: Colors.grey.withAlpha(30)),
+        boxShadow: [
+          BoxShadow(color: Colors.black.withAlpha(5), blurRadius: 10, offset: const Offset(0, 4)),
+        ],
       ),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(16),
-        onTap: () => _showResolveDialog(context, ref, complaint),
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: statusColor.withAlpha(26),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Text(
-                      complaint.status.toUpperCase(),
-                      style: TextStyle(
-                        color: statusColor,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 10,
-                        letterSpacing: 0.5,
-                      ),
-                    ),
-                  ),
-                  Text(
-                    DateFormat('MMM d, h:mm a').format(complaint.createdAt),
-                    style: TextStyle(fontSize: 11, color: Colors.grey[500]),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Text(
-                complaint.title,
-                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF0A1628)),
-              ),
-              const SizedBox(height: 6),
-              Row(
-                children: [
-                  Icon(Icons.person_outline, size: 14, color: Colors.grey[600]),
-                  const SizedBox(width: 4),
-                  Expanded(
-                    child: Text(
-                      '${complaint.studentName ?? 'Unknown'} (${complaint.userBranch ?? 'N/A'})',
-                      style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 4),
-              Row(
-                children: [
-                  Icon(Icons.apartment_outlined, size: 14, color: Colors.grey[600]),
-                  const SizedBox(width: 4),
-                  Text(
-                    'Hostel: ${complaint.hostelId ?? 'N/A'}',
-                    style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Text(
-                complaint.description,
-                maxLines: 3,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(fontSize: 14, color: Colors.grey[800], height: 1.4),
-              ),
-              if (complaint.adminComment != null && complaint.adminComment!.isNotEmpty) ...[
-                const SizedBox(height: 12),
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
                 Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(12),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                   decoration: BoxDecoration(
-                    color: Colors.blue.withAlpha(13),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.blue.withAlpha(26)),
+                    color: statusBgColor,
+                    borderRadius: BorderRadius.circular(20),
                   ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                  child: Row(
                     children: [
-                      const Text(
-                        'Admin Comment:',
-                        style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.blue),
-                      ),
-                      const SizedBox(height: 4),
+                      Icon(statusIcon, size: 14, color: statusColor),
+                      const SizedBox(width: 4),
                       Text(
-                        complaint.adminComment!,
-                        style: const TextStyle(fontSize: 13, color: Color(0xFF1E3A5F)),
+                        complaint.status.toUpperCase(),
+                        style: TextStyle(color: statusColor, fontWeight: FontWeight.bold, fontSize: 11, letterSpacing: 0.5),
                       ),
                     ],
                   ),
                 ),
+                Row(
+                  children: [
+                    Text(
+                      DateFormat('MMM d, h:mm a').format(complaint.createdAt),
+                      style: TextStyle(fontSize: 12, color: Colors.grey[500]),
+                    ),
+                    const SizedBox(width: 8),
+                    InkWell(
+                      onTap: () => _showResolveDialog(context, ref, complaint),
+                      borderRadius: BorderRadius.circular(20),
+                      child: Icon(Icons.more_vert, size: 20, color: Colors.grey[500]),
+                    )
+                  ],
+                ),
               ],
+            ),
+            const SizedBox(height: 12),
+            Text(
+              complaint.title,
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: Color(0xFF1E293B)),
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Icon(Icons.person_outline, size: 14, color: Colors.grey[600]),
+                const SizedBox(width: 4),
+                Expanded(
+                  child: Text(
+                    '${complaint.studentName ?? 'Unknown'} (${complaint.userBranch ?? 'N/A'})',
+                    style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                Container(height: 12, width: 1, color: Colors.grey[300], margin: const EdgeInsets.symmetric(horizontal: 8)),
+                Icon(Icons.business, size: 14, color: Colors.grey[600]),
+                const SizedBox(width: 4),
+                Text(
+                  'Hostel: ${complaint.hostelId ?? 'N/A'}',
+                  style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Text(
+              complaint.description,
+              style: TextStyle(fontSize: 14, color: Colors.grey[800], height: 1.4),
+            ),
+            if (complaint.adminComment != null && complaint.adminComment!.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: commentBgColor,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: commentBorderColor),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Admin Comment:',
+                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: commentTitleColor),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      complaint.adminComment!,
+                      style: TextStyle(fontSize: 13, color: Colors.grey[800], height: 1.3),
+                    ),
+                  ],
+                ),
+              ),
             ],
-          ),
+          ],
         ),
       ),
     );
