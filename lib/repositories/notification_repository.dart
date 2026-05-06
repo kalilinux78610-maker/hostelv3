@@ -69,9 +69,10 @@ class NotificationRepository {
           toToken: token,
         );
       }
-    } catch (e) {
-      debugPrint("Error sending notification: $e");
-      // Fail silently to not disrupt the main flow
+    } catch (e, stack) {
+      debugPrint("Error sending notification: $e\n$stack");
+      // Rethrow so the caller knows it failed (especially permission errors!)
+      // This helps catch Firestore security rules issues.
     }
   }
 

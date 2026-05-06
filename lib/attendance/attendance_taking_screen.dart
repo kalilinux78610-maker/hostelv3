@@ -27,7 +27,7 @@ class _AttendanceTakingScreenState extends State<AttendanceTakingScreen> {
   String _selectedStatusFilter = 'All';
 
   // Room expansion states
-  Map<String, bool> _expandedRooms = {};
+  final Map<String, bool> _expandedRooms = {};
 
   @override
   void initState() {

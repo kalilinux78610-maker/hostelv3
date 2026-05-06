@@ -10,10 +10,19 @@ import 'package:upgrader/upgrader.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   
+  // Load .env for Push Notifications
+  try {
+    await dotenv.load(fileName: ".env");
+  } catch (e) {
+    debugPrint("Warning: .env file not found or could not be loaded. Push notifications will fail.");
+  }
+
   try {
     await GoogleSignIn.instance.initialize();
   } catch (e) {
