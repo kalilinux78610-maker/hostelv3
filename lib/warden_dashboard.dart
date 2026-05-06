@@ -208,9 +208,10 @@ class _WardenHomeTabState extends State<WardenHomeTab> {
           final data = doc.data() as Map<String, dynamic>;
           final cat = CanonicalNames.canonicalizeCategory(data['category']);
           final branch = CanonicalNames.canonicalizeBranch(data['branch'], cat);
+          final groupName = _getWardenDisplayGroup(branch, cat);
 
           if (counts.containsKey(cat)) {
-            counts[cat]![branch] = (counts[cat]![branch] ?? 0) + 1;
+            counts[cat]![groupName] = (counts[cat]![groupName] ?? 0) + 1;
           }
         }
         
@@ -228,6 +229,7 @@ class _WardenHomeTabState extends State<WardenHomeTab> {
           {'name': 'Electrical', 'icon': Icons.electrical_services},
           {'name': 'Pharmacy', 'icon': Icons.local_pharmacy},
           {'name': 'Civil Engineering', 'icon': Icons.architecture},
+          {'name': 'Mechanical', 'icon': Icons.settings},
         ];
 
         final diplomaDepts = [
@@ -235,6 +237,8 @@ class _WardenHomeTabState extends State<WardenHomeTab> {
           {'name': 'Mechanical Engineering', 'icon': Icons.settings},
           {'name': 'Electrical Engineering', 'icon': Icons.electrical_services},
           {'name': 'Chemical Engineering', 'icon': Icons.science},
+          {'name': 'IT', 'icon': Icons.laptop},
+          {'name': 'Civil Engineering', 'icon': Icons.architecture},
         ];
 
         final currentDepts = _selectedCategory == 'Degree' ? degreeDepts : diplomaDepts;
@@ -599,6 +603,29 @@ class _WardenHomeTabState extends State<WardenHomeTab> {
   }
 }
 
+String _getWardenDisplayGroup(String canonicalBranch, String category) {
+  if (category == 'Degree') {
+    if (canonicalBranch == 'Information Technology' || canonicalBranch == 'M.Sc. IT') return 'IT & MSC-IT';
+    if (canonicalBranch.startsWith('B.Voc')) return 'B.VOC';
+    if (canonicalBranch == 'Computer Science & Engineering') return 'CSE';
+    if (canonicalBranch == 'BBA' || canonicalBranch == 'MBA') return 'BBA & MBA';
+    if (canonicalBranch == 'Chemical Engineering') return 'Chemical';
+    if (canonicalBranch == 'Electrical Engineering') return 'Electrical';
+    if (canonicalBranch == 'Pharmacy') return 'Pharmacy';
+    if (canonicalBranch == 'Civil Engineering') return 'Civil Engineering';
+    if (canonicalBranch == 'Mechanical Engineering') return 'Mechanical';
+  } else {
+    // Diploma
+    if (canonicalBranch == 'Computer Engineering') return 'Computer Engineering';
+    if (canonicalBranch == 'Mechanical Engineering') return 'Mechanical Engineering';
+    if (canonicalBranch == 'Electrical Engineering') return 'Electrical Engineering';
+    if (canonicalBranch == 'Chemical Engineering') return 'Chemical Engineering';
+    if (canonicalBranch == 'Information Technology') return 'IT';
+    if (canonicalBranch == 'Civil Engineering') return 'Civil Engineering';
+  }
+  return canonicalBranch;
+}
+
 // ── Requests list for a specific Department + Category ──────────────────────
 class WardenDepartmentRequestsScreen extends StatelessWidget {
   final String branch;
@@ -644,7 +671,8 @@ class WardenDepartmentRequestsScreen extends StatelessWidget {
             final data = doc.data() as Map<String, dynamic>;
             final docCat = CanonicalNames.canonicalizeCategory(data['category']);
             final docBranch = CanonicalNames.canonicalizeBranch(data['branch'], docCat);
-            return docCat == category && docBranch == branch;
+            final docGroup = _getWardenDisplayGroup(docBranch, docCat);
+            return docCat == category && docGroup == branch;
           }).toList();
 
           // Sort in memory to avoid missing index or missing field errors

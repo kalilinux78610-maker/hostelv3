@@ -183,131 +183,14 @@ class _StudentProfileDesignV2State extends State<StudentProfileDesignV2> {
                         const SizedBox(height: 16),
 
                         // ── CONTACT (Editable) ────────────────
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            _sectionLabel('📞  Contact Details'),
-                            if (!_isEditing)
-                              TextButton.icon(
-                                onPressed: () {
-                                  _populateControllers(data);
-                                  setState(() => _isEditing = true);
-                                },
-                                icon: const Icon(Icons.edit, size: 16),
-                                label: const Text('Edit'),
-                                style: TextButton.styleFrom(
-                                  foregroundColor: _primary,
-                                ),
-                              ),
-                          ],
-                        ),
-
-                        if (!_isEditing)
-                          // Read-only contact view
-                          _infoCard([
-                            _row(Icons.phone_android, 'My Mobile', mobile),
-                            _divider(),
-                            _row(Icons.man, 'Father Mobile', fatherMobile),
-                            _divider(),
-                            _row(Icons.woman, 'Mother Mobile', motherMobile),
-                            _divider(),
-                            _row(Icons.home, 'Address', address),
-                          ])
-                        else
-                          // Editable contact form
-                          _editCard([
-                            _editField(
-                              controller: _nameCtrl,
-                              label: 'Full Name',
-                              icon: Icons.person_outline,
-                              validator: (v) {
-                                if (v == null || v.trim().isEmpty) {
-                                  return 'Name is required';
-                                }
-                                return null;
-                              },
-                            ),
-                            const SizedBox(height: 14),
-                            _editField(
-                              controller: _mobileCtrl,
-                              label: 'My Mobile No.',
-                              icon: Icons.phone_android,
-                              keyboard: TextInputType.phone,
-                            ),
-                            const SizedBox(height: 14),
-                            _editField(
-                              controller: _fatherMobileCtrl,
-                              label: 'Father Mobile (used for leave requests)',
-                              icon: Icons.man,
-                              keyboard: TextInputType.phone,
-                              validator: (v) {
-                                if (v == null || v.isEmpty) {
-                                  return 'Father mobile is required for leave requests';
-                                }
-                                if (v.length < 10) return 'Enter a valid 10-digit number';
-                                return null;
-                              },
-                            ),
-                            const SizedBox(height: 14),
-                            _editField(
-                              controller: _motherMobileCtrl,
-                              label: 'Mother Mobile',
-                              icon: Icons.woman,
-                              keyboard: TextInputType.phone,
-                            ),
-                            const SizedBox(height: 14),
-                            _editField(
-                              controller: _addressCtrl,
-                              label: 'Permanent Address',
-                              icon: Icons.home,
-                              maxLines: 3,
-                            ),
-                            const SizedBox(height: 20),
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: OutlinedButton(
-                                    onPressed: () => setState(() => _isEditing = false),
-                                    style: OutlinedButton.styleFrom(
-                                      padding: const EdgeInsets.symmetric(vertical: 14),
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(12),
-                                      ),
-                                    ),
-                                    child: const Text('Cancel'),
-                                  ),
-                                ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  flex: 2,
-                                  child: ElevatedButton(
-                                    onPressed: _isSaving ? null : () => _saveProfile(user!.uid),
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: _primary,
-                                      foregroundColor: Colors.white,
-                                      padding: const EdgeInsets.symmetric(vertical: 14),
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(12),
-                                      ),
-                                    ),
-                                    child: _isSaving
-                                        ? const SizedBox(
-                                            height: 18,
-                                            width: 18,
-                                            child: CircularProgressIndicator(
-                                              color: Colors.white,
-                                              strokeWidth: 2,
-                                            ),
-                                          )
-                                        : const Text(
-                                            'SAVE CHANGES',
-                                            style: TextStyle(fontWeight: FontWeight.bold),
-                                          ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ]),
+                        _sectionLabel('📞  Contact Details'),
+                        _infoCard([
+                          _row(Icons.phone_android, 'My Mobile', mobile),
+                          _divider(),
+                          _row(Icons.man, 'Father Mobile', fatherMobile),
+                          _divider(),
+                          _row(Icons.woman, 'Mother Mobile', motherMobile),
+                        ]),
 
                         const SizedBox(height: 24),
 

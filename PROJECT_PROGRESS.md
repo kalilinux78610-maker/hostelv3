@@ -354,6 +354,7 @@
 | 2 | Warden power button: `_buildLogoutDialog` called from wrong class (`_WardenHomeTabState`) | ✅ Fixed | Karan | 16 Apr 2026 |
 | 3 | Student logout dialog — broken bracket structure in "Log Out" Text widget | ✅ Fixed | Karan | 16 Apr 2026 |
 | 4 | Package version conflicts (minor warnings) | 🔄 Monitoring | - | - |
+| 5 | Warden dashboard: Department pending badges always 0, tapping card shows empty list | ✅ Fixed | Karan | 06 May 2026 |
 
 ---
 
@@ -372,6 +373,7 @@
 | 03 May 2026 | `fix: rejected card dismiss now permanent via Firestore status=dismissed` | Karan *(pending)* |
 | 03 May 2026 | `feat: default meal times (Breakfast/Lunch/Dinner) in editor + sync all screens` | Karan *(pending)* |
 | 03 May 2026 | `security: move FCM private key to .env + update .gitignore` | Karan *(pending)* |
+| 06 May 2026 | `fix: warden dashboard branch grouping logic to correct pending badges and filtering` | Karan *(pending)* |
 
 ---
 
