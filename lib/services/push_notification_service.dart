@@ -1,4 +1,6 @@
 import 'dart:convert';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -16,6 +18,8 @@ class PushNotificationService {
   final FirebaseMessaging _firebaseMessaging = FirebaseMessaging.instance;
   final FlutterLocalNotificationsPlugin _localNotifications =
       FlutterLocalNotificationsPlugin();
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   // ---------------------------------------------------------------------------
   // FCM V1 API CONFIGURATION — loaded from .env (never hardcode here!)
@@ -62,7 +66,13 @@ class PushNotificationService {
     // Create Notification Channel for Android 8.0+
     await _createNotificationChannel();
 
-    // 3. Handle Foreground Messages
+    // 3. Keep token in sync (FCM can rotate tokens any time)
+    await _syncCurrentTokenToFirestore();
+    _firebaseMessaging.onTokenRefresh.listen((token) async {
+      await _saveTokenToCurrentUser(token);
+    });
+
+    // 4. Handle Foreground Messages
     FirebaseMessaging.onMessage.listen((RemoteMessage message) {
       debugPrint('Got a message whilst in the foreground!');
       if (message.notification != null) {
@@ -70,8 +80,33 @@ class PushNotificationService {
       }
     });
 
-    // 4. Register Background Handler
+    // 5. Register Background Handler
     FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+  }
+
+  Future<void> _syncCurrentTokenToFirestore() async {
+    try {
+      final token = await _firebaseMessaging.getToken();
+      if (token != null) {
+        await _saveTokenToCurrentUser(token);
+      }
+    } catch (e) {
+      debugPrint('FCM token sync failed: $e');
+    }
+  }
+
+  Future<void> _saveTokenToCurrentUser(String token) async {
+    final uid = _auth.currentUser?.uid;
+    if (uid == null) return;
+
+    try {
+      await _firestore.collection('users').doc(uid).set({
+        'fcmToken': token,
+      }, SetOptions(merge: true));
+      debugPrint('FCM token synced for user $uid');
+    } catch (e) {
+      debugPrint('Error saving refreshed FCM token: $e');
+    }
   }
 
   Future<void> _createNotificationChannel() async {
