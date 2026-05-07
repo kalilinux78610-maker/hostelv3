@@ -25,7 +25,6 @@ class _StudentProfileDesignV2State extends State<StudentProfileDesignV2> {
   final _formKey = GlobalKey<FormState>();
 
   bool _isEditing = false;
-  bool _isSaving = false;
 
   @override
   void dispose() {
@@ -43,39 +42,6 @@ class _StudentProfileDesignV2State extends State<StudentProfileDesignV2> {
     _fatherMobileCtrl.text = data?['fatherMobile'] ?? data?['parentContact'] ?? '';
     _motherMobileCtrl.text = data?['motherMobile'] ?? '';
     _addressCtrl.text = data?['address'] ?? '';
-  }
-
-  Future<void> _saveProfile(String uid) async {
-    if (!_formKey.currentState!.validate()) return;
-    setState(() => _isSaving = true);
-    try {
-      await FirebaseFirestore.instance.collection('users').doc(uid).update({
-        'name': _nameCtrl.text.trim(),
-        'mobile': _mobileCtrl.text.trim(),
-        'studentMobile': _mobileCtrl.text.trim(),
-        'fatherMobile': _fatherMobileCtrl.text.trim(),
-        'parentContact': _fatherMobileCtrl.text.trim(),
-        'motherMobile': _motherMobileCtrl.text.trim(),
-        'address': _addressCtrl.text.trim(),
-      });
-      if (mounted) {
-        setState(() => _isEditing = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Profile Updated Successfully!'),
-            backgroundColor: Colors.green,
-          ),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _isSaving = false);
-    }
   }
 
   @override
@@ -124,7 +90,6 @@ class _StudentProfileDesignV2State extends State<StudentProfileDesignV2> {
           final mobile = data?['mobile'] ?? data?['studentMobile'] ?? 'Not set';
           final fatherMobile = data?['fatherMobile'] ?? data?['parentContact'] ?? 'Not set';
           final motherMobile = data?['motherMobile'] ?? 'Not set';
-          final address = data?['address'] ?? 'Not set';
 
           return SingleChildScrollView(
             child: Column(
@@ -433,29 +398,6 @@ class _StudentProfileDesignV2State extends State<StudentProfileDesignV2> {
     );
   }
 
-  Widget _editCard(List<Widget> children) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFF002244).withValues(alpha: 0.2)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: children,
-      ),
-    );
-  }
-
   Widget _row(IconData icon, String label, String value) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 12),
@@ -489,38 +431,6 @@ class _StudentProfileDesignV2State extends State<StudentProfileDesignV2> {
   }
 
   Widget _divider() => Divider(height: 1, color: Colors.grey[100]);
-
-  Widget _editField({
-    required TextEditingController controller,
-    required String label,
-    required IconData icon,
-    TextInputType keyboard = TextInputType.text,
-    int maxLines = 1,
-    String? Function(String?)? validator,
-  }) {
-    return TextFormField(
-      controller: controller,
-      keyboardType: keyboard,
-      maxLines: maxLines,
-      validator: validator,
-      decoration: InputDecoration(
-        labelText: label,
-        prefixIcon: Icon(icon, color: _primary, size: 20),
-        filled: true,
-        fillColor: Colors.grey[50],
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: Colors.grey.shade300),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: _primary, width: 1.5),
-        ),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      ),
-    );
-  }
 }
 
 // ── Profile Avatar with upload ───────────────────────────────

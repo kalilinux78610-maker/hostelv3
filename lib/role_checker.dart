@@ -29,18 +29,23 @@ class _RoleCheckerState extends State<RoleChecker> {
         .collection('users')
         .doc(widget.uid)
         .snapshots();
-    // Run stale-token cleanup every launch so currently-logged-in
-    // users also get cleaned up (not just on next login).
-    _cleanupStaleToken();
+    // Sync FCM token AFTER login (user is now authenticated),
+    // then clean up any stale tokens from other user docs.
+    _syncAndCleanupToken();
   }
 
-  /// Removes this device's FCM token from any Firestore document
-  /// belonging to a DIFFERENT user (stale token from a previous login).
-  Future<void> _cleanupStaleToken() async {
+  /// 1. Saves this device's FCM token to the current logged-in user's document.
+  /// 2. Removes this token from any OTHER user's document (stale cleanup).
+  Future<void> _syncAndCleanupToken() async {
     try {
-      final token = await PushNotificationService().getFcmToken();
+      final pushService = PushNotificationService();
+
+      // ── Step 1: Save token to current user ──────────────────────────────
+      await pushService.syncTokenAfterLogin();
+
+      // ── Step 2: Remove stale token from other user docs ─────────────────
+      final token = await pushService.getFcmToken();
       if (token == null) return;
-      final currentUid = widget.uid;
 
       final staleQuery = await FirebaseFirestore.instance
           .collection('users')
@@ -50,7 +55,7 @@ class _RoleCheckerState extends State<RoleChecker> {
       final batch = FirebaseFirestore.instance.batch();
       bool hasStaleDocs = false;
       for (final doc in staleQuery.docs) {
-        if (doc.id != currentUid) {
+        if (doc.id != widget.uid) {
           batch.update(doc.reference, {'fcmToken': FieldValue.delete()});
           hasStaleDocs = true;
           debugPrint(
@@ -59,14 +64,8 @@ class _RoleCheckerState extends State<RoleChecker> {
         }
       }
       if (hasStaleDocs) await batch.commit();
-
-      // Ensure the token is registered under the current user
-      await FirebaseFirestore.instance
-          .collection('users')
-          .doc(currentUid)
-          .set({'fcmToken': token}, SetOptions(merge: true));
     } catch (e) {
-      debugPrint('RoleChecker: stale token cleanup failed — $e');
+      debugPrint('RoleChecker: token sync/cleanup failed — $e');
     }
   }
 

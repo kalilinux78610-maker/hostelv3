@@ -47,10 +47,11 @@ class PushNotificationService {
     );
 
     if (settings.authorizationStatus == AuthorizationStatus.authorized) {
-      debugPrint('User granted permission');
+      debugPrint('✅ FCM: User granted permission');
     } else {
-      debugPrint('User declined or has not accepted permission');
-      return;
+      debugPrint('❌ FCM: User declined or has not accepted permission');
+      // Don't return — still set up channel so foreground notifications work
+      // when permission is eventually granted
     }
 
     // 2. Setup Local Notifications (for foreground display)
@@ -60,21 +61,14 @@ class PushNotificationService {
     const InitializationSettings initializationSettings =
         InitializationSettings(android: initializationSettingsAndroid);
 
-    // Initialize local notifications
     await _localNotifications.initialize(initializationSettings);
 
-    // Create Notification Channel for Android 8.0+
+    // 3. Create Notification Channel for Android 8.0+
     await _createNotificationChannel();
-
-    // 3. Keep token in sync (FCM can rotate tokens any time)
-    await _syncCurrentTokenToFirestore();
-    _firebaseMessaging.onTokenRefresh.listen((token) async {
-      await _saveTokenToCurrentUser(token);
-    });
 
     // 4. Handle Foreground Messages
     FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-      debugPrint('Got a message whilst in the foreground!');
+      debugPrint('📩 FCM: Got a message in the foreground!');
       if (message.notification != null) {
         _showLocalNotification(message);
       }
@@ -82,18 +76,41 @@ class PushNotificationService {
 
     // 5. Register Background Handler
     FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+
+    debugPrint('✅ FCM: Service initialized (channel + handlers ready)');
+    // NOTE: Token sync happens in syncTokenAfterLogin() — called from RoleChecker
+    // after user is authenticated. Do NOT sync here — user may not be logged in yet.
   }
 
-  Future<void> _syncCurrentTokenToFirestore() async {
+  /// Call this AFTER the user is confirmed logged in (e.g., from RoleChecker).
+  /// Saves the FCM token to the current user's Firestore document.
+  Future<void> syncTokenAfterLogin() async {
     try {
-      final token = await _firebaseMessaging.getToken();
-      if (token != null) {
-        await _saveTokenToCurrentUser(token);
+      final uid = _auth.currentUser?.uid;
+      if (uid == null) {
+        debugPrint('⚠️ FCM: syncTokenAfterLogin() called but user is null. Skipping.');
+        return;
       }
+      final token = await _firebaseMessaging.getToken();
+      if (token == null) {
+        debugPrint('⚠️ FCM: Could not get FCM token from Firebase Messaging.');
+        return;
+      }
+      await _saveTokenToCurrentUser(token);
+
+      // Listen for token refresh and keep it in sync
+      _firebaseMessaging.onTokenRefresh.listen((newToken) async {
+        debugPrint('🔄 FCM: Token refreshed, updating Firestore...');
+        await _saveTokenToCurrentUser(newToken);
+      });
+
+      debugPrint('✅ FCM: Token synced for uid=$uid');
     } catch (e) {
-      debugPrint('FCM token sync failed: $e');
+      debugPrint('❌ FCM token sync failed: $e');
     }
   }
+
+
 
   Future<void> _saveTokenToCurrentUser(String token) async {
     final uid = _auth.currentUser?.uid;
