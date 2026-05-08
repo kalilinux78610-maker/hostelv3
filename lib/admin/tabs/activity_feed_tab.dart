@@ -3,8 +3,15 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../services/auth_service.dart';
 
-class ActivityFeedTab extends StatelessWidget {
+class ActivityFeedTab extends StatefulWidget {
   const ActivityFeedTab({super.key});
+
+  @override
+  State<ActivityFeedTab> createState() => _ActivityFeedTabState();
+}
+
+class _ActivityFeedTabState extends State<ActivityFeedTab> {
+  String _selectedFilter = 'all'; // 'all', 'approved', 'pending', 'rejected'
 
   @override
   Widget build(BuildContext context) {
@@ -14,7 +21,7 @@ class ActivityFeedTab extends StatelessWidget {
         children: [
           // Fixed Header & Stats Card
           SizedBox(
-            height: 310, // 230 (Header) + 80 (Stats card overhang)
+            height: 340, // Increased to prevent overlap with feed header
             child: Stack(
               clipBehavior: Clip.none,
               children: [
@@ -28,13 +35,13 @@ class ActivityFeedTab extends StatelessWidget {
               ],
             ),
           ),
+          _buildFilterRow(),
+          const SizedBox(height: 8),
           // Scrollable Feed
           Expanded(
             child: ListView(
               padding: const EdgeInsets.only(top: 8, bottom: 24),
               children: [
-                _buildFilterRow(),
-                const SizedBox(height: 16),
                 _buildFeedList(),
                 Padding(
                   padding: const EdgeInsets.symmetric(vertical: 16.0),
@@ -212,36 +219,48 @@ class ActivityFeedTab extends StatelessWidget {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              _buildStatColumn(
-                icon: Icons.description,
-                iconBg: Colors.blue[50]!,
-                iconColor: Colors.blue[400]!,
-                count: total.toString(),
-                label: 'Total Requests',
+              Expanded(
+                child: _buildStatColumn(
+                  icon: Icons.description,
+                  iconBg: Colors.blue[50]!,
+                  iconColor: Colors.blue[400]!,
+                  count: total.toString(),
+                  label: 'Total Requests',
+                  filterValue: 'all',
+                ),
               ),
               _buildStatDivider(),
-              _buildStatColumn(
-                icon: Icons.check_circle_outline,
-                iconBg: Colors.green[50]!,
-                iconColor: Colors.green[400]!,
-                count: approved.toString(),
-                label: 'Approved',
+              Expanded(
+                child: _buildStatColumn(
+                  icon: Icons.check_circle_outline,
+                  iconBg: Colors.green[50]!,
+                  iconColor: Colors.green[400]!,
+                  count: approved.toString(),
+                  label: 'Approved',
+                  filterValue: 'approved',
+                ),
               ),
               _buildStatDivider(),
-              _buildStatColumn(
-                icon: Icons.access_time,
-                iconBg: Colors.orange[50]!,
-                iconColor: Colors.orange[400]!,
-                count: pending.toString(),
-                label: 'Pending',
+              Expanded(
+                child: _buildStatColumn(
+                  icon: Icons.access_time,
+                  iconBg: Colors.orange[50]!,
+                  iconColor: Colors.orange[400]!,
+                  count: pending.toString(),
+                  label: 'Pending',
+                  filterValue: 'pending',
+                ),
               ),
               _buildStatDivider(),
-              _buildStatColumn(
-                icon: Icons.cancel_outlined,
-                iconBg: Colors.red[50]!,
-                iconColor: Colors.red[400]!,
-                count: rejected.toString(),
-                label: 'Rejected',
+              Expanded(
+                child: _buildStatColumn(
+                  icon: Icons.cancel_outlined,
+                  iconBg: Colors.red[50]!,
+                  iconColor: Colors.red[400]!,
+                  count: rejected.toString(),
+                  label: 'Rejected',
+                  filterValue: 'rejected',
+                ),
               ),
             ],
           ),
@@ -256,37 +275,55 @@ class ActivityFeedTab extends StatelessWidget {
     required Color iconColor,
     required String count,
     required String label,
+    required String filterValue,
   }) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          padding: const EdgeInsets.all(10),
-          decoration: BoxDecoration(
-            color: iconBg,
-            shape: BoxShape.circle,
-          ),
-          child: Icon(icon, color: iconColor, size: 24),
+    final isSelected = _selectedFilter == filterValue;
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          _selectedFilter = filterValue;
+        });
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        decoration: BoxDecoration(
+          color: isSelected ? iconBg.withValues(alpha: 0.5) : Colors.transparent,
+          borderRadius: BorderRadius.circular(16),
         ),
-        const SizedBox(height: 12),
-        Text(
-          count,
-          style: const TextStyle(
-            fontSize: 22,
-            fontWeight: FontWeight.bold,
-            color: Color(0xFF1E293B), // Slate 800
-          ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: iconBg,
+                shape: BoxShape.circle,
+                border: isSelected ? Border.all(color: iconColor.withValues(alpha: 0.3), width: 2) : null,
+              ),
+              child: Icon(icon, color: iconColor, size: 24),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              count,
+              style: TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeight.bold,
+                color: isSelected ? iconColor : const Color(0xFF1E293B), // Slate 800
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              label,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 10,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                color: isSelected ? iconColor : Colors.grey[500],
+              ),
+            ),
+          ],
         ),
-        const SizedBox(height: 4),
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 11,
-            fontWeight: FontWeight.w500,
-            color: Colors.grey[500],
-          ),
-        ),
-      ],
+      ),
     );
   }
 
@@ -299,8 +336,13 @@ class ActivityFeedTab extends StatelessWidget {
   }
 
   Widget _buildFilterRow() {
+    // Only show the header if 'all' is selected
+    if (_selectedFilter != 'all') {
+      return const SizedBox(height: 10);
+    }
+
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20.0),
+      padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 8.0),
       child: Row(
         children: [
           Icon(Icons.rss_feed, color: Colors.blue[600], size: 22),
@@ -313,44 +355,19 @@ class ActivityFeedTab extends StatelessWidget {
               color: Color(0xFF0F172A), // Slate 900
             ),
           ),
-          const Spacer(),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: Colors.grey[300]!),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.02),
-                  blurRadius: 4,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(Icons.filter_alt_outlined, size: 16, color: Colors.blue[600]),
-                const SizedBox(width: 6),
-                const Text(
-                  'Filter',
-                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
-                ),
-                const SizedBox(width: 2),
-                const Icon(Icons.keyboard_arrow_down, size: 16),
-              ],
-            ),
-          ),
         ],
       ),
     );
   }
 
   Widget _buildFeedList() {
+    Query query = FirebaseFirestore.instance.collection('leave_requests');
+    if (_selectedFilter != 'all') {
+      query = query.where('status', isEqualTo: _selectedFilter);
+    }
+
     return StreamBuilder<QuerySnapshot>(
-      stream: FirebaseFirestore.instance
-          .collection('leave_requests')
+      stream: query
           .orderBy('createdAt', descending: true)
           .limit(20)
           .snapshots(),

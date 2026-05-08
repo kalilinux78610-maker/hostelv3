@@ -294,6 +294,54 @@ class _MessMenuEditorScreenState extends State<MessMenuEditorScreen> {
     }
   }
 
+  Future<void> _removeImage(String day, String meal) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text("Remove Photo"),
+        content: const Text("Are you sure you want to remove this photo?"),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text("Cancel"),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text("Remove"),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true) return;
+
+    setState(() {
+      _imageUrls[day]?[meal] = null;
+    });
+
+    try {
+      await FirebaseFirestore.instance
+          .collection('config')
+          .doc('mess_menu')
+          .set({
+        day: {'${meal}_imageUrl': FieldValue.delete()}
+      }, SetOptions(merge: true));
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('$meal photo removed!'), backgroundColor: Colors.orange),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error removing photo: $e'), backgroundColor: Colors.red),
+        );
+      }
+    }
+  }
+
   Future<void> _saveMenuData() async {
     setState(() => _isSaving = true);
 
@@ -306,10 +354,22 @@ class _MessMenuEditorScreenState extends State<MessMenuEditorScreen> {
           'Lunch': _controllers[day]!['Lunch']!.text.trim(),
           'Dinner': _controllers[day]!['Dinner']!.text.trim(),
         };
-        // Preserve existing image URLs
-        if (_imageUrls[day]?['Breakfast'] != null) dayMap['Breakfast_imageUrl'] = _imageUrls[day]!['Breakfast'];
-        if (_imageUrls[day]?['Lunch'] != null) dayMap['Lunch_imageUrl'] = _imageUrls[day]!['Lunch'];
-        if (_imageUrls[day]?['Dinner'] != null) dayMap['Dinner_imageUrl'] = _imageUrls[day]!['Dinner'];
+        // Preserve existing image URLs or delete them if removed
+        if (_imageUrls[day]?['Breakfast'] != null) {
+          dayMap['Breakfast_imageUrl'] = _imageUrls[day]!['Breakfast'];
+        } else {
+          dayMap['Breakfast_imageUrl'] = FieldValue.delete();
+        }
+        if (_imageUrls[day]?['Lunch'] != null) {
+          dayMap['Lunch_imageUrl'] = _imageUrls[day]!['Lunch'];
+        } else {
+          dayMap['Lunch_imageUrl'] = FieldValue.delete();
+        }
+        if (_imageUrls[day]?['Dinner'] != null) {
+          dayMap['Dinner_imageUrl'] = _imageUrls[day]!['Dinner'];
+        } else {
+          dayMap['Dinner_imageUrl'] = FieldValue.delete();
+        }
         dataToSave[day] = dayMap;
       }
 
@@ -506,10 +566,23 @@ class _MessMenuEditorScreenState extends State<MessMenuEditorScreen> {
                   ),
                   Positioned(
                     top: 8, right: 8,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(color: Colors.black54, borderRadius: BorderRadius.circular(8)),
-                      child: const Text("Photo", style: TextStyle(color: Colors.white, fontSize: 11)),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(color: Colors.black54, borderRadius: BorderRadius.circular(8)),
+                          child: const Text("Photo", style: TextStyle(color: Colors.white, fontSize: 11)),
+                        ),
+                        const SizedBox(width: 8),
+                        GestureDetector(
+                          onTap: () => _removeImage(day, meal),
+                          child: Container(
+                            padding: const EdgeInsets.all(6),
+                            decoration: const BoxDecoration(color: Colors.redAccent, shape: BoxShape.circle),
+                            child: const Icon(Icons.delete_outline, color: Colors.white, size: 16),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ],

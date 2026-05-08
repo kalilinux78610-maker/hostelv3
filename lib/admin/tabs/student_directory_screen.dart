@@ -30,7 +30,7 @@ class _StudentDirectoryScreenState extends State<StudentDirectoryScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.transparent,
+      backgroundColor: const Color(0xFFF5F7FA), // Light grey background
       body: Column(
         children: [
           // Search & Filter Container
@@ -39,55 +39,47 @@ class _StudentDirectoryScreenState extends State<StudentDirectoryScreen> {
               top: MediaQuery.of(context).padding.top + 16,
               left: 16,
               right: 16,
-              bottom: 16,
+              bottom: 24,
             ),
-            color: const Color(0xFF002244),
+            decoration: const BoxDecoration(
+              color: Color(0xFF0D1E3A), // Dark blue header
+              borderRadius: BorderRadius.vertical(bottom: Radius.circular(20)),
+            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Toggle Button for Active / Pending
-                const SizedBox(height: 24),
-                Stack(
-                  alignment: Alignment.center,
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Center(
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(20),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          "Student Directory",
+                          style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
                         ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            _buildToggleButton(
-                              "Active Students",
-                              !_showPending,
-                              () {
-                                setState(() => _showPending = false);
-                              },
-                            ),
-                            _buildToggleButton(
-                              "Pre-registered",
-                              _showPending,
-                              () {
-                                setState(() => _showPending = true);
-                              },
-                            ),
-                          ],
+                        const SizedBox(height: 4),
+                        Text(
+                          "Manage and view student information",
+                          style: TextStyle(color: Colors.white70, fontSize: 13),
                         ),
-                      ),
+                      ],
                     ),
-                    Positioned(
-                      right: 0,
+                    Container(
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.05),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+                      ),
                       child: IconButton(
-                        icon: const Icon(Icons.grid_view, color: Colors.white),
+                        icon: const Icon(Icons.grid_view, color: Colors.white, size: 20),
                         tooltip: "Room Visualizer",
                         onPressed: () {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (context) =>
-                                  const RoomAvailabilityScreen(),
+                              builder: (context) => const RoomAvailabilityScreen(),
                             ),
                           );
                         },
@@ -95,27 +87,67 @@ class _StudentDirectoryScreenState extends State<StudentDirectoryScreen> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 12),
-
+                const SizedBox(height: 24),
+                // Toggle Button Stack
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(4),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.05),
+                    borderRadius: BorderRadius.circular(24),
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: _buildToggleButton(
+                          "Active Students",
+                          !_showPending,
+                          Icons.people,
+                          () => setState(() => _showPending = false),
+                        ),
+                      ),
+                      Expanded(
+                        child: _buildToggleButton(
+                          "Pre-registered",
+                          _showPending,
+                          Icons.person_add,
+                          () => setState(() => _showPending = true),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
                 TextField(
                   controller: _searchController,
-                  onChanged: (value) {
-                    setState(() {
-                      _searchQuery = value.toLowerCase();
-                    });
-                  },
+                  onChanged: (value) => setState(() => _searchQuery = value.toLowerCase()),
                   decoration: InputDecoration(
                     hintText: "Search by name, email, or room...",
-                    prefixIcon: const Icon(Icons.search),
-                    suffixIcon: _searchQuery.isNotEmpty
-                        ? IconButton(
-                            icon: const Icon(Icons.clear),
+                    hintStyle: TextStyle(color: Colors.grey[500], fontSize: 14),
+                    prefixIcon: const Icon(Icons.search, color: Colors.grey),
+                    suffixIcon: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (_searchQuery.isNotEmpty)
+                          IconButton(
+                            icon: const Icon(Icons.clear, color: Colors.grey),
                             onPressed: () {
                               _searchController.clear();
                               setState(() => _searchQuery = "");
                             },
-                          )
-                        : null,
+                          ),
+                        Container(
+                          margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                          decoration: BoxDecoration(
+                            border: Border(left: BorderSide(color: Colors.grey.shade300)),
+                          ),
+                          child: IconButton(
+                            icon: const Icon(Icons.tune, color: Colors.black87, size: 20),
+                            onPressed: () {},
+                          ),
+                        ),
+                      ],
+                    ),
                     filled: true,
                     fillColor: Colors.white,
                     border: OutlineInputBorder(
@@ -125,33 +157,25 @@ class _StudentDirectoryScreenState extends State<StudentDirectoryScreen> {
                     contentPadding: const EdgeInsets.symmetric(horizontal: 16),
                   ),
                 ),
-                const SizedBox(height: 12),
-                SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: Row(
-                    children: [
-                        _buildDropdown(
-                          "Hostel",
-                          _selectedHostel,
-                          ["All", ...AppConfig.hostels],
-                          (val) => setState(() => _selectedHostel = val!),
-                        ),
-                      const SizedBox(width: 8),
-                      _buildDropdown(
-                        "Branch",
-                        _selectedBranch,
-                        ["All", ...AppConfig.allBranches],
-                        (val) => setState(() => _selectedBranch = val!),
-                      ),
-                      const SizedBox(width: 8),
-                      _buildDropdown(
-                        "Year",
-                        _selectedYear,
-                        ["All", "1", "2", "3", "4"],
-                        (val) => setState(() => _selectedYear = val!),
-                      ),
-                    ],
-                  ),
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    _buildDropdown(
+                      "Hostel",
+                      _selectedHostel,
+                      ["All", ...AppConfig.hostels],
+                      Icons.apartment,
+                      (val) => setState(() => _selectedHostel = val!),
+                    ),
+                    const SizedBox(width: 12),
+                    _buildDropdown(
+                      "Branch",
+                      _selectedBranch,
+                      ["All", ...AppConfig.allBranches],
+                      Icons.school,
+                      (val) => setState(() => _selectedBranch = val!),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -225,7 +249,7 @@ class _StudentDirectoryScreenState extends State<StudentDirectoryScreen> {
                 }
 
                 return ListView.builder(
-                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
+                  padding: const EdgeInsets.only(top: 16, bottom: 100),
                   itemCount: students.length,
                   itemBuilder: (context, index) {
                     final data = students[index].data() as Map<String, dynamic>;
@@ -251,8 +275,8 @@ class _StudentDirectoryScreenState extends State<StudentDirectoryScreen> {
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _showAddStudentDialog,
         icon: const Icon(Icons.add),
-        label: const Text('Add Student'),
-        backgroundColor: const Color(0xFF002244),
+        label: const Text('Add Student', style: TextStyle(fontWeight: FontWeight.bold)),
+        backgroundColor: const Color(0xFF0052CC), // Bright blue
         foregroundColor: Colors.white,
       ),
     );
@@ -334,21 +358,36 @@ class _StudentDirectoryScreenState extends State<StudentDirectoryScreen> {
     }
   }
 
-  Widget _buildToggleButton(String label, bool isSelected, VoidCallback onTap) {
+  Widget _buildToggleButton(String label, bool isSelected, IconData icon, VoidCallback onTap) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
         decoration: BoxDecoration(
           color: isSelected ? Colors.white : Colors.transparent,
           borderRadius: BorderRadius.circular(20),
         ),
-        child: Text(
-          label,
-          style: TextStyle(
-            color: isSelected ? const Color(0xFF002244) : Colors.white70,
-            fontWeight: FontWeight.bold,
-          ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              icon,
+              size: 16,
+              color: isSelected ? const Color(0xFF0052CC) : Colors.white70,
+            ),
+            const SizedBox(width: 6),
+            Flexible(
+              child: Text(
+                label,
+                style: TextStyle(
+                  color: isSelected ? const Color(0xFF0052CC) : Colors.white70,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 13,
+                ),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -358,29 +397,65 @@ class _StudentDirectoryScreenState extends State<StudentDirectoryScreen> {
     String label,
     String validValue,
     List<String> options,
+    IconData icon,
     ValueChanged<String?> onChanged,
   ) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: DropdownButton<String>(
-        value: validValue,
-        underline: const SizedBox(),
-        icon: const Icon(Icons.arrow_drop_down, color: Color(0xFF002244)),
-        style: const TextStyle(
-          color: Color(0xFF002244),
-          fontWeight: FontWeight.bold,
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
         ),
-        items: options.map((String value) {
-          return DropdownMenuItem<String>(
-            value: value,
-            child: Text(value == "All" ? "$label: All" : value),
-          );
-        }).toList(),
-        onChanged: onChanged,
+        child: DropdownButtonHideUnderline(
+          child: DropdownButton<String>(
+            isExpanded: true,
+            itemHeight: null, // Allow dynamic height for wrapping text
+            value: validValue,
+            icon: const Icon(Icons.keyboard_arrow_down, color: Colors.grey),
+            style: const TextStyle(
+              color: Colors.black87,
+              fontWeight: FontWeight.w600,
+              fontSize: 14,
+            ),
+            selectedItemBuilder: (BuildContext context) {
+              return options.map<Widget>((String value) {
+                return Row(
+                  children: [
+                    Icon(icon, size: 18, color: const Color(0xFF0052CC)),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        value == "All" ? "$label: All" : value,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                );
+              }).toList();
+            },
+            items: options.map((String value) {
+              return DropdownMenuItem<String>(
+                value: value,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 8.0),
+                  child: Row(
+                    children: [
+                      Icon(icon, size: 18, color: const Color(0xFF0052CC)),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          value == "All" ? "$label: All" : value,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }).toList(),
+            onChanged: onChanged,
+          ),
+        ),
       ),
     );
   }
@@ -393,95 +468,156 @@ class _StudentDirectoryScreenState extends State<StudentDirectoryScreen> {
     VoidCallback? onDelete,
   }) {
     final email = data['email'] ?? 'Unknown';
-    final name =
-        data['name'] ?? email.split('@')[0]; // Fallback to email prefix
+    final name = data['name'] ?? email.split('@')[0];
     final room = data['room'] ?? 'Not Assigned';
-    final isFlagged = data['isFlagged'] == true;
     final branch = data['branch'] ?? 'N/A';
     final program = data['program'] ?? '';
-    
     final branchDisplay = program.isNotEmpty ? '$program - $branch' : branch;
 
-    // Hostel field logic: resolve full name from code
     final String rawHostel = data['assignedHostel'] ?? data['hostel'] ?? '';
     final String displayHostel = AppConfig.getFullHostelName(rawHostel);
 
-    return Card(
-      elevation: 2,
-      margin: const EdgeInsets.only(bottom: 12),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        leading: CircleAvatar(
-          backgroundColor: isPending
-              ? Colors.orange.shade100
-              : (isFlagged ? Colors.red[100] : const Color(0xFFE0E0E0)),
-          child: Icon(
-            isPending ? Icons.hourglass_empty : Icons.person,
-            color: isPending
-                ? Colors.orange
-                : (isFlagged ? Colors.red : Colors.grey[600]),
+    // Deterministic color from email hash
+    final colors = [
+      const Color(0xFF0052CC), // Blue
+      const Color(0xFFFF5630), // Orange/Red
+      const Color(0xFF36B37E), // Green
+      const Color(0xFF6554C0), // Purple
+      const Color(0xFF00B8D9), // Cyan
+    ];
+    final colorIndex = email.hashCode.abs() % colors.length;
+    final themeColor = isPending ? Colors.orange : colors[colorIndex];
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12, left: 16, right: 16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          decoration: BoxDecoration(
+            border: Border(left: BorderSide(color: themeColor, width: 4)),
+          ),
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: isPending
+                  ? null
+                  : () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => StudentDetailScreen(uid: uid, data: data),
+                        ),
+                      );
+                    },
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    CircleAvatar(
+                      radius: 24,
+                      backgroundColor: themeColor.withValues(alpha: 0.1),
+                      child: Icon(
+                        isPending ? Icons.hourglass_empty : Icons.person,
+                        color: themeColor,
+                        size: 24,
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  name,
+                                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black87),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              if (isPending) ...[
+                                const SizedBox(width: 8),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: Colors.orange.shade50,
+                                    borderRadius: BorderRadius.circular(4),
+                                    border: Border.all(color: Colors.orange.shade200),
+                                  ),
+                                  child: const Text(
+                                    "Pre-registered",
+                                    style: TextStyle(fontSize: 10, color: Colors.orange),
+                                  ),
+                                ),
+                              ]
+                            ],
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            branchDisplay,
+                            style: TextStyle(fontSize: 13, color: Colors.grey[600]),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            email,
+                            style: TextStyle(fontSize: 13, color: Colors.grey[600]),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: 6),
+                          Row(
+                            children: [
+                              Icon(Icons.meeting_room, size: 14, color: Colors.grey[500]),
+                              const SizedBox(width: 4),
+                              Expanded(
+                                child: Text(
+                                  "Room $room • $displayHostel",
+                                  style: TextStyle(fontSize: 12, color: Colors.grey[500]),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                    if (onDelete != null)
+                      Container(
+                        margin: const EdgeInsets.only(right: 8),
+                        decoration: BoxDecoration(
+                          color: Colors.red.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: IconButton(
+                          icon: const Icon(Icons.delete_outline, color: Colors.red, size: 20),
+                          onPressed: onDelete,
+                          padding: const EdgeInsets.all(8),
+                          constraints: const BoxConstraints(),
+                        ),
+                      ),
+                    if (!isPending)
+                      const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.black54),
+                  ],
+                ),
+              ),
+            ),
           ),
         ),
-        title: Text(name, style: const TextStyle(fontWeight: FontWeight.bold)),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text("$branchDisplay | $email"),
-            const SizedBox(height: 4),
-            Row(
-              children: [
-                if (isPending) ...[
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 6,
-                      vertical: 2,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.orange.shade50,
-                      borderRadius: BorderRadius.circular(4),
-                      border: Border.all(color: Colors.orange.shade200),
-                    ),
-                    child: const Text(
-                      "Pre-registered",
-                      style: TextStyle(fontSize: 10, color: Colors.orange),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                ],
-                Icon(Icons.meeting_room, size: 14, color: Colors.grey[600]),
-                const SizedBox(width: 4),
-                Text(
-                  "Room $room • $displayHostel",
-                  style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-                ),
-              ],
-            ),
-          ],
-        ),
-        trailing: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (onDelete != null)
-              IconButton(
-                icon: const Icon(Icons.delete, color: Colors.grey, size: 20),
-                onPressed: onDelete,
-                tooltip: 'Delete Student',
-              ),
-            if (!isPending) const Icon(Icons.arrow_forward_ios, size: 16),
-          ],
-        ),
-        onTap: isPending
-            ? null
-            : () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) =>
-                        StudentDetailScreen(uid: uid, data: data),
-                  ),
-                );
-              },
       ),
     );
   }
