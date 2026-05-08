@@ -30,17 +30,23 @@ class _StudentDirectoryScreenState extends State<StudentDirectoryScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.transparent, // match dashboard
+      backgroundColor: Colors.transparent,
       body: Column(
         children: [
           // Search & Filter Container
           Container(
-            padding: const EdgeInsets.all(16),
+            padding: EdgeInsets.only(
+              top: MediaQuery.of(context).padding.top + 16,
+              left: 16,
+              right: 16,
+              bottom: 16,
+            ),
             color: const Color(0xFF002244),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // Toggle Button for Active / Pending
+                const SizedBox(height: 24),
                 Stack(
                   alignment: Alignment.center,
                   children: [
@@ -219,7 +225,7 @@ class _StudentDirectoryScreenState extends State<StudentDirectoryScreen> {
                 }
 
                 return ListView.builder(
-                  padding: const EdgeInsets.all(16),
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
                   itemCount: students.length,
                   itemBuilder: (context, index) {
                     final data = students[index].data() as Map<String, dynamic>;
@@ -240,8 +246,8 @@ class _StudentDirectoryScreenState extends State<StudentDirectoryScreen> {
               },
             ),
           ),
-        ],
-      ),
+          ],
+        ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _showAddStudentDialog,
         icon: const Icon(Icons.add),
