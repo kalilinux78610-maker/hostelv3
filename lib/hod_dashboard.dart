@@ -109,6 +109,7 @@ class _HodHomeTabState extends State<HodHomeTab> {
 
   String? _category;
   String? _branch;
+  List<String> _branches = [];
   String? _photoUrl;
   String? _name;
   bool _isLoading = true;
@@ -133,9 +134,20 @@ class _HodHomeTabState extends State<HodHomeTab> {
           bool needsUpdate = false;
           String originalCategory = data?['category'] ?? '';
           String originalBranch = data?['branch'] ?? '';
+          final rawAssignedBranches = data?['assignedBranches'];
 
           String currentCategory = CanonicalNames.canonicalizeCategory(originalCategory);
           String currentBranch = CanonicalNames.canonicalizeBranch(originalBranch, currentCategory);
+          final currentBranches = (rawAssignedBranches is List)
+              ? rawAssignedBranches
+                  .map((b) => CanonicalNames.canonicalizeBranch(b?.toString(), currentCategory))
+                  .where((b) => b.isNotEmpty)
+                  .toSet()
+                  .toList()
+              : <String>[];
+          if (!currentBranches.contains(currentBranch) && currentBranch.isNotEmpty) {
+            currentBranches.insert(0, currentBranch);
+          }
 
           if (currentBranch != originalBranch || currentCategory != originalCategory) {
             needsUpdate = true;
@@ -145,6 +157,7 @@ class _HodHomeTabState extends State<HodHomeTab> {
             setState(() {
               _category = currentCategory;
               _branch = currentBranch;
+              _branches = currentBranches;
               _photoUrl = data?['photoUrl'];
               _name = data?['name'];
             });
@@ -154,7 +167,12 @@ class _HodHomeTabState extends State<HodHomeTab> {
             await FirebaseFirestore.instance
                 .collection('users')
                 .doc(user.uid)
-                .update({'branch': currentBranch, 'category': currentCategory});
+                .update({
+                  'branch': currentBranch,
+                  'category': currentCategory,
+                  'branches': currentBranches,
+                  'assignedBranches': currentBranches,
+                });
           }
         }
       }
@@ -163,6 +181,14 @@ class _HodHomeTabState extends State<HodHomeTab> {
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
+  }
+
+  bool _matchesAssignedBranch(String docBranch) {
+    if (_branches.isNotEmpty) {
+      return _branches.contains(docBranch);
+    }
+    if (_branch == null || _branch!.isEmpty) return true;
+    return docBranch == _branch;
   }
 
   Future<void> _updateStatus(
@@ -666,7 +692,7 @@ class _HodHomeTabState extends State<HodHomeTab> {
             data['branch']?.toString() ?? '',
             data['category']?.toString() ?? '',
           );
-          final branchMatch = (_branch == null || _branch!.isEmpty) || (docBranch == _branch);
+          final branchMatch = _matchesAssignedBranch(docBranch);
           final nameMatch = data['name']?.toString().toLowerCase().contains(_searchQuery.toLowerCase()) ?? false;
           final isHome = data['type'] == 'Home';
 
@@ -782,7 +808,7 @@ class _HodHomeTabState extends State<HodHomeTab> {
       return const Center(child: CircularProgressIndicator());
     }
 
-    if (_category == null || _category!.isEmpty || _branch == null || _branch!.isEmpty) {
+    if (_category == null || _category!.isEmpty || (_branches.isEmpty && (_branch == null || _branch!.isEmpty))) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -868,7 +894,7 @@ class _HodHomeTabState extends State<HodHomeTab> {
                         ),
                         const SizedBox(height: 2),
                         Text(
-                          _branch ?? '',
+                          _branches.isNotEmpty ? _branches.join(', ') : (_branch ?? ''),
                           style: const TextStyle(color: Colors.white70, fontSize: 12),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
@@ -917,10 +943,12 @@ class _HodHomeTabState extends State<HodHomeTab> {
                                       count = snapshot.data!.docs.where((d) {
                                         final data = d.data() as Map<String, dynamic>;
                                         return data['type'] == 'Home' &&
-                                            CanonicalNames.canonicalizeBranch(
-                                                    data['branch']?.toString() ?? '',
-                                                    data['category']?.toString() ?? '') ==
-                                                _branch;
+                                            _matchesAssignedBranch(
+                                              CanonicalNames.canonicalizeBranch(
+                                                data['branch']?.toString() ?? '',
+                                                data['category']?.toString() ?? '',
+                                              ),
+                                            );
                                       }).length;
                                     }
                                     return Text(
@@ -978,10 +1006,12 @@ class _HodHomeTabState extends State<HodHomeTab> {
                                       count = snapshot.data!.docs.where((d) {
                                         final data = d.data() as Map<String, dynamic>;
                                         return data['type'] == 'Home' &&
-                                            CanonicalNames.canonicalizeBranch(
-                                                    data['branch']?.toString() ?? '',
-                                                    data['category']?.toString() ?? '') ==
-                                                _branch;
+                                            _matchesAssignedBranch(
+                                              CanonicalNames.canonicalizeBranch(
+                                                data['branch']?.toString() ?? '',
+                                                data['category']?.toString() ?? '',
+                                              ),
+                                            );
                                       }).length;
                                     }
                                     return Text(
@@ -1091,6 +1121,7 @@ class HodListTab extends StatefulWidget {
 
 class _HodListTabState extends State<HodListTab> {
   String? _branch;
+  List<String> _branches = [];
   bool _isLoading = true;
 
   @override
@@ -1106,16 +1137,38 @@ class _HodListTabState extends State<HodListTab> {
       if (doc.exists) {
         final data = doc.data();
         if (mounted) {
+          final category = CanonicalNames.canonicalizeCategory(data?['category'] ?? '');
+          final primaryBranch = CanonicalNames.canonicalizeBranch(
+            data?['branch'] ?? '',
+            category,
+          );
+          final rawAssignedBranches = data?['assignedBranches'];
+          final assignedBranches = (rawAssignedBranches is List)
+              ? rawAssignedBranches
+                  .map((b) => CanonicalNames.canonicalizeBranch(b?.toString(), category))
+                  .where((b) => b.isNotEmpty)
+                  .toSet()
+                  .toList()
+              : <String>[];
+          if (!assignedBranches.contains(primaryBranch) && primaryBranch.isNotEmpty) {
+            assignedBranches.insert(0, primaryBranch);
+          }
           setState(() {
-            _branch = CanonicalNames.canonicalizeBranch(
-              data?['branch'] ?? '',
-              CanonicalNames.canonicalizeCategory(data?['category'] ?? ''),
-            );
+            _branch = primaryBranch;
+            _branches = assignedBranches;
             _isLoading = false;
           });
         }
       }
     }
+  }
+
+  bool _matchesAssignedBranch(String docBranch) {
+    if (_branches.isNotEmpty) {
+      return _branches.contains(docBranch);
+    }
+    if (_branch == null || _branch!.isEmpty) return true;
+    return docBranch == _branch;
   }
 
   String _formatDate(DateTime date) {
@@ -1300,7 +1353,7 @@ class _HodListTabState extends State<HodListTab> {
               ),
               const SizedBox(height: 8),
               Text(
-                "$_branch",
+                _branches.isNotEmpty ? _branches.join(', ') : "$_branch",
                 style: const TextStyle(
                   color: Colors.white70,
                   fontSize: 14,
@@ -1325,7 +1378,7 @@ class _HodListTabState extends State<HodListTab> {
                   data['branch']?.toString() ?? '',
                   data['category']?.toString() ?? '',
                 );
-                return (docBranch == _branch) && (data['type'] == 'Home');
+                return _matchesAssignedBranch(docBranch) && (data['type'] == 'Home');
               }).toList();
 
               docs.sort((a, b) {

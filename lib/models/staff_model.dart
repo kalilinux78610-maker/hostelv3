@@ -9,6 +9,7 @@ class StaffMember {
   final List<String>? assignedHostels; // For multi-hostel support (like Wardens)
   final String? assignedCategory; // 'Degree', 'Diploma' for HOD
   final String? assignedBranch; // e.g. 'IT & MSC-IT' for HOD
+  final List<String>? assignedBranches; // Multi-branch support for HOD
   final String? email;
 
   StaffMember({
@@ -22,6 +23,7 @@ class StaffMember {
     this.assignedHostels,
     this.assignedCategory,
     this.assignedBranch,
+    this.assignedBranches,
     this.email,
   });
 
@@ -37,6 +39,7 @@ class StaffMember {
       'assignedHostels': assignedHostels,
       'assignedCategory': assignedCategory,
       'assignedBranch': assignedBranch,
+      'assignedBranches': assignedBranches,
       'email': email,
     };
   }
@@ -53,6 +56,7 @@ class StaffMember {
       assignedHostels: map['assignedHostels'] != null ? List<String>.from(map['assignedHostels']) : null,
       assignedCategory: map['assignedCategory'],
       assignedBranch: map['assignedBranch'],
+      assignedBranches: map['assignedBranches'] != null ? List<String>.from(map['assignedBranches']) : null,
       email: map['email'],
     );
   }

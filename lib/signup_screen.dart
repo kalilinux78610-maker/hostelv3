@@ -105,6 +105,10 @@ class _SignUpScreenState extends State<SignUpScreen> {
           'assignedShift': staffData['assignedShift'],
           'assignedCategory': staffData['assignedCategory'],
           'assignedBranch': staffData['assignedBranch'],
+          'assignedBranches': staffData['assignedBranches'] ?? [],
+          'branch': staffData['assignedBranch'],
+          'branches': staffData['assignedBranches'] ?? [],
+          'category': staffData['assignedCategory'],
           'createdAt': FieldValue.serverTimestamp(),
           'isVerified': false, // Start as false until email is verified
           'authMethod': 'password',

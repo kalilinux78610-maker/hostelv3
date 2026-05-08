@@ -51,6 +51,7 @@ class AppConfig {
     "NGP Boy's Hostel",
     "NGPP Boy's Hostel",
     "Nilanbhai Vyas Boys' Hostel",
+    "Workshop Boy's Hostel",
     "Workshop Girl's Hostel",
     "Sardar Hostel (Piplawali)",
     "PJMF Girl's Hostel",
@@ -63,7 +64,8 @@ class AppConfig {
     "Nilanbhai Vyas Boys' Hostel": "NVBH",
     "Workshop Boy's Hostel": "WBH",
     "Sardar Hostel (Piplawali)": "SH",
-    "Workshop Girl's Hostel": "PJMF",
+    "Workshop Girl's Hostel": "WGH",
+    "PJMF Girl's Hostel": "PJMF",
   };
 
   /// Converts full hostel name to its short code
@@ -100,8 +102,7 @@ class AppConfig {
     // ── M.Sc. ────────────────────────────────────
     'M.Sc. IT',
     // ── Management ─────────────────────────────
-    'BBA',
-    'MBA',
+    'Integrated MBA (5 Years)',
     // ── B.Voc ────────────────────────────────────
     'B.Voc - Industrial Chemistry',
     'B.Voc - Production Technology',
@@ -134,8 +135,7 @@ class AppConfig {
     // ── M.Sc. (Degree only) ───────────────────────
     'M.Sc. IT',
     // ── Management (Degree only) ──────────────────
-    'BBA',
-    'MBA',
+    'Integrated MBA (5 Years)',
     // ── B.Voc (Degree only) ───────────────────────
     'B.Voc - Industrial Chemistry',
     'B.Voc - Production Technology',

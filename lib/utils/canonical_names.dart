@@ -87,13 +87,17 @@ class CanonicalNames {
           lower == 'mscit') {
         return 'M.Sc. IT';
       }
-      // BBA
-      if (lower == 'bba' || lower == 'bachelor of business administration') {
-        return 'BBA';
-      }
-      // MBA
-      if (lower == 'mba' || lower == 'master of business administration') {
-        return 'MBA';
+      // Integrated MBA (5 Years)
+      if (lower == 'bba' ||
+          lower == 'mba' ||
+          lower == 'bba mba' ||
+          lower == 'bba & mba' ||
+          lower == 'integrated mba' ||
+          lower == 'integrated mba 5 years' ||
+          lower == 'integrated mba (5 years)' ||
+          lower == 'bachelor of business administration' ||
+          lower == 'master of business administration') {
+        return 'Integrated MBA (5 Years)';
       }
       // B.Voc — Software Development
       if (lower == 'sd' ||

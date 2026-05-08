@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../models/staff_model.dart';
 import '../../repositories/staff_repository.dart';
 import '../../app_config.dart';
+import '../../utils/canonical_names.dart';
 
 // --- Screen 1: The Grid Dashboard --- //
 class StaffManagementScreen extends StatefulWidget {
@@ -251,6 +252,18 @@ class StaffListScreen extends StatefulWidget {
 }
 
 class _StaffListScreenState extends State<StaffListScreen> {
+  List<String> _getAvailableBranches(String? category) {
+    final branches = [
+      ...(category == null
+          ? <String>[]
+          : AppConfig.getBranchesForCategory(category)),
+    ];
+    if (category == 'Degree' && !branches.contains('Mechanical Engineering')) {
+      branches.add('Mechanical Engineering');
+    }
+    return branches;
+  }
+
   // Reuse the Add/Edit Dialog here for the specific role
   void _showAddEditDialog({StaffMember? staff}) {
     final nameController = TextEditingController(text: staff?.name ?? '');
@@ -259,7 +272,10 @@ class _StaffListScreenState extends State<StaffListScreen> {
     String role = staff?.role ?? widget.role; // Default to this screen's role
     String? shift = staff?.assignedShift;
     String? category = staff?.assignedCategory;
-    String? branch = staff?.assignedBranch;
+    List<String> assignedBranches = staff?.assignedBranches?.toList() ?? [];
+    if (assignedBranches.isEmpty && staff?.assignedBranch != null) {
+      assignedBranches.add(staff!.assignedBranch!);
+    }
     List<String> assignedHostels = staff?.assignedHostels?.toList() ?? [];
     if (assignedHostels.isEmpty && staff?.assignedHostel != null) {
       assignedHostels.add(staff!.assignedHostel!);
@@ -306,66 +322,61 @@ class _StaffListScreenState extends State<StaffListScreen> {
                     onChanged: (val) {
                       setDialogState(() {
                         category = val;
-                        branch = null; // Reset branch when category changes
+                        assignedBranches = []; // Reset branches when category changes
                       });
                     },
                   ),
                   const SizedBox(height: 12),
-                  DropdownButtonFormField<String>(
-                    initialValue: branch,
-                    decoration: const InputDecoration(
-                      labelText: 'Branch/Department',
+                  const Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      'Branch/Department (Multiple)',
+                      style: TextStyle(fontSize: 12, color: Colors.grey),
                     ),
-                    items:
-                        (category == 'Degree'
-                                ? [
-                                    'IT & MSC-IT',
-                                    'B.VOC',
-                                    'CSE',
-                                    'BBA & MBA',
-                                    'Chemical',
-                                    'Electrical',
-                                    'Pharmacy',
-                                    'Civil Engineering',
-                                  ]
-                                : category == 'Diploma'
-                                ? [
-                                    'Electrical Engineering',
-                                    'Chemical Engineering',
-                                    'Information Technology',
-                                    'Computer Engineering',
-                                    'Mechanical Engineering',
-                                  ]
-                                : <String>[])
-                            .map(
-                              (b) => DropdownMenuItem(value: b, child: Text(b)),
-                            )
-                            .toList(),
-                    onChanged: (val) {
-                      setDialogState(() {
-                        branch = val;
-                      });
-                    },
+                  ),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 4,
+                    children: _getAvailableBranches(category).map((String b) {
+                      return FilterChip(
+                        label: Text(b),
+                        selected: assignedBranches.contains(b),
+                        selectedColor: const Color(0xFF002244).withValues(alpha: 0.2),
+                        checkmarkColor: const Color(0xFF002244),
+                        onSelected: (bool selected) {
+                          setDialogState(() {
+                            if (selected) {
+                              assignedBranches.add(b);
+                            } else {
+                              assignedBranches.remove(b);
+                            }
+                          });
+                        },
+                      );
+                    }).toList(),
                   ),
                   const SizedBox(height: 12),
                 ],
-                DropdownButtonFormField<String>(
-                  initialValue: shift,
-                  decoration: const InputDecoration(labelText: 'Assign Shift'),
-                  items: [
-                    const DropdownMenuItem(value: null, child: Text("None")),
-                    const DropdownMenuItem(
-                      value: "Day",
-                      child: Text("Day (8am-8pm)"),
-                    ),
-                    const DropdownMenuItem(
-                      value: "Night",
-                      child: Text("Night (8pm-8am)"),
-                    ),
-                  ],
-                  onChanged: (val) => shift = val,
-                ),
-                const SizedBox(height: 12),
+                if (role.toUpperCase() != 'HOD') ...[
+                  DropdownButtonFormField<String>(
+                    initialValue: shift,
+                    decoration: const InputDecoration(labelText: 'Assign Shift'),
+                    items: [
+                      const DropdownMenuItem(value: null, child: Text("None")),
+                      const DropdownMenuItem(
+                        value: "Day",
+                        child: Text("Day (8am-8pm)"),
+                      ),
+                      const DropdownMenuItem(
+                        value: "Night",
+                        child: Text("Night (8pm-8am)"),
+                      ),
+                    ],
+                    onChanged: (val) => shift = val,
+                  ),
+                  const SizedBox(height: 12),
+                ],
                 const Text('Assign Hostels', style: TextStyle(fontSize: 12, color: Colors.grey)),
                 const SizedBox(height: 8),
                 Wrap(
@@ -407,6 +418,12 @@ class _StaffListScreenState extends State<StaffListScreen> {
                       setDialogState(() => isLoading = true);
 
                       try {
+                        final canonicalBranches = assignedBranches
+                            .map((b) => CanonicalNames.canonicalizeBranch(b, category))
+                            .toSet()
+                            .toList();
+                        final canonicalBranch =
+                            canonicalBranches.isNotEmpty ? canonicalBranches.first : null;
                         final newStaff = StaffMember(
                           id:
                               staff?.id ??
@@ -420,7 +437,8 @@ class _StaffListScreenState extends State<StaffListScreen> {
                           assignedHostel: assignedHostels.isNotEmpty ? assignedHostels.first : null,
                           assignedHostels: assignedHostels,
                           assignedCategory: category,
-                          assignedBranch: branch,
+                          assignedBranch: canonicalBranch,
+                          assignedBranches: canonicalBranches,
                         );
 
                         if (staff == null) {
@@ -460,8 +478,10 @@ class _StaffListScreenState extends State<StaffListScreen> {
                                   'assignedHostels': assignedHostels,
                                   'category': category,
                                   'assignedCategory': category,
-                                  'branch': branch,
-                                  'assignedBranch': branch,
+                                  'branch': canonicalBranch,
+                                  'assignedBranch': canonicalBranch,
+                                  'branches': canonicalBranches,
+                                  'assignedBranches': canonicalBranches,
                                 });
                               }
                             }
