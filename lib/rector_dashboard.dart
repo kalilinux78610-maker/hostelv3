@@ -515,9 +515,217 @@ class _HomeTabState extends State<HomeTab> {
   }
 }
 
-class PendingRequestsList extends StatelessWidget {
+class PendingRequestsList extends StatefulWidget {
   final String? hostelId;
   const PendingRequestsList({super.key, this.hostelId});
+
+  @override
+  State<PendingRequestsList> createState() => _PendingRequestsListState();
+}
+
+class _PendingRequestsListState extends State<PendingRequestsList> {  Future<void> _bulkUpdateStatus(
+    BuildContext context,
+    List<QueryDocumentSnapshot> docs,
+    String status,
+  ) async {
+    final count = docs.length;
+    if (count == 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("No pending requests to process.")),
+      );
+      return;
+    }
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => Dialog(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        child: Container(
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [Color(0xFF1a1a2e), Color(0xFF16213e), Color(0xFF0f3460)],
+            ),
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.4),
+                blurRadius: 20,
+                offset: const Offset(0, 6),
+              ),
+            ],
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 22),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 56,
+                height: 56,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: (status == 'approved' ? Colors.green : Colors.redAccent)
+                      .withValues(alpha: 0.15),
+                  border: Border.all(
+                    color:
+                        (status == 'approved' ? Colors.green : Colors.redAccent)
+                            .withValues(alpha: 0.5),
+                    width: 1.5,
+                  ),
+                ),
+                child: Icon(
+                  status == 'approved' ? Icons.done_all : Icons.block,
+                  color: status == 'approved'
+                      ? Colors.greenAccent
+                      : Colors.redAccent,
+                  size: 26,
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                status == 'approved' ? 'Accept All?' : 'Reject All?',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 19,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 0.3,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                status == 'approved'
+                    ? 'Approve all $count request(s)? Gate passes will be generated.'
+                    : 'Reject all $count request(s)? This cannot be undone.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.6),
+                  fontSize: 13,
+                  height: 1.5,
+                ),
+              ),
+              const SizedBox(height: 22),
+              Row(
+                children: [
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () => Navigator.of(ctx).pop(false),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.08),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                              color: Colors.white.withValues(alpha: 0.15)),
+                        ),
+                        child: const Text('Cancel',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w600,
+                                fontSize: 14)),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () => Navigator.of(ctx).pop(true),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: status == 'approved'
+                                ? [
+                                    const Color(0xFF11998e),
+                                    const Color(0xFF38ef7d)
+                                  ]
+                                : [
+                                    const Color(0xFFFF416C),
+                                    const Color(0xFFFF4B2B)
+                                  ],
+                          ),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          status == 'approved' ? 'Accept All' : 'Reject All',
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    if (confirmed != true || !context.mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(status == 'approved'
+          ? 'Approving $count requests...'
+          : 'Rejecting $count requests...'),
+      duration: const Duration(seconds: 2),
+    ));
+
+    int successCount = 0;
+    for (final doc in docs) {
+      try {
+        final data = doc.data() as Map<String, dynamic>;
+        final Map<String, dynamic> updateData = {};
+        if (status == 'approved') {
+          updateData['rectorStatus'] = 'approved';
+          updateData['status'] = 'approved';
+        } else {
+          updateData['rectorStatus'] = 'rejected';
+          updateData['status'] = 'rejected';
+        }
+        await FirebaseFirestore.instance
+            .collection('leave_requests')
+            .doc(doc.id)
+            .update(updateData);
+
+        final studentUid = data['uid'];
+        if (status == 'approved') {
+          await NotificationRepository().sendNotification(
+            title: "Leave Request Approved",
+            message:
+                "Rector has approved your leave request. Gate pass generated.",
+            receiverUid: studentUid,
+            type: 'leave_request',
+            relatedRequestId: doc.id,
+          );
+        } else {
+          await NotificationRepository().sendNotification(
+            title: "Request Rejected",
+            message: "Rector rejected your leave application.",
+            receiverUid: studentUid,
+            type: 'leave_request',
+            relatedRequestId: doc.id,
+          );
+        }
+        successCount++;
+      } catch (_) {}
+    }
+
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(status == 'approved'
+            ? '$successCount gate pass(es) generated successfully'
+            : '$successCount request(s) rejected'),
+        backgroundColor: status == 'approved' ? Colors.green : Colors.red,
+      ));
+    }
+ }
 
   Future<void> _updateStatus(
     BuildContext context,
@@ -585,8 +793,8 @@ class PendingRequestsList extends StatelessWidget {
         .where('rectorStatus', isEqualTo: 'pending')
         .where('status', isEqualTo: 'pending');
 
-    if (hostelId != null) {
-      query = query.where('hostelId', isEqualTo: hostelId);
+    if (widget.hostelId != null) {
+      query = query.where('hostelId', isEqualTo: widget.hostelId);
     }
 
     return StreamBuilder<QuerySnapshot>(
@@ -600,7 +808,9 @@ class PendingRequestsList extends StatelessWidget {
           return const Center(child: CircularProgressIndicator());
         }
 
-        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+        final docs = snapshot.data?.docs ?? [];
+
+        if (docs.isEmpty) {
           return const Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -613,18 +823,68 @@ class PendingRequestsList extends StatelessWidget {
           );
         }
 
-        return ListView.builder(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          itemCount: snapshot.data!.docs.length,
-          itemBuilder: (context, index) {
-            final doc = snapshot.data!.docs[index];
-            final data = doc.data() as Map<String, dynamic>;
-            final startDate = (data['startDate'] as Timestamp).toDate();
-            final endDate = (data['endDate'] as Timestamp).toDate();
+        return Column(
+          children: [
+            // ── Bulk Action Buttons ──
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: () => _bulkUpdateStatus(context, docs, 'rejected'),
+                      icon: const Icon(Icons.block, size: 16),
+                      label: Text(
+                        'Reject All (${docs.length})',
+                        style: const TextStyle(
+                            fontWeight: FontWeight.bold, fontSize: 13),
+                      ),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.red.shade700,
+                        side: BorderSide(color: Colors.red.shade300),
+                        backgroundColor: Colors.red.shade50,
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12)),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: () => _bulkUpdateStatus(context, docs, 'approved'),
+                      icon: const Icon(Icons.done_all, size: 16),
+                      label: Text(
+                        'Accept All (${docs.length})',
+                        style: const TextStyle(
+                            fontWeight: FontWeight.bold, fontSize: 13),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.green.shade600,
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12)),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        elevation: 0,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Expanded(
+              child: ListView.builder(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                itemCount: docs.length,
+                itemBuilder: (context, index) {
+                  final doc = docs[index];
+                  final data = doc.data() as Map<String, dynamic>;
+                  final startDate = (data['startDate'] as Timestamp).toDate();
+                  final endDate = (data['endDate'] as Timestamp).toDate();
 
-            final now = DateTime.now();
-            final difference = startDate.difference(now).inHours;
-            final isUrgent = difference <= 24;
+                  final now = DateTime.now();
+                  final difference = startDate.difference(now).inHours;
+                  final isUrgent = difference <= 24;
 
             return Container(
               margin: const EdgeInsets.only(bottom: 16),
@@ -827,6 +1087,9 @@ class PendingRequestsList extends StatelessWidget {
               ),
             );
           },
+        ),
+      ),
+          ],
         );
       },
     );

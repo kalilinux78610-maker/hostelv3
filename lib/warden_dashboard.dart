@@ -627,7 +627,7 @@ String _getWardenDisplayGroup(String canonicalBranch, String category) {
 }
 
 // ── Requests list for a specific Department + Category ──────────────────────
-class WardenDepartmentRequestsScreen extends StatelessWidget {
+class WardenDepartmentRequestsScreen extends StatefulWidget {
   final String branch;
   final String category;
   final List<String> assignedHostels;
@@ -641,12 +641,231 @@ class WardenDepartmentRequestsScreen extends StatelessWidget {
   });
 
   @override
+  State<WardenDepartmentRequestsScreen> createState() =>
+      _WardenDepartmentRequestsScreenState();
+}
+
+class _WardenDepartmentRequestsScreenState
+    extends State<WardenDepartmentRequestsScreen> {
+  static const Color _primaryColor = Color(0xFF002244);
+
+  Future<void> _bulkUpdateStatus(
+    BuildContext context,
+    List<QueryDocumentSnapshot> docs,
+    String status,
+  ) async {
+    final count = docs.length;
+    if (count == 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("No pending requests to process.")),
+      );
+      return;
+    }
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => Dialog(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        child: Container(
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [Color(0xFF1a1a2e), Color(0xFF16213e), Color(0xFF0f3460)],
+            ),
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.4),
+                blurRadius: 20,
+                offset: const Offset(0, 6),
+              ),
+            ],
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 22),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 56,
+                height: 56,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: (status == 'approved' ? Colors.green : Colors.redAccent)
+                      .withValues(alpha: 0.15),
+                  border: Border.all(
+                    color:
+                        (status == 'approved' ? Colors.green : Colors.redAccent)
+                            .withValues(alpha: 0.5),
+                    width: 1.5,
+                  ),
+                ),
+                child: Icon(
+                  status == 'approved' ? Icons.done_all : Icons.block,
+                  color:
+                      status == 'approved' ? Colors.greenAccent : Colors.redAccent,
+                  size: 26,
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                status == 'approved' ? 'Accept All?' : 'Reject All?',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 19,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 0.3,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                status == 'approved'
+                    ? 'Approve all $count request(s) and forward to Rector?'
+                    : 'Reject all $count request(s)? This cannot be undone.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.6),
+                  fontSize: 13,
+                  height: 1.5,
+                ),
+              ),
+              const SizedBox(height: 22),
+              Row(
+                children: [
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () => Navigator.of(ctx).pop(false),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.08),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                              color: Colors.white.withValues(alpha: 0.15)),
+                        ),
+                        child: const Text('Cancel',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w600,
+                                fontSize: 14)),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () => Navigator.of(ctx).pop(true),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: status == 'approved'
+                                ? [
+                                    const Color(0xFF11998e),
+                                    const Color(0xFF38ef7d)
+                                  ]
+                                : [
+                                    const Color(0xFFFF416C),
+                                    const Color(0xFFFF4B2B)
+                                  ],
+                          ),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          status == 'approved' ? 'Accept All' : 'Reject All',
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    if (confirmed != true || !context.mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(status == 'approved'
+          ? 'Approving $count requests...'
+          : 'Rejecting $count requests...'),
+      duration: const Duration(seconds: 2),
+    ));
+
+    int successCount = 0;
+    for (final doc in docs) {
+      try {
+        final data = doc.data() as Map<String, dynamic>;
+        final Map<String, dynamic> updateData = {'wardenStatus': status};
+        if (status == 'approved') {
+          updateData['rectorStatus'] = 'pending';
+        } else {
+          updateData['status'] = 'rejected';
+        }
+        await FirebaseFirestore.instance
+            .collection('leave_requests')
+            .doc(doc.id)
+            .update(updateData);
+
+        final studentUid = data['uid'] as String?;
+        final studentName = data['name'] ?? 'Student';
+        if (studentUid != null) {
+          if (status == 'approved') {
+            await NotificationRepository().sendNotification(
+              title: "Warden Approved ✅",
+              message:
+                  "Your leave request was approved by the Warden and is now pending Rector approval.",
+              receiverUid: studentUid,
+              type: 'leave_request',
+              relatedRequestId: doc.id,
+            );
+            await NotificationRepository().sendNotification(
+              title: "New Approval Required",
+              message:
+                  "Warden approved $studentName's leave request. Please review.",
+              receiverUid: 'rector',
+              type: 'leave_request',
+              relatedRequestId: doc.id,
+            );
+          } else {
+            await NotificationRepository().sendNotification(
+              title: "Request Rejected ❌",
+              message: "Your leave request was rejected by the Warden.",
+              receiverUid: studentUid,
+              type: 'leave_request',
+              relatedRequestId: doc.id,
+            );
+          }
+        }
+        successCount++;
+      } catch (_) {}
+    }
+
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(status == 'approved'
+            ? '$successCount request(s) approved & forwarded to Rector'
+            : '$successCount request(s) rejected'),
+        backgroundColor: status == 'approved' ? Colors.green : Colors.red,
+      ));
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    // Note: We filter by branch in the query to optimize,
-    // and we will ensure the category matches in-memory if needed.
     final stream = FirebaseFirestore.instance
         .collection('leave_requests')
-        .where('hostelId', whereIn: assignedHostels)
+        .where('hostelId', whereIn: widget.assignedHostels)
         .where('wardenStatus', isEqualTo: 'pending')
         .where('status', isEqualTo: 'pending')
         .snapshots();
@@ -654,7 +873,7 @@ class WardenDepartmentRequestsScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: const Color(0xFFF5F5F5),
       appBar: AppBar(
-        title: Text(branch, style: const TextStyle(fontSize: 16)),
+        title: Text(widget.branch, style: const TextStyle(fontSize: 16)),
         backgroundColor: _primaryColor,
         foregroundColor: Colors.white,
       ),
@@ -665,20 +884,23 @@ class WardenDepartmentRequestsScreen extends StatelessWidget {
             return const Center(child: CircularProgressIndicator());
           }
           final docs = snapshot.data?.docs ?? [];
-          
+
           // Filter matching branch & category properly using CanonicalNames
           var filteredDocs = docs.where((doc) {
             final data = doc.data() as Map<String, dynamic>;
             final docCat = CanonicalNames.canonicalizeCategory(data['category']);
-            final docBranch = CanonicalNames.canonicalizeBranch(data['branch'], docCat);
+            final docBranch =
+                CanonicalNames.canonicalizeBranch(data['branch'], docCat);
             final docGroup = _getWardenDisplayGroup(docBranch, docCat);
-            return docCat == category && docGroup == branch;
+            return docCat == widget.category && docGroup == widget.branch;
           }).toList();
 
           // Sort in memory to avoid missing index or missing field errors
           filteredDocs.sort((a, b) {
-            final tzA = (a.data() as Map<String, dynamic>)['createdAt'] as Timestamp?;
-            final tzB = (b.data() as Map<String, dynamic>)['createdAt'] as Timestamp?;
+            final tzA =
+                (a.data() as Map<String, dynamic>)['createdAt'] as Timestamp?;
+            final tzB =
+                (b.data() as Map<String, dynamic>)['createdAt'] as Timestamp?;
             if (tzA == null && tzB == null) return 0;
             if (tzA == null) return 1;
             if (tzB == null) return -1;
@@ -692,20 +914,76 @@ class WardenDepartmentRequestsScreen extends StatelessWidget {
                 children: [
                   Icon(Icons.done_all, size: 72, color: Colors.grey[300]),
                   const SizedBox(height: 16),
-                  const Text("No pending requests", style: TextStyle(color: Colors.grey)),
+                  const Text("No pending requests",
+                      style: TextStyle(color: Colors.grey)),
                 ],
               ),
             );
           }
-          
-          return ListView.builder(
-            padding: const EdgeInsets.all(16),
-            itemCount: filteredDocs.length,
-            itemBuilder: (context, index) {
-              final doc = filteredDocs[index];
-              final data = doc.data() as Map<String, dynamic>;
-              return _buildRequestCard(context, doc.id, data);
-            },
+
+          return Column(
+            children: [
+              // ── Bulk Action Buttons ──
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: () =>
+                            _bulkUpdateStatus(context, filteredDocs, 'rejected'),
+                        icon: const Icon(Icons.block, size: 16),
+                        label: Text(
+                          'Reject All (${filteredDocs.length})',
+                          style: const TextStyle(
+                              fontWeight: FontWeight.bold, fontSize: 13),
+                        ),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: Colors.red.shade700,
+                          side: BorderSide(color: Colors.red.shade300),
+                          backgroundColor: Colors.red.shade50,
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12)),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: () =>
+                            _bulkUpdateStatus(context, filteredDocs, 'approved'),
+                        icon: const Icon(Icons.done_all, size: 16),
+                        label: Text(
+                          'Accept All (${filteredDocs.length})',
+                          style: const TextStyle(
+                              fontWeight: FontWeight.bold, fontSize: 13),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.green.shade600,
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12)),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          elevation: 0,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Expanded(
+                child: ListView.builder(
+                  padding: const EdgeInsets.all(16),
+                  itemCount: filteredDocs.length,
+                  itemBuilder: (context, index) {
+                    final doc = filteredDocs[index];
+                    final data = doc.data() as Map<String, dynamic>;
+                    return _buildRequestCard(context, doc.id, data);
+                  },
+                ),
+              ),
+            ],
           );
         },
       ),

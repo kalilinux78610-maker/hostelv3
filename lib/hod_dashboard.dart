@@ -233,6 +233,218 @@ class _HodHomeTabState extends State<HodHomeTab> {
     return "${date.day} ${months[date.month - 1]} ${date.year}";
   }
 
+  Future<void> _bulkUpdateStatus(
+    BuildContext context,
+    List<QueryDocumentSnapshot> docs,
+    String action,
+  ) async {
+    final count = docs.length;
+    if (count == 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("No pending requests to process.")),
+      );
+      return;
+    }
+
+    // Confirm dialog
+    final confirmed = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => Dialog(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        child: Container(
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [Color(0xFF1a1a2e), Color(0xFF16213e), Color(0xFF0f3460)],
+            ),
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.4),
+                blurRadius: 20,
+                offset: const Offset(0, 6),
+              ),
+            ],
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 22),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 56,
+                height: 56,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: (action == 'approve' ? Colors.green : Colors.redAccent)
+                      .withValues(alpha: 0.15),
+                  border: Border.all(
+                    color: (action == 'approve' ? Colors.green : Colors.redAccent)
+                        .withValues(alpha: 0.5),
+                    width: 1.5,
+                  ),
+                ),
+                child: Icon(
+                  action == 'approve' ? Icons.done_all : Icons.block,
+                  color: action == 'approve' ? Colors.greenAccent : Colors.redAccent,
+                  size: 26,
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                action == 'approve' ? 'Accept All?' : 'Reject All?',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 19,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 0.3,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                action == 'approve'
+                    ? 'This will approve all $count pending request(s) and forward them to the Warden.'
+                    : 'This will reject all $count pending request(s). This cannot be undone.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.6),
+                  fontSize: 13,
+                  height: 1.5,
+                ),
+              ),
+              const SizedBox(height: 22),
+              Row(
+                children: [
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () => Navigator.of(ctx).pop(false),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.08),
+                          borderRadius: BorderRadius.circular(12),
+                          border:
+                              Border.all(color: Colors.white.withValues(alpha: 0.15)),
+                        ),
+                        child: const Text(
+                          'Cancel',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () => Navigator.of(ctx).pop(true),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: action == 'approve'
+                                ? [const Color(0xFF11998e), const Color(0xFF38ef7d)]
+                                : [const Color(0xFFFF416C), const Color(0xFFFF4B2B)],
+                          ),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          action == 'approve' ? 'Accept All' : 'Reject All',
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    if (confirmed != true || !context.mounted) return;
+
+    // Show loading
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(action == 'approve'
+            ? 'Approving $count requests...'
+            : 'Rejecting $count requests...'),
+        duration: const Duration(seconds: 2),
+      ),
+    );
+
+    int successCount = 0;
+    for (final doc in docs) {
+      try {
+        final data = doc.data() as Map<String, dynamic>;
+        final Map<String, dynamic> updateData = {};
+        if (action == 'approve') {
+          updateData['hodStatus'] = 'approved';
+          updateData['wardenStatus'] = 'pending';
+        } else {
+          updateData['hodStatus'] = 'rejected';
+          updateData['status'] = 'rejected';
+        }
+        await FirebaseFirestore.instance
+            .collection('leave_requests')
+            .doc(doc.id)
+            .update(updateData);
+
+        final studentUid = data['uid'];
+        final studentName = data['name'] ?? 'Student';
+        if (action == 'approve') {
+          await NotificationRepository().sendNotification(
+            title: "HOD Approved Request",
+            message: "Your application is now pending Warden approval.",
+            receiverUid: studentUid,
+            type: 'leave_request',
+            relatedRequestId: doc.id,
+          );
+          await NotificationRepository().sendNotification(
+            title: "Approvals Required",
+            message: "HOD approved $studentName's request.",
+            receiverUid: 'warden',
+            type: 'leave_request',
+            relatedRequestId: doc.id,
+          );
+        } else {
+          await NotificationRepository().sendNotification(
+            title: "Request Rejected",
+            message: "HOD rejected your leave application.",
+            receiverUid: studentUid,
+            type: 'leave_request',
+            relatedRequestId: doc.id,
+          );
+        }
+        successCount++;
+      } catch (_) {}
+    }
+
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(action == 'approve'
+              ? '$successCount request(s) approved & forwarded to Warden'
+              : '$successCount request(s) rejected'),
+          backgroundColor: action == 'approve' ? Colors.green : Colors.red,
+        ),
+      );
+    }
+  }
+
   String _formatTimeAgo(DateTime date) {
     final now = DateTime.now();
     final difference = now.difference(date);
@@ -501,10 +713,64 @@ class _HodHomeTabState extends State<HodHomeTab> {
           );
         }
 
-        return ListView.builder(
-          padding: const EdgeInsets.only(bottom: 24),
-          itemCount: docs.length,
-          itemBuilder: (context, index) => _buildRequestCard(docs[index]),
+        return Column(
+          children: [
+            // ── Bulk Action Buttons (only on Pending tab) ──
+            if (_internalTabIndex == 0)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: () => _bulkUpdateStatus(context, docs, 'reject'),
+                        icon: const Icon(Icons.block, size: 16),
+                        label: Text(
+                          'Reject All (${docs.length})',
+                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                        ),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: Colors.red.shade700,
+                          side: BorderSide(color: Colors.red.shade300),
+                          backgroundColor: Colors.red.shade50,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: () => _bulkUpdateStatus(context, docs, 'approve'),
+                        icon: const Icon(Icons.done_all, size: 16),
+                        label: Text(
+                          'Accept All (${docs.length})',
+                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.green.shade600,
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          elevation: 0,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            Expanded(
+              child: ListView.builder(
+                padding: const EdgeInsets.only(bottom: 24),
+                itemCount: docs.length,
+                itemBuilder: (context, index) => _buildRequestCard(docs[index]),
+              ),
+            ),
+          ],
         );
       },
     );
