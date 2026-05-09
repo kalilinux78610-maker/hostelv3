@@ -62,6 +62,18 @@ class _BulkImportScreenState extends State<BulkImportScreen> {
 
         int originalCount = csvTable.length;
 
+        // Check for Google Forms Export ("Timestamp" column)
+        if (csvTable.isNotEmpty && csvTable[0].isNotEmpty) {
+          if (csvTable[0][0].toString().toLowerCase().contains('timestamp')) {
+            // Remove the first column from EVERY row to shift the data
+            for (int i = 0; i < csvTable.length; i++) {
+              if (csvTable[i].isNotEmpty) {
+                csvTable[i].removeAt(0);
+              }
+            }
+          }
+        }
+
         // Remove Header if present (assuming Row 0 is header)
         if (csvTable.isNotEmpty) {
           // Check if first row looks like a header row

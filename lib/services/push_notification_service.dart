@@ -184,11 +184,28 @@ class PushNotificationService {
 
     AutoRefreshingAuthClient? authClient;
     try {
+      String formattedKey = _privateKey;
+      
+      // Remove leading/trailing quotes if they were accidentally included
+      if (formattedKey.startsWith('"') && formattedKey.endsWith('"')) {
+        formattedKey = formattedKey.substring(1, formattedKey.length - 1);
+      } else if (formattedKey.startsWith("'") && formattedKey.endsWith("'")) {
+        formattedKey = formattedKey.substring(1, formattedKey.length - 1);
+      }
+
+      // Ensure proper newlines
+      formattedKey = formattedKey.replaceAll(r'\n', '\n');
+
+      // Check if markers are missing (user might have copied only the base64 part)
+      if (!formattedKey.contains('-----BEGIN PRIVATE KEY-----')) {
+        formattedKey = '-----BEGIN PRIVATE KEY-----\n$formattedKey\n-----END PRIVATE KEY-----\n';
+      }
+
       final accountCredentials = ServiceAccountCredentials.fromJson({
         "type": "service_account",
         "project_id": _projectId,
         "private_key_id": _privateKeyId,
-        "private_key": _privateKey,
+        "private_key": formattedKey,
         "client_email": _clientEmail,
         "client_id": _clientId,
         "auth_uri": "https://accounts.google.com/o/oauth2/auth",

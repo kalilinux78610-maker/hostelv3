@@ -22,9 +22,13 @@ class _StudentProfileDesignV2State extends State<StudentProfileDesignV2> {
   final _fatherMobileCtrl = TextEditingController();
   final _motherMobileCtrl = TextEditingController();
   final _addressCtrl = TextEditingController();
+  final _enrollmentCtrl = TextEditingController();
+  final _yearCtrl = TextEditingController();
   final _formKey = GlobalKey<FormState>();
 
   final bool _isEditing = false;
+  bool _isEditingEnrollment = false;
+  bool _isEditingYear = false;
 
   @override
   void dispose() {
@@ -42,6 +46,8 @@ class _StudentProfileDesignV2State extends State<StudentProfileDesignV2> {
     _fatherMobileCtrl.text = data?['fatherMobile'] ?? data?['parentContact'] ?? '';
     _motherMobileCtrl.text = data?['motherMobile'] ?? '';
     _addressCtrl.text = data?['address'] ?? '';
+    _enrollmentCtrl.text = data?['enrollmentNo'] ?? '';
+    _yearCtrl.text = data?['year']?.toString() ?? '';
   }
 
   @override
@@ -110,7 +116,18 @@ class _StudentProfileDesignV2State extends State<StudentProfileDesignV2> {
                         _infoCard([
                           _row(Icons.person, 'Full Name', name),
                           _divider(),
-                          _row(Icons.badge, 'Enrollment No.', enrollmentNo),
+                          _isEditingEnrollment
+                              ? _editableRowInput(Icons.badge, 'Enrollment No.', _enrollmentCtrl, () async {
+                                  if (_enrollmentCtrl.text.trim().isNotEmpty) {
+                                    await FirebaseFirestore.instance.collection('users').doc(user?.uid).update({
+                                      'enrollmentNo': _enrollmentCtrl.text.trim(),
+                                    });
+                                  }
+                                  setState(() => _isEditingEnrollment = false);
+                                })
+                              : _row(Icons.badge, 'Enrollment No.', enrollmentNo, onEdit: () {
+                                  setState(() => _isEditingEnrollment = true);
+                                }),
                           _divider(),
                           _row(Icons.wc, 'Gender', gender),
                           _divider(),
@@ -130,7 +147,18 @@ class _StudentProfileDesignV2State extends State<StudentProfileDesignV2> {
                           _divider(),
                           _row(Icons.menu_book, 'Department / Branch', branch),
                           _divider(),
-                          _row(Icons.calendar_today, 'Year', year),
+                          _isEditingYear
+                              ? _editableRowInput(Icons.calendar_today, 'Year', _yearCtrl, () async {
+                                  if (_yearCtrl.text.trim().isNotEmpty) {
+                                    await FirebaseFirestore.instance.collection('users').doc(user?.uid).update({
+                                      'year': _yearCtrl.text.trim(),
+                                    });
+                                  }
+                                  setState(() => _isEditingYear = false);
+                                })
+                              : _row(Icons.calendar_today, 'Year', year, onEdit: () {
+                                  setState(() => _isEditingYear = true);
+                                }),
                         ]),
 
                         const SizedBox(height: 16),
@@ -398,7 +426,7 @@ class _StudentProfileDesignV2State extends State<StudentProfileDesignV2> {
     );
   }
 
-  Widget _row(IconData icon, String label, String value) {
+  Widget _row(IconData icon, String label, String value, {VoidCallback? onEdit}) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 12),
       child: Row(
@@ -424,6 +452,64 @@ class _StudentProfileDesignV2State extends State<StudentProfileDesignV2> {
                 ),
               ],
             ),
+          ),
+          if (onEdit != null)
+            IconButton(
+              icon: const Icon(Icons.edit, size: 18, color: Colors.blue),
+              onPressed: onEdit,
+              constraints: const BoxConstraints(),
+              padding: EdgeInsets.zero,
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _editableRowInput(IconData icon, String label, TextEditingController ctrl, VoidCallback onSave) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        children: [
+          Icon(icon, size: 20, color: _primary.withValues(alpha: 0.7)),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: TextStyle(fontSize: 11, color: Colors.grey[500]),
+                ),
+                const SizedBox(height: 4),
+                SizedBox(
+                  height: 36,
+                  child: TextField(
+                    controller: ctrl,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF222222),
+                    ),
+                    decoration: InputDecoration(
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 0),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: const BorderSide(color: _primary, width: 1.5),
+                      ),
+                    ),
+                    keyboardType: TextInputType.number,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 12),
+          IconButton(
+            icon: const Icon(Icons.check_circle, size: 28, color: Colors.green),
+            onPressed: onSave,
+            constraints: const BoxConstraints(),
+            padding: EdgeInsets.zero,
           ),
         ],
       ),
