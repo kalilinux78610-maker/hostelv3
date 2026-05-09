@@ -246,7 +246,22 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
     final category = widget.data['category'] ?? 'N/A';
     // Show real institute name if available, else fall back to category
     final instituteDisplay = institute.isNotEmpty ? institute : category;
-    final enrollmentNo = widget.data['enrollmentNo'] ?? 'N/A';
+    
+    dynamic rawEnrollment = widget.data['enrollmentNo'];
+    String enrollmentNo = 'N/A';
+    if (rawEnrollment != null) {
+      if (rawEnrollment is num) {
+        enrollmentNo = rawEnrollment.toStringAsFixed(0);
+      } else {
+        String s = rawEnrollment.toString();
+        if (s.toUpperCase().contains('E')) {
+          enrollmentNo = double.tryParse(s)?.toStringAsFixed(0) ?? s;
+        } else {
+          enrollmentNo = s.endsWith('.0') ? s.substring(0, s.length - 2) : s;
+        }
+      }
+    }
+    
     final bloodGroup = widget.data['bloodGroup'] ?? 'N/A';
     final gender = widget.data['gender'] ?? 'N/A';
     final mobile = widget.data['mobile'] ?? 'N/A';

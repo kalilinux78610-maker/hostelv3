@@ -18,7 +18,7 @@ class _StudentDirectoryScreenState extends State<StudentDirectoryScreen> {
   // Filter States
   String _selectedHostel = "All";
   String _selectedBranch = "All";
-  String _selectedYear = "All";
+  final String _selectedYear = "All";
   bool _showPending = false; // Toggle for pending students
 
   @override
@@ -122,7 +122,7 @@ class _StudentDirectoryScreenState extends State<StudentDirectoryScreen> {
                   controller: _searchController,
                   onChanged: (value) => setState(() => _searchQuery = value.toLowerCase()),
                   decoration: InputDecoration(
-                    hintText: "Search by name, email, or room...",
+                    hintText: "Search by name, email, room or enrollment no...",
                     hintStyle: TextStyle(color: Colors.grey[500], fontSize: 14),
                     prefixIcon: const Icon(Icons.search, color: Colors.grey),
                     suffixIcon: Row(
@@ -213,11 +213,27 @@ class _StudentDirectoryScreenState extends State<StudentDirectoryScreen> {
                   final email = (data['email'] ?? '').toString().toLowerCase();
                   final name = (data['name'] ?? '').toString().toLowerCase();
                   final room = (data['room'] ?? '').toString().toLowerCase();
+                  // Format enrollment number robustly for search
+                  final rawEnroll = data['enrollmentNo'];
+                  String enrollStr = '';
+                  if (rawEnroll != null) {
+                    if (rawEnroll is num) {
+                      enrollStr = rawEnroll.toStringAsFixed(0);
+                    } else {
+                      final s = rawEnroll.toString();
+                      if (s.toUpperCase().contains('E')) {
+                        enrollStr = double.tryParse(s)?.toStringAsFixed(0) ?? s;
+                      } else {
+                        enrollStr = s.endsWith('.0') ? s.substring(0, s.length - 2) : s;
+                      }
+                    }
+                  }
                   final matchesSearch =
                       _searchQuery.isEmpty ||
                       email.contains(_searchQuery) ||
                       name.contains(_searchQuery) ||
-                      room.contains(_searchQuery);
+                      room.contains(_searchQuery) ||
+                      enrollStr.contains(_searchQuery);
 
                   if (!matchesSearch) return false;
 
@@ -474,6 +490,22 @@ class _StudentDirectoryScreenState extends State<StudentDirectoryScreen> {
     final program = data['program'] ?? '';
     final branchDisplay = program.isNotEmpty ? '$program - $branch' : branch;
 
+    // Format enrollment number
+    final rawEnroll = data['enrollmentNo'];
+    String enrollmentDisplay = '';
+    if (rawEnroll != null) {
+      if (rawEnroll is num) {
+        enrollmentDisplay = rawEnroll.toStringAsFixed(0);
+      } else {
+        final s = rawEnroll.toString();
+        if (s.toUpperCase().contains('E')) {
+          enrollmentDisplay = double.tryParse(s)?.toStringAsFixed(0) ?? s;
+        } else {
+          enrollmentDisplay = s.endsWith('.0') ? s.substring(0, s.length - 2) : s;
+        }
+      }
+    }
+
     final String rawHostel = data['assignedHostel'] ?? data['hostel'] ?? '';
     final String displayHostel = AppConfig.getFullHostelName(rawHostel);
 
@@ -566,11 +598,35 @@ class _StudentDirectoryScreenState extends State<StudentDirectoryScreen> {
                             ],
                           ),
                           const SizedBox(height: 4),
-                          Text(
-                            branchDisplay,
-                            style: TextStyle(fontSize: 13, color: Colors.grey[600]),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  branchDisplay,
+                                  style: TextStyle(fontSize: 13, color: Colors.grey[600]),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              if (enrollmentDisplay.isNotEmpty) ...[
+                                const SizedBox(width: 8),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF0052CC).withValues(alpha: 0.08),
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                  child: Text(
+                                    enrollmentDisplay,
+                                    style: const TextStyle(
+                                      fontSize: 11,
+                                      color: Color(0xFF0052CC),
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ],
                           ),
                           const SizedBox(height: 2),
                           Text(

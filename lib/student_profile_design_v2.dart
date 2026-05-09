@@ -24,7 +24,7 @@ class _StudentProfileDesignV2State extends State<StudentProfileDesignV2> {
   final _addressCtrl = TextEditingController();
   final _formKey = GlobalKey<FormState>();
 
-  bool _isEditing = false;
+  final bool _isEditing = false;
 
   @override
   void dispose() {
@@ -76,7 +76,20 @@ class _StudentProfileDesignV2State extends State<StudentProfileDesignV2> {
           final name = data?['name'] ?? user?.displayName ?? 'Student';
           final email = data?['email'] ?? user?.email ?? 'No Email';
           final photoUrl = data?['photoUrl'];
-          final enrollmentNo = data?['enrollmentNo'] ?? 'N/A';
+          dynamic rawEnrollment = data?['enrollmentNo'];
+          String enrollmentNo = 'N/A';
+          if (rawEnrollment != null) {
+            if (rawEnrollment is num) {
+              enrollmentNo = rawEnrollment.toStringAsFixed(0);
+            } else {
+              String s = rawEnrollment.toString();
+              if (s.toUpperCase().contains('E')) {
+                enrollmentNo = double.tryParse(s)?.toStringAsFixed(0) ?? s;
+              } else {
+                enrollmentNo = s.endsWith('.0') ? s.substring(0, s.length - 2) : s;
+              }
+            }
+          }
           final gender = data?['gender'] ?? 'N/A';
           final bloodGroup = data?['bloodGroup'] ?? 'N/A';
           final institute = data?['institute'] ?? 'N/A';
