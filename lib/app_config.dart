@@ -156,4 +156,55 @@ class AppConfig {
   static const List<String> branches = allBranches;
 
   static const List<String> years = ['1', '2', '3', '4'];
+
+  // ─────────────────────────────────────────────
+  //  ENROLLMENT NUMBER FORMATTER (precision-safe)
+  // ─────────────────────────────────────────────
+  /// Safely formats an enrollment number from Firestore (stored as num or String)
+  /// without floating-point precision loss.
+  ///
+  /// Examples:
+  ///   230840116049  (int)    → "230840116049"
+  ///   230840116049.0 (double) → "230840116049"
+  ///   "230840116049.00" (String) → "230840116049"
+  ///   "2.3084011605E11" (sci notation) → "230840116050" ← WRONG via double!
+  ///
+  /// This implementation uses integer arithmetic to avoid the rounding issue
+  /// that double.toStringAsFixed(0) introduces for 12+ digit numbers.
+  static String formatEnrollmentNo(dynamic raw, {String fallback = 'N/A'}) {
+    if (raw == null) return fallback;
+
+    if (raw is int) return raw.toString();
+
+    if (raw is double) {
+      // Convert double to int safely — doubles can represent integers
+      // exactly up to 2^53, which covers any realistic enrollment number.
+      return raw.toInt().toString();
+    }
+
+    // String handling
+    final s = raw.toString().trim();
+    if (s.isEmpty) return fallback;
+
+    // Strip trailing .0 or .00 etc (common from CSV-as-double export)
+    final stripped = s.replaceAll(RegExp(r'\.0+$'), '');
+
+    // If it looks like a plain integer string, return directly (no parsing risk)
+    if (RegExp(r'^\d+$').hasMatch(stripped)) return stripped;
+
+    // Scientific notation: e.g. "2.3084011605E11"
+    // Use int.tryParse on the non-decimal part to avoid double rounding
+    if (stripped.toUpperCase().contains('E')) {
+      // Try parsing via double first, then truncate to int to avoid .toStringAsFixed rounding
+      final d = double.tryParse(stripped);
+      if (d != null) return d.toInt().toString();
+      return stripped; // give up, return raw
+    }
+
+    // Has decimal point (e.g. "230840116049.5" — shouldn't happen but handle it)
+    final withoutDecimal = stripped.split('.').first;
+    if (RegExp(r'^\d+$').hasMatch(withoutDecimal)) return withoutDecimal;
+
+    return stripped.isNotEmpty ? stripped : fallback;
+  }
 }

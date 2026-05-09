@@ -214,20 +214,7 @@ class _StudentDirectoryScreenState extends State<StudentDirectoryScreen> {
                   final name = (data['name'] ?? '').toString().toLowerCase();
                   final room = (data['room'] ?? '').toString().toLowerCase();
                   // Format enrollment number robustly for search
-                  final rawEnroll = data['enrollmentNo'];
-                  String enrollStr = '';
-                  if (rawEnroll != null) {
-                    if (rawEnroll is num) {
-                      enrollStr = rawEnroll.toStringAsFixed(0);
-                    } else {
-                      final s = rawEnroll.toString();
-                      if (s.toUpperCase().contains('E')) {
-                        enrollStr = double.tryParse(s)?.toStringAsFixed(0) ?? s;
-                      } else {
-                        enrollStr = s.endsWith('.0') ? s.substring(0, s.length - 2) : s;
-                      }
-                    }
-                  }
+                  final enrollStr = AppConfig.formatEnrollmentNo(data['enrollmentNo'], fallback: '');
                   final matchesSearch =
                       _searchQuery.isEmpty ||
                       email.contains(_searchQuery) ||
@@ -491,20 +478,7 @@ class _StudentDirectoryScreenState extends State<StudentDirectoryScreen> {
     final branchDisplay = program.isNotEmpty ? '$program - $branch' : branch;
 
     // Format enrollment number
-    final rawEnroll = data['enrollmentNo'];
-    String enrollmentDisplay = '';
-    if (rawEnroll != null) {
-      if (rawEnroll is num) {
-        enrollmentDisplay = rawEnroll.toStringAsFixed(0);
-      } else {
-        final s = rawEnroll.toString();
-        if (s.toUpperCase().contains('E')) {
-          enrollmentDisplay = double.tryParse(s)?.toStringAsFixed(0) ?? s;
-        } else {
-          enrollmentDisplay = s.endsWith('.0') ? s.substring(0, s.length - 2) : s;
-        }
-      }
-    }
+    final enrollmentDisplay = AppConfig.formatEnrollmentNo(data['enrollmentNo'], fallback: '');
 
     final String rawHostel = data['assignedHostel'] ?? data['hostel'] ?? '';
     final String displayHostel = AppConfig.getFullHostelName(rawHostel);

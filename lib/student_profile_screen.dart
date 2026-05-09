@@ -203,16 +203,7 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
               // ── IDENTITY CARD ──────────────────────────────
               _sectionHeader('Identity'),
               _buildReadOnlyField("Full Name", _userData?['name'] ?? 'N/A', Icons.person),
-              _buildReadOnlyField("Enrollment No.", (() {
-                dynamic raw = _userData?['enrollmentNo'];
-                if (raw == null) return 'N/A';
-                if (raw is num) return raw.toStringAsFixed(0);
-                String s = raw.toString();
-                if (s.toUpperCase().contains('E')) {
-                  return double.tryParse(s)?.toStringAsFixed(0) ?? s;
-                }
-                return s.endsWith('.0') ? s.substring(0, s.length - 2) : s;
-              })(), Icons.badge),
+              _buildReadOnlyField("Enrollment No.", AppConfig.formatEnrollmentNo(_userData?['enrollmentNo']), Icons.badge),
               _buildReadOnlyField("Gender", _userData?['gender'] ?? 'N/A', Icons.wc),
               _buildReadOnlyField("Blood Group", _userData?['bloodGroup'] ?? 'N/A', Icons.bloodtype),
               _buildReadOnlyField("Email", _userData?['email'] ?? 'N/A', Icons.email),
