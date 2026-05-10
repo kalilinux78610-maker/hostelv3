@@ -1,7 +1,9 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import '../../models/mess_model.dart';
 import '../../repositories/mess_repository.dart';
+
 
 class StudentMessScreen extends StatefulWidget {
   const StudentMessScreen({super.key});
@@ -149,14 +151,19 @@ class _StudentMessScreenState extends State<StudentMessScreen> {
   }
 
   Widget _buildTodayMenuSection() {
-    return StreamBuilder<MessMenu?>(
-      stream: _repository.getMenuForDate(_today),
+    final todayStr = _getDayString(_today.weekday);
+
+    return StreamBuilder<DocumentSnapshot>(
+      stream: FirebaseFirestore.instance.collection('config').doc('mess_menu').snapshots(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
         }
 
-        final menu = snapshot.data;
+        final docData = snapshot.data?.data() as Map<String, dynamic>?;
+        final dayData = (docData != null && docData.containsKey(todayStr))
+            ? docData[todayStr] as Map<String, dynamic>
+            : null;
 
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -183,12 +190,13 @@ class _StudentMessScreenState extends State<StudentMessScreen> {
               ],
             ),
             const SizedBox(height: 16),
-            if (menu == null)
+            if (dayData == null)
               _buildEmptyMenuCard()
             else ...[
               _buildModernMenuCard(
                 "Breakfast",
-                menu.breakfast,
+                dayData['Breakfast']?.toString() ?? '',
+                dayData['Breakfast_imageUrl'] as String?,
                 "08:00 AM",
                 Icons.wb_sunny_outlined,
                 const Color(0xFF4CAF50),
@@ -196,7 +204,8 @@ class _StudentMessScreenState extends State<StudentMessScreen> {
               const SizedBox(height: 16),
               _buildModernMenuCard(
                 "Lunch",
-                menu.lunch,
+                dayData['Lunch']?.toString() ?? '',
+                dayData['Lunch_imageUrl'] as String?,
                 "01:00 PM",
                 Icons.sunny,
                 const Color(0xFFFFC107),
@@ -204,7 +213,8 @@ class _StudentMessScreenState extends State<StudentMessScreen> {
               const SizedBox(height: 16),
               _buildModernMenuCard(
                 "Dinner",
-                menu.dinner,
+                dayData['Dinner']?.toString() ?? '',
+                dayData['Dinner_imageUrl'] as String?,
                 "08:00 PM",
                 Icons.nightlight_round,
                 const Color(0xFF673AB7),
@@ -214,6 +224,19 @@ class _StudentMessScreenState extends State<StudentMessScreen> {
         );
       },
     );
+  }
+
+  String _getDayString(int weekday) {
+    switch (weekday) {
+      case DateTime.monday: return 'Monday';
+      case DateTime.tuesday: return 'Tuesday';
+      case DateTime.wednesday: return 'Wednesday';
+      case DateTime.thursday: return 'Thursday';
+      case DateTime.friday: return 'Friday';
+      case DateTime.saturday: return 'Saturday';
+      case DateTime.sunday: return 'Sunday';
+      default: return 'Monday';
+    }
   }
 
   Widget _buildEmptyMenuCard() {
@@ -243,12 +266,14 @@ class _StudentMessScreenState extends State<StudentMessScreen> {
 
   Widget _buildModernMenuCard(
     String title,
-    List<String> items,
+    String items,
+    String? imageUrl,
     String time,
     IconData icon,
     Color color,
   ) {
     bool isCurrentMeal = _getMealTypeByTime() == title;
+    final itemList = items.split(',').map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
 
     return Container(
       decoration: BoxDecoration(
@@ -267,76 +292,187 @@ class _StudentMessScreenState extends State<StudentMessScreen> {
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(24),
-        child: IntrinsicHeight(
-          child: Row(
-            children: [
-              Container(width: 6, color: color),
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.all(20),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Icon(icon, size: 18, color: color),
-                          const SizedBox(width: 8),
-                          Text(
-                            title.toUpperCase(),
-                            style: TextStyle(
-                              color: color,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 12,
-                              letterSpacing: 1,
-                            ),
-                          ),
-                          const Spacer(),
-                          Text(
-                            time,
-                            style: TextStyle(
-                              color: Colors.grey[500],
-                              fontSize: 11,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 12),
-                      Text(
-                        items.isEmpty ? "Menu not set" : items.join(' • '),
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                          color: Color(0xFF002244),
-                        ),
-                      ),
-                      if (isCurrentMeal) ...[
-                        const SizedBox(height: 12),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 4,
-                          ),
-                          decoration: BoxDecoration(
-                            color: color.withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: Text(
-                            "CURRENT MEAL",
-                            style: TextStyle(
-                              color: color,
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ],
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Header row
+            Container(
+              color: color.withValues(alpha: 0.08),
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+              child: Row(
+                children: [
+                  Icon(icon, size: 18, color: color),
+                  const SizedBox(width: 8),
+                  Text(
+                    title.toUpperCase(),
+                    style: TextStyle(
+                      color: color,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 13,
+                      letterSpacing: 1,
+                    ),
                   ),
+                  const Spacer(),
+                  Text(
+                    time,
+                    style: TextStyle(
+                      color: Colors.grey[500],
+                      fontSize: 11,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  if (isCurrentMeal) ...[
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: color,
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: const Text(
+                        "NOW",
+                        style: TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            // Image (tappable with zoom)
+            if (imageUrl != null && imageUrl.isNotEmpty)
+              GestureDetector(
+                onTap: () => _showFullImageViewer(imageUrl, title),
+                child: Stack(
+                  children: [
+                    Image.network(
+                      imageUrl,
+                      height: 160,
+                      width: double.infinity,
+                      fit: BoxFit.cover,
+                      loadingBuilder: (context, child, progress) {
+                        if (progress == null) return child;
+                        return Container(height: 160, color: Colors.grey.shade100,
+                          child: const Center(child: CircularProgressIndicator()));
+                      },
+                      errorBuilder: (context, error, stack) => const SizedBox.shrink(),
+                    ),
+                    Positioned(
+                      bottom: 8, right: 8,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(color: Colors.black54, borderRadius: BorderRadius.circular(8)),
+                        child: const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.zoom_in, color: Colors.white, size: 14),
+                            SizedBox(width: 4),
+                            Text('Tap to zoom', style: TextStyle(color: Colors.white, fontSize: 11)),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
-            ],
-          ),
+            // Text items as bullet list
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: itemList.isEmpty
+                  ? Text(
+                      "Menu not set",
+                      style: TextStyle(fontSize: 14, color: Colors.grey[500], fontStyle: FontStyle.italic),
+                    )
+                  : Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: itemList.map((item) => Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 3),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Container(
+                              margin: const EdgeInsets.only(top: 6, right: 8),
+                              width: 6, height: 6,
+                              decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+                            ),
+                            Expanded(
+                              child: Text(
+                                item,
+                                style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: Color(0xFF002244)),
+                              ),
+                            ),
+                          ],
+                        ),
+                      )).toList(),
+                    ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showFullImageViewer(String imageUrl, String title) {
+    showDialog(
+      context: context,
+      barrierColor: Colors.black.withValues(alpha: 0.9),
+      builder: (context) => Dialog(
+        backgroundColor: Colors.transparent,
+        insetPadding: EdgeInsets.zero,
+        child: Stack(
+          children: [
+            InteractiveViewer(
+              panEnabled: true,
+              minScale: 0.5,
+              maxScale: 5.0,
+              child: Center(
+                child: Image.network(
+                  imageUrl,
+                  fit: BoxFit.contain,
+                  loadingBuilder: (context, child, progress) {
+                    if (progress == null) return child;
+                    return const Center(child: CircularProgressIndicator(color: Colors.white));
+                  },
+                  errorBuilder: (context, error, stack) =>
+                      const Icon(Icons.broken_image, color: Colors.white54, size: 64),
+                ),
+              ),
+            ),
+            Positioned(
+              top: 0, left: 0, right: 0,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [Colors.black.withValues(alpha: 0.7), Colors.transparent],
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Text('$title Menu',
+                      style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+                    const Spacer(),
+                    IconButton(
+                      onPressed: () => Navigator.pop(context),
+                      icon: const Icon(Icons.close, color: Colors.white, size: 28),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            Positioned(
+              bottom: 24, left: 0, right: 0,
+              child: Center(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(color: Colors.black54, borderRadius: BorderRadius.circular(20)),
+                  child: const Text('Pinch to zoom • Swipe to pan',
+                    style: TextStyle(color: Colors.white70, fontSize: 12)),
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );
