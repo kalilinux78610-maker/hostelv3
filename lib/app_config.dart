@@ -50,7 +50,7 @@ class AppConfig {
   static const List<String> hostels = [
     "NGP Boy's Hostel",
     "NGPP Boy's Hostel",
-    "Nilanbhai Vyas Boys' Hostel",
+    "Nalinbhai Vyas Boys' Hostel",
     "Workshop Boy's Hostel",
     "Workshop Girl's Hostel",
     "Sardar Hostel (Piplawali)",
@@ -61,7 +61,7 @@ class AppConfig {
   static const Map<String, String> hostelCodes = {
     "NGP Boy's Hostel": "NGP",
     "NGPP Boy's Hostel": "NGPP",
-    "Nilanbhai Vyas Boys' Hostel": "NVBH",
+    "Nalinbhai Vyas Boys' Hostel": "NVBH",
     "Workshop Boy's Hostel": "WBH",
     "Sardar Hostel (Piplawali)": "SH",
     "Workshop Girl's Hostel": "WGH",

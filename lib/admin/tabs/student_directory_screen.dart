@@ -893,6 +893,17 @@ class _StudentDirectoryScreenState extends State<StudentDirectoryScreen> {
     String? selectedBloodGroup = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'].contains(currentData['bloodGroup']) ? currentData['bloodGroup'] : null;
     String? selectedCategory = ['Degree', 'Diploma'].contains(currentData['category']) ? currentData['category'] : null;
     String? selectedYear = ['1', '2', '3', '4'].contains(currentData['year']) ? currentData['year'] : null;
+    
+    // Determine existing hostel value (ensure it's a valid short code)
+    String? existingHostelRaw = currentData['assignedHostel'] ?? currentData['hostel'];
+    String? selectedHostel;
+    if (existingHostelRaw != null) {
+      if (AppConfig.hostelCodes.values.contains(existingHostelRaw)) {
+        selectedHostel = existingHostelRaw;
+      } else if (AppConfig.hostelCodes.containsKey(existingHostelRaw)) {
+        selectedHostel = AppConfig.hostelCodes[existingHostelRaw];
+      }
+    }
 
     showDialog(
       context: context,
@@ -965,6 +976,21 @@ class _StudentDirectoryScreenState extends State<StudentDirectoryScreen> {
                   ),
                 ),
                 const SizedBox(height: 12),
+                InputDecorator(
+                  decoration: const InputDecoration(labelText: 'Assign Hostel'),
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton<String>(
+                      value: selectedHostel,
+                      isDense: true,
+                      hint: const Text("Select Hostel"),
+                      items: AppConfig.hostelCodes.values
+                          .map((h) => DropdownMenuItem(value: h, child: Text(AppConfig.getFullHostelName(h))))
+                          .toList(),
+                      onChanged: (val) => setState(() => selectedHostel = val),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
                 TextField(controller: floorController, decoration: const InputDecoration(labelText: 'Floor')),
                 const SizedBox(height: 12),
                 TextField(controller: roomController, decoration: const InputDecoration(labelText: 'Room Number')),
@@ -996,6 +1022,8 @@ class _StudentDirectoryScreenState extends State<StudentDirectoryScreen> {
                     'bloodGroup': selectedBloodGroup,
                     'email': newEmail,
                     'institute': instituteController.text.trim(),
+                    'assignedHostel': selectedHostel,
+                    'hostel': _getLongHostelName(selectedHostel),
                     'category': selectedCategory,
                     'branch': departmentController.text.trim(),
                     'year': selectedYear,

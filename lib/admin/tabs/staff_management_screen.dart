@@ -181,6 +181,7 @@ class _StaffManagementScreenState extends State<StaffManagementScreen> {
                         _buildRoleBox(context, 'HOD', Icons.school),
                         _buildRoleBox(context, 'Rector', Icons.home_work),
                         _buildRoleBox(context, 'Guard', Icons.security),
+                        _buildRoleBox(context, 'Mess Manager', Icons.restaurant),
                       ],
                     ),
                   ),
