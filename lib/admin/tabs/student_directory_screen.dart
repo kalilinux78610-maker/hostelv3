@@ -626,6 +626,19 @@ class _StudentDirectoryScreenState extends State<StudentDirectoryScreen> {
                         ],
                       ),
                     ),
+                      Container(
+                        margin: const EdgeInsets.only(right: 8),
+                        decoration: BoxDecoration(
+                          color: Colors.blue.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: IconButton(
+                          icon: const Icon(Icons.edit_outlined, color: Colors.blue, size: 20),
+                          onPressed: () => _showEditStudentDialog(context, uid, data, isPending: isPending),
+                          padding: const EdgeInsets.all(8),
+                          constraints: const BoxConstraints(),
+                        ),
+                      ),
                     if (onDelete != null)
                       Container(
                         margin: const EdgeInsets.only(right: 8),
@@ -862,5 +875,172 @@ class _StudentDirectoryScreenState extends State<StudentDirectoryScreen> {
       if (entry.value == code) return entry.key;
     }
     return code;
+  }
+
+  void _showEditStudentDialog(BuildContext context, String docId, Map<String, dynamic> currentData, {bool isPending = true}) {
+    final nameController = TextEditingController(text: currentData['name'] ?? '');
+    final enrollmentNoController = TextEditingController(text: currentData['enrollmentNo'] ?? '');
+    final emailController = TextEditingController(text: currentData['email'] ?? '');
+    final instituteController = TextEditingController(text: currentData['institute'] ?? '');
+    final departmentController = TextEditingController(text: currentData['branch'] ?? currentData['department'] ?? '');
+    final roomController = TextEditingController(text: currentData['room'] ?? '');
+    final floorController = TextEditingController(text: currentData['floor'] ?? '');
+    final phoneController = TextEditingController(text: currentData['phone'] ?? currentData['contactNo'] ?? currentData['mobile'] ?? '');
+    final fatherPhoneController = TextEditingController(text: currentData['fatherPhone'] ?? currentData['fatherMobile'] ?? currentData['parentContact'] ?? '');
+    final motherPhoneController = TextEditingController(text: currentData['motherPhone'] ?? currentData['motherMobile'] ?? '');
+    
+    String? selectedGender = ['Male', 'Female', 'Other'].contains(currentData['gender']) ? currentData['gender'] : null;
+    String? selectedBloodGroup = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'].contains(currentData['bloodGroup']) ? currentData['bloodGroup'] : null;
+    String? selectedCategory = ['Degree', 'Diploma'].contains(currentData['category']) ? currentData['category'] : null;
+    String? selectedYear = ['1', '2', '3', '4'].contains(currentData['year']) ? currentData['year'] : null;
+
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          title: Text(isPending ? 'Edit Pre-registered Student' : 'Edit Active Student'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(controller: nameController, decoration: const InputDecoration(labelText: 'Full Name')),
+                const SizedBox(height: 12),
+                TextField(controller: enrollmentNoController, decoration: const InputDecoration(labelText: 'Enrollment No.')),
+                const SizedBox(height: 12),
+                InputDecorator(
+                  decoration: const InputDecoration(labelText: 'Gender'),
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton<String>(
+                      value: selectedGender,
+                      isDense: true,
+                      hint: const Text("Select Gender"),
+                      items: ['Male', 'Female', 'Other'].map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
+                      onChanged: (val) => setState(() => selectedGender = val),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                InputDecorator(
+                  decoration: const InputDecoration(labelText: 'Blood Group'),
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton<String>(
+                      value: selectedBloodGroup,
+                      isDense: true,
+                      hint: const Text("Select Blood Group"),
+                      items: ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'].map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
+                      onChanged: (val) => setState(() => selectedBloodGroup = val),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(controller: emailController, decoration: const InputDecoration(labelText: 'Email (Required)'), keyboardType: TextInputType.emailAddress),
+                const SizedBox(height: 12),
+                TextField(controller: instituteController, decoration: const InputDecoration(labelText: 'Institute')),
+                const SizedBox(height: 12),
+                InputDecorator(
+                  decoration: const InputDecoration(labelText: 'Category'),
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton<String>(
+                      value: selectedCategory,
+                      isDense: true,
+                      hint: const Text("Select Category"),
+                      items: ['Degree', 'Diploma'].map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
+                      onChanged: (val) => setState(() => selectedCategory = val),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(controller: departmentController, decoration: const InputDecoration(labelText: 'Department / Branch')),
+                const SizedBox(height: 12),
+                InputDecorator(
+                  decoration: const InputDecoration(labelText: 'Year'),
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton<String>(
+                      value: selectedYear,
+                      isDense: true,
+                      hint: const Text("Select Year"),
+                      items: ['1', '2', '3', '4'].map((y) => DropdownMenuItem(value: y, child: Text("Year $y"))).toList(),
+                      onChanged: (val) => setState(() => selectedYear = val),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(controller: floorController, decoration: const InputDecoration(labelText: 'Floor')),
+                const SizedBox(height: 12),
+                TextField(controller: roomController, decoration: const InputDecoration(labelText: 'Room Number')),
+                const SizedBox(height: 12),
+                TextField(controller: phoneController, decoration: const InputDecoration(labelText: 'My Phone No.'), keyboardType: TextInputType.phone),
+                const SizedBox(height: 12),
+                TextField(controller: fatherPhoneController, decoration: const InputDecoration(labelText: 'Father Mobile'), keyboardType: TextInputType.phone),
+                const SizedBox(height: 12),
+                TextField(controller: motherPhoneController, decoration: const InputDecoration(labelText: 'Mother Mobile'), keyboardType: TextInputType.phone),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+            ElevatedButton(
+              onPressed: () async {
+                final newEmail = emailController.text.trim();
+                if (newEmail.isEmpty || !newEmail.contains('@')) {
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please enter a valid email')));
+                  return;
+                }
+                
+                try {
+                  final newData = {
+                    ...currentData,
+                    'name': nameController.text.trim(),
+                    'enrollmentNo': enrollmentNoController.text.trim(),
+                    'gender': selectedGender,
+                    'bloodGroup': selectedBloodGroup,
+                    'email': newEmail,
+                    'institute': instituteController.text.trim(),
+                    'category': selectedCategory,
+                    'branch': departmentController.text.trim(),
+                    'year': selectedYear,
+                    'floor': floorController.text.trim(),
+                    'room': roomController.text.trim(),
+                    'phone': phoneController.text.trim(),
+                    'mobile': phoneController.text.trim(), // Keep both in sync for active users
+                    'fatherPhone': fatherPhoneController.text.trim(),
+                    'fatherMobile': fatherPhoneController.text.trim(),
+                    'motherPhone': motherPhoneController.text.trim(),
+                    'motherMobile': motherPhoneController.text.trim(),
+                    'updatedAt': FieldValue.serverTimestamp(),
+                  };
+
+                  if (isPending) {
+                    if (newEmail != docId) {
+                      await FirebaseFirestore.instance.collection('student_imports').doc(newEmail).set(newData);
+                      await FirebaseFirestore.instance.collection('student_imports').doc(docId).delete();
+                    } else {
+                      await FirebaseFirestore.instance.collection('student_imports').doc(docId).update(newData);
+                    }
+                  } else {
+                    // For active students, update the users collection directly
+                    await FirebaseFirestore.instance.collection('users').doc(docId).update(newData);
+                  }
+
+                  if (context.mounted) {
+                    Navigator.pop(context);
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Student details updated successfully!')));
+                  }
+                } catch (e) {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+                  }
+                }
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF002244),
+                foregroundColor: Colors.white,
+              ),
+              child: const Text('Save Changes'),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
