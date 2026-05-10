@@ -225,16 +225,21 @@ class _StudentDirectoryScreenState extends State<StudentDirectoryScreen> {
                   if (!matchesSearch) return false;
 
                   // 2. Hostel Filter
-                  final String rawHostel = data['assignedHostel'] ?? data['hostel'] ?? '';
-                  final String fullHostelName = rawHostel.isNotEmpty ? AppConfig.getFullHostelName(rawHostel) : AppConfig.hostels.first;
-                  if (_selectedHostel != "All" && fullHostelName != _selectedHostel) {
-                    return false;
+                  if (_selectedHostel != "All") {
+                    final String rawHostel = (data['assignedHostel'] ?? data['hostel'] ?? '').toString().trim();
+                    if (rawHostel.isEmpty) return false;
+                    // rawHostel can be a short code (NGP) or full name — handle both
+                    final String resolvedFull = AppConfig.hostelCodes.containsKey(rawHostel)
+                        ? rawHostel // it's already a full name key
+                        : AppConfig.getFullHostelName(rawHostel); // convert short code to full name
+                    if (resolvedFull != _selectedHostel) return false;
                   }
 
                   // 3. Branch Filter
-                  final branch = data['branch'] ?? 'CS'; // Default/Mock
-                  if (_selectedBranch != "All" && branch != _selectedBranch) {
-                    return false;
+                  if (_selectedBranch != "All") {
+                    final branch = (data['branch'] ?? '').toString().trim();
+                    if (branch.isEmpty) return false;
+                    if (branch.toLowerCase() != _selectedBranch.toLowerCase()) return false;
                   }
 
                   // 4. Year Filter
