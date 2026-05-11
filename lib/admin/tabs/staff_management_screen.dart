@@ -271,7 +271,6 @@ class _StaffListScreenState extends State<StaffListScreen> {
     final mobileController = TextEditingController(text: staff?.mobile ?? '');
     final emailController = TextEditingController(text: staff?.email ?? '');
     String role = staff?.role ?? widget.role; // Default to this screen's role
-    String? shift = staff?.assignedShift;
     String? category = staff?.assignedCategory;
     List<String> assignedBranches = staff?.assignedBranches?.toList() ?? [];
     if (assignedBranches.isEmpty && staff?.assignedBranch != null) {
@@ -359,25 +358,6 @@ class _StaffListScreenState extends State<StaffListScreen> {
                   ),
                   const SizedBox(height: 12),
                 ],
-                if (role.toUpperCase() != 'HOD') ...[
-                  DropdownButtonFormField<String>(
-                    initialValue: shift,
-                    decoration: const InputDecoration(labelText: 'Assign Shift'),
-                    items: [
-                      const DropdownMenuItem(value: null, child: Text("None")),
-                      const DropdownMenuItem(
-                        value: "Day",
-                        child: Text("Day (8am-8pm)"),
-                      ),
-                      const DropdownMenuItem(
-                        value: "Night",
-                        child: Text("Night (8pm-8am)"),
-                      ),
-                    ],
-                    onChanged: (val) => shift = val,
-                  ),
-                  const SizedBox(height: 12),
-                ],
                 const Text('Assign Hostels', style: TextStyle(fontSize: 12, color: Colors.grey)),
                 const SizedBox(height: 8),
                 Wrap(
@@ -434,7 +414,6 @@ class _StaffListScreenState extends State<StaffListScreen> {
                           mobile: mobileController.text.trim(),
                           email: emailController.text.trim().toLowerCase(),
                           isActive: true, // Default active
-                          assignedShift: shift,
                           assignedHostel: assignedHostels.isNotEmpty ? assignedHostels.first : null,
                           assignedHostels: assignedHostels,
                           assignedCategory: category,
@@ -614,7 +593,7 @@ class _StaffListScreenState extends State<StaffListScreen> {
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            '${staff.role} • ${staff.assignedShift ?? "No Shift"} • ${staff.assignedHostels?.isNotEmpty == true ? staff.assignedHostels!.join(", ") : (staff.assignedHostel ?? "Global")}',
+                            '${staff.role} • ${staff.assignedHostels?.isNotEmpty == true ? staff.assignedHostels!.join(", ") : (staff.assignedHostel ?? "Global")}',
                             style: GoogleFonts.inter(
                               fontSize: 13,
                               color: Colors.grey[600],
@@ -628,6 +607,10 @@ class _StaffListScreenState extends State<StaffListScreen> {
                       icon: const Icon(Icons.edit, color: Colors.grey),
                       onPressed: () => _showAddEditDialog(staff: staff),
                     ),
+                    IconButton(
+                      icon: const Icon(Icons.delete, color: Colors.red),
+                      onPressed: () => _confirmDeleteStaff(staff),
+                    ),
                   ],
                 ),
               );
@@ -636,5 +619,52 @@ class _StaffListScreenState extends State<StaffListScreen> {
         },
       ),
     );
+  }
+
+  Future<void> _confirmDeleteStaff(StaffMember staff) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete Staff?'),
+        content: Text('Are you sure you want to delete "${staff.name}"?\n\nThis action cannot be undone.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      try {
+        await widget.repository.deleteStaff(staff.id);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Staff deleted successfully'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Error deleting staff: $e'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    }
   }
 }

@@ -722,6 +722,55 @@ class _RecentRequestsListState extends State<_RecentRequestsList> {
           else
             _buildOutingStepper(rectorStep),
 
+          // ── Rejection info banner ────────────────────────────────
+          if (isRejected) ...[
+            const SizedBox(height: 12),
+            Builder(builder: (context) {
+              final rejectedBy = (data['rejectedBy'] ?? '').toString();
+              final rejectionReason = (data['rejectionReason'] ?? '').toString();
+              final byLabel = rejectedBy.isNotEmpty ? rejectedBy : 'Authority';
+              return Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFE5E5),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.red.shade200),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(Icons.cancel_outlined, size: 15, color: Colors.red.shade600),
+                        const SizedBox(width: 6),
+                        Text(
+                          'Rejected by $byLabel',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.red.shade700,
+                          ),
+                        ),
+                      ],
+                    ),
+                    if (rejectionReason.isNotEmpty) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        rejectionReason,
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.red.shade600,
+                          fontStyle: FontStyle.italic,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              );
+            }),
+          ],
+
           // ── Cancel button ────────────────────────────────────────
           if (canCancel && docId != null) ...
             [

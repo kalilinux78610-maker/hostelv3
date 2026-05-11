@@ -464,7 +464,19 @@ class _ApplyLeaveScreenState extends State<ApplyLeaveScreen> {
   Widget _buildTypeButton(String type, Color primaryColor) {
     final bool isSelected = _leaveType == type;
     return GestureDetector(
-      onTap: () => setState(() => _leaveType = type),
+      onTap: () {
+        if (_leaveType != type) {
+          setState(() {
+            _leaveType = type;
+            // Reset form fields when switching leave type
+            _fromDate = null;
+            _fromTime = null;
+            _toDate = null;
+            _toTime = null;
+            _reasonController.clear();
+          });
+        }
+      },
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 12),
         decoration: BoxDecoration(

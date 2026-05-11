@@ -536,6 +536,8 @@ class _PendingRequestsListState extends State<PendingRequestsList> {  Future<voi
       return;
     }
 
+    final TextEditingController reasonController = TextEditingController();
+
     final confirmed = await showDialog<bool>(
       context: context,
       barrierDismissible: false,
@@ -606,6 +608,29 @@ class _PendingRequestsListState extends State<PendingRequestsList> {  Future<voi
                   height: 1.5,
                 ),
               ),
+              if (status == 'rejected') ...[
+                const SizedBox(height: 16),
+                Material(
+                  color: Colors.transparent,
+                  child: TextField(
+                    controller: reasonController,
+                    style: const TextStyle(color: Colors.white),
+                    decoration: InputDecoration(
+                      labelText: "Reason for rejection (Optional)",
+                      labelStyle: TextStyle(color: Colors.white.withValues(alpha: 0.7)),
+                      enabledBorder: OutlineInputBorder(
+                        borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.3)),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderSide: const BorderSide(color: Colors.white),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    maxLines: 2,
+                  ),
+                ),
+              ],
               const SizedBox(height: 22),
               Row(
                 children: [
@@ -688,6 +713,10 @@ class _PendingRequestsListState extends State<PendingRequestsList> {  Future<voi
         } else {
           updateData['rectorStatus'] = 'rejected';
           updateData['status'] = 'rejected';
+          updateData['rejectedBy'] = 'Rector';
+          if (reasonController.text.trim().isNotEmpty) {
+            updateData['rejectionReason'] = reasonController.text.trim();
+          }
         }
         await FirebaseFirestore.instance
             .collection('leave_requests')
@@ -733,6 +762,50 @@ class _PendingRequestsListState extends State<PendingRequestsList> {  Future<voi
     Map<String, dynamic> requestData,
     String status,
   ) async {
+    String? rejectionReason;
+    if (status == 'rejected') {
+      final reasonController = TextEditingController();
+      final bool? confirm = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          backgroundColor: Colors.white,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: const Text("Reject Request", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.red)),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text("Please provide a reason for rejecting this request:"),
+              const SizedBox(height: 16),
+              TextField(
+                controller: reasonController,
+                decoration: InputDecoration(
+                  labelText: "Reason (Optional)",
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  isDense: true,
+                ),
+                maxLines: 2,
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text("Cancel"),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
+              child: const Text("Reject"),
+            ),
+          ],
+        ),
+      );
+
+      if (confirm != true) return;
+      rejectionReason = reasonController.text.trim();
+    }
+
     try {
       final updateData = <String, dynamic>{};
       if (status == 'approved') {
@@ -741,6 +814,10 @@ class _PendingRequestsListState extends State<PendingRequestsList> {  Future<voi
       } else {
         updateData['rectorStatus'] = 'rejected';
         updateData['status'] = 'rejected';
+        updateData['rejectedBy'] = 'Rector';
+        if (rejectionReason != null && rejectionReason.isNotEmpty) {
+          updateData['rejectionReason'] = rejectionReason;
+        }
       }
 
       await FirebaseFirestore.instance

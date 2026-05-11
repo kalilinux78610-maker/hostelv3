@@ -631,7 +631,6 @@ class WardenDepartmentRequestsScreen extends StatefulWidget {
   final String branch;
   final String category;
   final List<String> assignedHostels;
-  static const Color _primaryColor = Color(0xFF002244);
 
   const WardenDepartmentRequestsScreen({
     super.key,
@@ -721,6 +720,8 @@ class _WardenDepartmentRequestsScreenState
       return;
     }
 
+    final TextEditingController reasonController = TextEditingController();
+
     final confirmed = await showDialog<bool>(
       context: context,
       barrierDismissible: false,
@@ -790,6 +791,32 @@ class _WardenDepartmentRequestsScreenState
                   height: 1.5,
                 ),
               ),
+              if (status != 'approved') ...[
+                const SizedBox(height: 16),
+                Material(
+                  color: Colors.transparent,
+                  child: TextField(
+                    controller: reasonController,
+                    style: const TextStyle(color: Colors.white),
+                    decoration: InputDecoration(
+                      labelText: "Rejection Reason (Optional)",
+                      labelStyle: TextStyle(color: Colors.white.withValues(alpha: 0.7)),
+                      hintText: "Reason for all rejections...",
+                      hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.4)),
+                      enabledBorder: OutlineInputBorder(
+                        borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.3)),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderSide: const BorderSide(color: Colors.white),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      isDense: true,
+                    ),
+                    maxLines: 2,
+                  ),
+                ),
+              ],
               const SizedBox(height: 22),
               Row(
                 children: [
@@ -869,6 +896,7 @@ class _WardenDepartmentRequestsScreenState
       duration: const Duration(seconds: 2),
     ));
 
+    final String reason = reasonController.text.trim();
     int successCount = 0;
     for (final doc in docs) {
       try {
@@ -1087,12 +1115,18 @@ class _WardenDepartmentRequestsScreenState
   }
 
   void _showApproveDialog(BuildContext context, String docId, Map<String, dynamic> data) {
+    final TextEditingController reasonController = TextEditingController();
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
       builder: (context) => Padding(
-        padding: const EdgeInsets.all(24),
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+          left: 24,
+          right: 24,
+          top: 24,
+        ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1105,12 +1139,23 @@ class _WardenDepartmentRequestsScreenState
             const SizedBox(height: 12),
             const Text("Reason:", style: TextStyle(fontWeight: FontWeight.bold)),
             Text(data['reason'] ?? 'N/A', style: const TextStyle(fontStyle: FontStyle.italic)),
+            const SizedBox(height: 16),
+            TextField(
+              controller: reasonController,
+              decoration: InputDecoration(
+                labelText: "Rejection Reason (Optional)",
+                hintText: "Enter reason if rejecting...",
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                isDense: true,
+              ),
+              maxLines: 2,
+            ),
             const SizedBox(height: 24),
             Row(
               children: [
                 Expanded(
                   child: OutlinedButton(
-                    onPressed: () => _updateStatus(context, docId, data, 'rejected'),
+                    onPressed: () => _updateStatus(context, docId, data, 'rejected', reason: reasonController.text.trim()),
                     style: OutlinedButton.styleFrom(
                       foregroundColor: Colors.red,
                       side: const BorderSide(color: Colors.red),

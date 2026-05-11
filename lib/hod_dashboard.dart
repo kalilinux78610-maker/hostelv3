@@ -16,7 +16,6 @@ class HodDashboardScreen extends StatefulWidget {
 
 class _HodDashboardScreenState extends State<HodDashboardScreen> {
   int _selectedIndex = 0;
-  static const Color _primaryColor = Color(0xFF002244);
 
   late final List<Widget> _widgetOptions;
 
@@ -105,7 +104,6 @@ class _HodHomeTabState extends State<HodHomeTab> {
   static const Color _primaryColor = Color(0xFF001833);
   static const Color _accentOrange = Color(0xFFF2994A);
   static const Color _accentGreen = Color(0xFF27AE60);
-  static const Color _blueSelected = Color(0xFF2F80ED);
 
   String? _category;
   String? _branch;
@@ -114,8 +112,7 @@ class _HodHomeTabState extends State<HodHomeTab> {
   String? _name;
   bool _isLoading = true;
 
-  int _internalTabIndex = 0; // 0: Requests, 1: Approved, 2: Passes
-  String _selectedFilter = 'All'; // All, Home Leave, Medical Leave, Emergency Leave
+  final int _internalTabIndex = 0; // 0: Requests, 1: Approved, 2: Passes
   String _searchQuery = '';
 
   @override
@@ -183,7 +180,12 @@ class _HodHomeTabState extends State<HodHomeTab> {
     }
   }
 
-  bool _matchesAssignedBranch(String docBranch) {
+  bool _matchesAssignedBranch(String docBranch, String? docCategory) {
+    // First check category matches
+    if (_category != null && _category!.isNotEmpty && docCategory != _category) {
+      return false;
+    }
+    // Then check branch
     if (_branches.isNotEmpty) {
       return _branches.contains(docBranch);
     }
@@ -344,6 +346,9 @@ class _HodHomeTabState extends State<HodHomeTab> {
       return;
     }
 
+    // For bulk reject, collect a shared reason
+    final TextEditingController bulkReasonController = TextEditingController();
+
     // Confirm dialog
     final confirmed = await showDialog<bool>(
       context: context,
@@ -412,6 +417,30 @@ class _HodHomeTabState extends State<HodHomeTab> {
                   height: 1.5,
                 ),
               ),
+              // Rejection reason field (only for reject action)
+              if (action == 'reject') ...[
+                const SizedBox(height: 14),
+                TextField(
+                  controller: bulkReasonController,
+                  style: const TextStyle(color: Colors.white),
+                  decoration: InputDecoration(
+                    labelText: 'Rejection Reason (Optional)',
+                    labelStyle: TextStyle(color: Colors.white.withValues(alpha: 0.7)),
+                    hintText: 'e.g. Exam period...',
+                    hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.4)),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                      borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.2)),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                      borderSide: const BorderSide(color: Colors.redAccent),
+                    ),
+                    isDense: true,
+                  ),
+                  maxLines: 2,
+                ),
+              ],
               const SizedBox(height: 22),
               Row(
                 children: [
@@ -474,12 +503,8 @@ class _HodHomeTabState extends State<HodHomeTab> {
 
     if (confirmed != true || !context.mounted) return;
 
-    // Ask reason before bulk reject
-    String? bulkRejectionReason;
-    if (action == 'reject') {
-      bulkRejectionReason = await _askRejectionReason(context);
-      if (bulkRejectionReason == null) return; // cancelled
-    }
+    // Use reason from the inline text field
+    final bulkRejectionReason = bulkReasonController.text.trim();
 
     // Show loading
     if (!context.mounted) return;
@@ -503,7 +528,7 @@ class _HodHomeTabState extends State<HodHomeTab> {
         } else {
           updateData['hodStatus'] = 'rejected';
           updateData['status'] = 'rejected';
-          updateData['rejectionReason'] = bulkRejectionReason!.isNotEmpty
+          updateData['rejectionReason'] = bulkRejectionReason.isNotEmpty
               ? bulkRejectionReason
               : 'No reason provided';
           updateData['rejectedBy'] = 'HOD';
@@ -531,7 +556,7 @@ class _HodHomeTabState extends State<HodHomeTab> {
             relatedRequestId: doc.id,
           );
         } else {
-          final reason = bulkRejectionReason!.isNotEmpty ? bulkRejectionReason : 'No reason provided';
+          final reason = bulkRejectionReason.isNotEmpty ? bulkRejectionReason : 'No reason provided';
           await NotificationRepository().sendNotification(
             title: "Request Rejected by HOD",
             message: "HOD rejected your leave application. Reason: $reason",
@@ -773,9 +798,10 @@ class _HodHomeTabState extends State<HodHomeTab> {
 
         docs = docs.where((doc) {
           final data = doc.data() as Map<String, dynamic>;
+          final docCategory = CanonicalNames.canonicalizeCategory(data['category']?.toString() ?? '');
           final docBranch = CanonicalNames.canonicalizeBranch(
             data['branch']?.toString() ?? '',
-            data['category']?.toString() ?? '',
+            docCategory,
           );
           final docCategory = CanonicalNames.canonicalizeCategory(
             data['category']?.toString() ?? '',
@@ -1046,13 +1072,15 @@ class _HodHomeTabState extends State<HodHomeTab> {
                                         final categoryMatch = !hodHasCategory ||
                                             !requestHasCategory ||
                                             docCategory.toLowerCase() == _category!.toLowerCase();
+                                        final docCat = docCategory;
                                         return data['type'] == 'Home' &&
                                             categoryMatch &&
                                             _matchesAssignedBranch(
                                               CanonicalNames.canonicalizeBranch(
                                                 data['branch']?.toString() ?? '',
-                                                data['category']?.toString() ?? '',
+                                                docCat,
                                               ),
+                                              docCat,
                                             );
                                       }).length;
                                     }
@@ -1118,13 +1146,15 @@ class _HodHomeTabState extends State<HodHomeTab> {
                                         final categoryMatch = !hodHasCategory ||
                                             !requestHasCategory ||
                                             docCategory.toLowerCase() == _category!.toLowerCase();
+                                        final docCat = docCategory;
                                         return data['type'] == 'Home' &&
                                             categoryMatch &&
                                             _matchesAssignedBranch(
                                               CanonicalNames.canonicalizeBranch(
                                                 data['branch']?.toString() ?? '',
-                                                data['category']?.toString() ?? '',
+                                                docCat,
                                               ),
+                                              docCat,
                                             );
                                       }).length;
                                     }
@@ -1234,6 +1264,7 @@ class HodListTab extends StatefulWidget {
 }
 
 class _HodListTabState extends State<HodListTab> {
+  String? _category;
   String? _branch;
   List<String> _branches = [];
   bool _isLoading = true;
@@ -1268,6 +1299,7 @@ class _HodListTabState extends State<HodListTab> {
             assignedBranches.insert(0, primaryBranch);
           }
           setState(() {
+            _category = category;
             _branch = primaryBranch;
             _branches = assignedBranches;
             _isLoading = false;
@@ -1277,7 +1309,12 @@ class _HodListTabState extends State<HodListTab> {
     }
   }
 
-  bool _matchesAssignedBranch(String docBranch) {
+  bool _matchesAssignedBranch(String docBranch, String? docCategory) {
+    // First check category matches
+    if (_category != null && _category!.isNotEmpty && docCategory != _category) {
+      return false;
+    }
+    // Then check branch
     if (_branches.isNotEmpty) {
       return _branches.contains(docBranch);
     }
@@ -1488,11 +1525,12 @@ class _HodListTabState extends State<HodListTab> {
               List<QueryDocumentSnapshot> docs = snapshot.data?.docs ?? [];
               docs = docs.where((doc) {
                 final data = doc.data() as Map<String, dynamic>;
+                final docCat = CanonicalNames.canonicalizeCategory(data['category']?.toString() ?? '');
                 final docBranch = CanonicalNames.canonicalizeBranch(
                   data['branch']?.toString() ?? '',
-                  data['category']?.toString() ?? '',
+                  docCat,
                 );
-                return _matchesAssignedBranch(docBranch) && (data['type'] == 'Home');
+                return _matchesAssignedBranch(docBranch, docCat) && (data['type'] == 'Home');
               }).toList();
 
               docs.sort((a, b) {

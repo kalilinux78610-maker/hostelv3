@@ -52,3 +52,5 @@ ios/Runner/GoogleService-Info.plist
 lib/firebase_options_secret.dart
 **/service_account*.json
 **/serviceAccount*.json
+android/key.properties
+key.properties

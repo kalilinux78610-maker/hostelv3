@@ -179,7 +179,7 @@ class _BulkImportScreenState extends State<BulkImportScreen> {
 
           if (isNewFormat) {
             // New 14-column format
-            enrollmentNo = row.length > 1 ? row[1].toString().trim() : '';
+            enrollmentNo = AppConfig.formatEnrollmentNo(row.length > 1 ? row[1] : null, fallback: '');
             gender      = row.length > 2 ? row[2].toString().trim() : '';
             bloodGroup  = row.length > 3 ? row[3].toString().trim() : '';
             studentMobile = row.length > 4 ? row[4].toString().trim() : '';
@@ -275,7 +275,7 @@ class _BulkImportScreenState extends State<BulkImportScreen> {
           }
 
           updateData['name']         = row[0].toString().trim();
-          updateData['enrollmentNo'] = row.length > 1 ? row[1].toString().trim() : '';
+          updateData['enrollmentNo'] = AppConfig.formatEnrollmentNo(row.length > 1 ? row[1] : null, fallback: '');
           updateData['gender']       = row.length > 2 ? row[2].toString().trim() : '';
           updateData['bloodGroup']   = row.length > 3 ? row[3].toString().trim() : '';
           updateData['mobile']       = row.length > 4 ? row[4].toString().trim() : '';
@@ -321,100 +321,6 @@ class _BulkImportScreenState extends State<BulkImportScreen> {
     });
   }
 
-
-  Future<void> _deleteAllStudents() async {
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text("DANGER: Delete ALL Students?"),
-        content: const Text(
-          "This will permanently delete:\n\n1. ALL Pre-registered Students (Allocation List)\n2. ALL Active Student Accounts\n\nThis action cannot be undone. Are you absolutely sure?",
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text("Cancel"),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: TextButton.styleFrom(
-              foregroundColor: Colors.red,
-              backgroundColor: Colors.red[50],
-            ),
-            child: const Text("DELETE EVERYTHING"),
-          ),
-        ],
-      ),
-    );
-
-    if (confirm != true) return;
-
-    setState(() {
-      _isLoading = true;
-      _statusMessage = "Deleting all student records...";
-    });
-
-    final firestore = FirebaseFirestore.instance;
-    int deletedCount = 0;
-
-    try {
-      // 1. Delete from student_imports
-      var importsQuery = await firestore.collection('student_imports').get();
-      while (importsQuery.docs.isNotEmpty) {
-        final batch = firestore.batch();
-        for (var doc in importsQuery.docs) {
-          batch.delete(doc.reference);
-          deletedCount++;
-        }
-        await batch.commit();
-
-        // Fetch next batch if any (though usually get() returns all,
-        // strictly for massive datasets we might paginate, but standard get is likely fine for <20k docs here)
-        // To be safe against memory issues or limits, we re-fetch effectively if we were paginating,
-        // but here let's assume one fetch covers it or handle rudimentary looping if needed.
-        // Actually, for delete, best practice is to query limit.
-        // But for simplicity in this demo wrapper:
-        if (importsQuery.docs.length > 500) {
-          // If we had a limit, we would re-query.
-          // Since we did .get() without limit, we have all of them in memory.
-          // Batching committed the deletes. We are done with this collection.
-          break;
-        } else {
-          break;
-        }
-      }
-
-      // 2. Delete Users where role = student
-      var usersQuery = await firestore
-          .collection('users')
-          .where('role', isEqualTo: 'student')
-          .get();
-
-      // Batch deletes for users
-      // Note: splitting large list into chunks of 500
-      final userDocs = usersQuery.docs;
-      for (var i = 0; i < userDocs.length; i += 500) {
-        final batch = firestore.batch();
-        final end = (i + 500 < userDocs.length) ? i + 500 : userDocs.length;
-        final chunk = userDocs.sublist(i, end);
-        for (var doc in chunk) {
-          batch.delete(doc.reference);
-          deletedCount++;
-        }
-        await batch.commit();
-      }
-
-      setState(() {
-        _statusMessage = "Validation Complete. Deleted $deletedCount records.";
-        _data = []; // Clear current preview if any
-      });
-    } catch (e) {
-      setState(() => _statusMessage = "Error deleting: $e");
-      debugPrint("Delete Error: $e");
-    } finally {
-      setState(() => _isLoading = false);
-    }
-  }
 
   Future<void> _clearOperationalData() async {
     final confirm = await showDialog<bool>(
@@ -574,20 +480,6 @@ class _BulkImportScreenState extends State<BulkImportScreen> {
                   ),
 
                 const SizedBox(height: 32),
-                ElevatedButton.icon(
-                  onPressed: _deleteAllStudents,
-                  icon: const Icon(Icons.delete_forever),
-                  label: const Text("DELETE ALL STUDENTS"),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.red,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 32,
-                      vertical: 16,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16),
                 const Divider(),
                 const SizedBox(height: 16),
                 ElevatedButton.icon(

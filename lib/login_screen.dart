@@ -73,7 +73,7 @@ class _LoginScreenState extends State<LoginScreen>
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text(
-              'Please enter your enrollment email to reset password',
+              'Please enter your email to reset password',
             ),
             backgroundColor: Colors.orange,
           ),
@@ -150,7 +150,7 @@ class _LoginScreenState extends State<LoginScreen>
     });
 
     if (email.isEmpty) {
-      setState(() => _emailError = 'Enrollment Email is required');
+      setState(() => _emailError = 'Email is required');
       return;
     }
     if (password.isEmpty) {
@@ -207,7 +207,7 @@ class _LoginScreenState extends State<LoginScreen>
       if (mounted) {
         setState(() {
           if (e.code == 'user-not-found' || e.code == 'invalid-email') {
-            _emailError = 'Invalid enrollment email';
+            _emailError = 'Invalid email';
           } else if (e.code == 'wrong-password' ||
               e.code == 'invalid-credential') {
             _passwordError = 'Incorrect password';
@@ -341,7 +341,7 @@ class _LoginScreenState extends State<LoginScreen>
                                         keyboardType:
                                             TextInputType.emailAddress,
                                         decoration: InputDecoration(
-                                          hintText: 'Enter Enrollment Email',
+                                          hintText: 'Enter Email',
                                           prefixIcon: const Icon(
                                             Icons.badge_outlined,
                                             color: Colors.grey,

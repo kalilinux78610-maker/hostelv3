@@ -328,7 +328,7 @@ class _ReportsTabState extends State<ReportsTab> {
                   return ListView.separated(
                     padding: const EdgeInsets.symmetric(vertical: 8),
                     itemCount: docs.length,
-                    separatorBuilder: (_, __) => const Divider(height: 1),
+                    separatorBuilder: (_, _) => const Divider(height: 1),
                     itemBuilder: (context, index) {
                       final data = docs[index].data() as Map<String, dynamic>;
                       if (type == 'leave') {

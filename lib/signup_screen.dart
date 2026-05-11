@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'app_config.dart';
 import 'utils/canonical_names.dart';
 
 class SignUpScreen extends StatefulWidget {
@@ -49,7 +50,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
           'email': email,
           'name': importData['name'],
           'role': 'student',
-          'enrollmentNo': importData['enrollmentNo'] ?? '',
+          'enrollmentNo': AppConfig.formatEnrollmentNo(importData['enrollmentNo'], fallback: ''),
           'gender': importData['gender'] ?? '',
           'bloodGroup': importData['bloodGroup'] ?? '',
           'mobile': importData['mobile'] ?? '',
