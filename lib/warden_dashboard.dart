@@ -649,6 +649,65 @@ class _WardenDepartmentRequestsScreenState
     extends State<WardenDepartmentRequestsScreen> {
   static const Color _primaryColor = Color(0xFF002244);
 
+  // Shows a dialog asking the Warden to enter a rejection reason.
+  Future<String?> _askRejectionReason(BuildContext context) async {
+    final controller = TextEditingController();
+    return showDialog<String>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Row(
+          children: [
+            Icon(Icons.report_problem_outlined, color: Colors.red),
+            SizedBox(width: 8),
+            Text('Rejection Reason'),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Please provide a reason for rejecting this request. The student will see this reason.',
+              style: TextStyle(fontSize: 13, color: Colors.grey),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: controller,
+              maxLines: 3,
+              autofocus: true,
+              decoration: InputDecoration(
+                hintText: 'e.g. Insufficient documents, Not eligible...',
+                filled: true,
+                fillColor: Colors.grey.shade50,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide: BorderSide(color: Colors.grey.shade300),
+                ),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, null),
+            child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, controller.text.trim()),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            ),
+            child: const Text('Reject'),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _bulkUpdateStatus(
     BuildContext context,
     List<QueryDocumentSnapshot> docs,
@@ -795,6 +854,14 @@ class _WardenDepartmentRequestsScreenState
 
     if (confirmed != true || !context.mounted) return;
 
+    // Ask reason before bulk reject
+    String? bulkRejectionReason;
+    if (status == 'rejected') {
+      bulkRejectionReason = await _askRejectionReason(context);
+      if (bulkRejectionReason == null) return; // cancelled
+    }
+
+    if (!context.mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
       content: Text(status == 'approved'
           ? 'Approving $count requests...'
@@ -811,6 +878,10 @@ class _WardenDepartmentRequestsScreenState
           updateData['rectorStatus'] = 'pending';
         } else {
           updateData['status'] = 'rejected';
+          updateData['rejectionReason'] = (bulkRejectionReason != null && bulkRejectionReason.isNotEmpty)
+              ? bulkRejectionReason
+              : 'No reason provided';
+          updateData['rejectedBy'] = 'Warden';
         }
         await FirebaseFirestore.instance
             .collection('leave_requests')
@@ -838,9 +909,12 @@ class _WardenDepartmentRequestsScreenState
               relatedRequestId: doc.id,
             );
           } else {
+            final reason = (bulkRejectionReason != null && bulkRejectionReason.isNotEmpty)
+                ? bulkRejectionReason
+                : 'No reason provided';
             await NotificationRepository().sendNotification(
-              title: "Request Rejected ❌",
-              message: "Your leave request was rejected by the Warden.",
+              title: "Request Rejected by Warden ❌",
+              message: "Your leave request was rejected by the Warden. Reason: $reason",
               receiverUid: studentUid,
               type: 'leave_request',
               relatedRequestId: doc.id,
@@ -1067,12 +1141,24 @@ class _WardenDepartmentRequestsScreenState
   }
 
   Future<void> _updateStatus(BuildContext context, String docId, Map<String, dynamic> data, String status) async {
+    // If rejecting, ask for a reason first (close bottom sheet first)
+    String? rejectionReason;
+    if (status == 'rejected') {
+      Navigator.pop(context); // close bottom sheet
+      rejectionReason = await _askRejectionReason(context);
+      if (rejectionReason == null) return; // cancelled
+    }
+
     try {
       final updateData = <String, dynamic>{'wardenStatus': status};
       if (status == 'approved') {
         updateData['rectorStatus'] = 'pending';
       } else {
         updateData['status'] = 'rejected';
+        updateData['rejectionReason'] = rejectionReason!.isNotEmpty
+            ? rejectionReason
+            : 'No reason provided';
+        updateData['rejectedBy'] = 'Warden';
       }
       await FirebaseFirestore.instance.collection('leave_requests').doc(docId).update(updateData);
 
@@ -1099,9 +1185,10 @@ class _WardenDepartmentRequestsScreenState
           );
         } else {
           // Notify student: rejected
+          final reason = rejectionReason!.isNotEmpty ? rejectionReason : 'No reason provided';
           await NotificationRepository().sendNotification(
-            title: "Request Rejected ❌",
-            message: "Your leave request was rejected by the Warden.",
+            title: "Request Rejected by Warden ❌",
+            message: "Your leave request was rejected by the Warden. Reason: $reason",
             receiverUid: studentUid,
             type: 'leave_request',
             relatedRequestId: docId,
@@ -1110,7 +1197,8 @@ class _WardenDepartmentRequestsScreenState
       }
 
       if (context.mounted) {
-        Navigator.pop(context);
+        // Only pop if approved (reject already popped above)
+        if (status == 'approved') Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
           content: Text(status == 'approved' ? "Request Approved & Forwarded to Rector" : "Request Rejected"),
           backgroundColor: status == 'approved' ? Colors.green : Colors.red,

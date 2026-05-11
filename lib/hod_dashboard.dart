@@ -191,12 +191,79 @@ class _HodHomeTabState extends State<HodHomeTab> {
     return docBranch == _branch;
   }
 
+  // Shows a dialog asking the HOD to enter a rejection reason.
+  // Returns null if cancelled, empty string if submitted without reason.
+  Future<String?> _askRejectionReason(BuildContext context) async {
+    final controller = TextEditingController();
+    return showDialog<String>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Row(
+          children: [
+            Icon(Icons.report_problem_outlined, color: Colors.red),
+            SizedBox(width: 8),
+            Text('Rejection Reason'),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Please provide a reason for rejecting this request. The student will see this reason.',
+              style: TextStyle(fontSize: 13, color: Colors.grey),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: controller,
+              maxLines: 3,
+              autofocus: true,
+              decoration: InputDecoration(
+                hintText: 'e.g. Insufficient documents, Not eligible...',
+                filled: true,
+                fillColor: Colors.grey.shade50,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide: BorderSide(color: Colors.grey.shade300),
+                ),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, null), // cancelled
+            child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, controller.text.trim()),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            ),
+            child: const Text('Reject'),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _updateStatus(
     BuildContext context,
     String docId,
     Map<String, dynamic> requestData,
     String action,
   ) async {
+    // If rejecting, ask for a reason first
+    String? rejectionReason;
+    if (action == 'reject') {
+      rejectionReason = await _askRejectionReason(context);
+      if (rejectionReason == null) return; // cancelled
+    }
+
     try {
       final updateData = <String, dynamic>{};
       if (action == 'approve') {
@@ -205,6 +272,10 @@ class _HodHomeTabState extends State<HodHomeTab> {
       } else {
         updateData['hodStatus'] = 'rejected';
         updateData['status'] = 'rejected';
+        updateData['rejectionReason'] = rejectionReason!.isNotEmpty
+            ? rejectionReason
+            : 'No reason provided';
+        updateData['rejectedBy'] = 'HOD';
       }
 
       await FirebaseFirestore.instance.collection('leave_requests').doc(docId).update(updateData);
@@ -228,9 +299,10 @@ class _HodHomeTabState extends State<HodHomeTab> {
           relatedRequestId: docId,
         );
       } else {
+        final reason = rejectionReason!.isNotEmpty ? rejectionReason : 'No reason provided';
         await NotificationRepository().sendNotification(
-          title: "Request Rejected",
-          message: "HOD rejected your leave application.",
+          title: "Request Rejected by HOD",
+          message: "HOD rejected your leave application. Reason: $reason",
           receiverUid: studentUid,
           type: 'leave_request',
           relatedRequestId: docId,
@@ -402,7 +474,15 @@ class _HodHomeTabState extends State<HodHomeTab> {
 
     if (confirmed != true || !context.mounted) return;
 
+    // Ask reason before bulk reject
+    String? bulkRejectionReason;
+    if (action == 'reject') {
+      bulkRejectionReason = await _askRejectionReason(context);
+      if (bulkRejectionReason == null) return; // cancelled
+    }
+
     // Show loading
+    if (!context.mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(action == 'approve'
@@ -423,6 +503,10 @@ class _HodHomeTabState extends State<HodHomeTab> {
         } else {
           updateData['hodStatus'] = 'rejected';
           updateData['status'] = 'rejected';
+          updateData['rejectionReason'] = bulkRejectionReason!.isNotEmpty
+              ? bulkRejectionReason
+              : 'No reason provided';
+          updateData['rejectedBy'] = 'HOD';
         }
         await FirebaseFirestore.instance
             .collection('leave_requests')
@@ -447,9 +531,10 @@ class _HodHomeTabState extends State<HodHomeTab> {
             relatedRequestId: doc.id,
           );
         } else {
+          final reason = bulkRejectionReason!.isNotEmpty ? bulkRejectionReason : 'No reason provided';
           await NotificationRepository().sendNotification(
-            title: "Request Rejected",
-            message: "HOD rejected your leave application.",
+            title: "Request Rejected by HOD",
+            message: "HOD rejected your leave application. Reason: $reason",
             receiverUid: studentUid,
             type: 'leave_request',
             relatedRequestId: doc.id,
@@ -692,11 +777,22 @@ class _HodHomeTabState extends State<HodHomeTab> {
             data['branch']?.toString() ?? '',
             data['category']?.toString() ?? '',
           );
+          final docCategory = CanonicalNames.canonicalizeCategory(
+            data['category']?.toString() ?? '',
+          );
+          // Only filter by category when BOTH HOD and request have a non-empty category
+          // This avoids hiding requests from older records that may not have category saved
+          final hodHasCategory = _category != null && _category!.isNotEmpty;
+          final requestHasCategory = docCategory.isNotEmpty;
+          final categoryMatch = !hodHasCategory ||
+              !requestHasCategory ||
+              docCategory.toLowerCase() == _category!.toLowerCase();
+
           final branchMatch = _matchesAssignedBranch(docBranch);
           final nameMatch = data['name']?.toString().toLowerCase().contains(_searchQuery.toLowerCase()) ?? false;
           final isHome = data['type'] == 'Home';
 
-          return branchMatch && nameMatch && isHome;
+          return branchMatch && categoryMatch && nameMatch && isHome;
         }).toList();
 
         docs.sort((a, b) {
@@ -942,7 +1038,16 @@ class _HodHomeTabState extends State<HodHomeTab> {
                                     if (snapshot.hasData) {
                                       count = snapshot.data!.docs.where((d) {
                                         final data = d.data() as Map<String, dynamic>;
+                                        final docCategory = CanonicalNames.canonicalizeCategory(
+                                          data['category']?.toString() ?? '',
+                                        );
+                                        final hodHasCategory = _category != null && _category!.isNotEmpty;
+                                        final requestHasCategory = docCategory.isNotEmpty;
+                                        final categoryMatch = !hodHasCategory ||
+                                            !requestHasCategory ||
+                                            docCategory.toLowerCase() == _category!.toLowerCase();
                                         return data['type'] == 'Home' &&
+                                            categoryMatch &&
                                             _matchesAssignedBranch(
                                               CanonicalNames.canonicalizeBranch(
                                                 data['branch']?.toString() ?? '',
@@ -1005,7 +1110,16 @@ class _HodHomeTabState extends State<HodHomeTab> {
                                     if (snapshot.hasData) {
                                       count = snapshot.data!.docs.where((d) {
                                         final data = d.data() as Map<String, dynamic>;
+                                        final docCategory = CanonicalNames.canonicalizeCategory(
+                                          data['category']?.toString() ?? '',
+                                        );
+                                        final hodHasCategory = _category != null && _category!.isNotEmpty;
+                                        final requestHasCategory = docCategory.isNotEmpty;
+                                        final categoryMatch = !hodHasCategory ||
+                                            !requestHasCategory ||
+                                            docCategory.toLowerCase() == _category!.toLowerCase();
                                         return data['type'] == 'Home' &&
+                                            categoryMatch &&
                                             _matchesAssignedBranch(
                                               CanonicalNames.canonicalizeBranch(
                                                 data['branch']?.toString() ?? '',
