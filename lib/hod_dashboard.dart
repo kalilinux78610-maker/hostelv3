@@ -803,9 +803,7 @@ class _HodHomeTabState extends State<HodHomeTab> {
             data['branch']?.toString() ?? '',
             docCategory,
           );
-          final docCategory = CanonicalNames.canonicalizeCategory(
-            data['category']?.toString() ?? '',
-          );
+          
           // Only filter by category when BOTH HOD and request have a non-empty category
           // This avoids hiding requests from older records that may not have category saved
           final hodHasCategory = _category != null && _category!.isNotEmpty;
@@ -814,7 +812,7 @@ class _HodHomeTabState extends State<HodHomeTab> {
               !requestHasCategory ||
               docCategory.toLowerCase() == _category!.toLowerCase();
 
-          final branchMatch = _matchesAssignedBranch(docBranch);
+          final branchMatch = _matchesAssignedBranch(docBranch, docCategory);
           final nameMatch = data['name']?.toString().toLowerCase().contains(_searchQuery.toLowerCase()) ?? false;
           final isHome = data['type'] == 'Home';
 

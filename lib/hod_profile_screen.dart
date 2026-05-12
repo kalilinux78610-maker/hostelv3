@@ -29,7 +29,7 @@ class _HodProfileScreenState extends State<HodProfileScreen> {
   bool _isDepartmentLocked = false;
 
   // Categories and branches — sourced from AppConfig (single source of truth)
-  final List<String> _categories = ['Degree', 'Diploma'];
+  final List<String> _categories = ['Degree', 'Diploma', 'Pharmacy'];
   final List<String> _branches = List<String>.from(AppConfig.allBranches);
 
   @override

@@ -7,9 +7,10 @@ class StaffMember {
   final String? assignedShift; // 'Day', 'Night'
   final String? assignedHostel; // e.g., 'NGP', 'SH'
   final List<String>? assignedHostels; // For multi-hostel support (like Wardens)
-  final String? assignedCategory; // 'Degree', 'Diploma' for HOD
-  final String? assignedBranch; // e.g. 'IT & MSC-IT' for HOD
-  final List<String>? assignedBranches; // Multi-branch support for HOD
+  final String? assignedCategory; // Legacy support
+  final List<String>? assignedCategories; // Multi-category support for Wardens/HODs
+  final String? assignedBranch; 
+  final List<String>? assignedBranches; 
   final String? email;
 
   StaffMember({
@@ -22,6 +23,7 @@ class StaffMember {
     this.assignedHostel,
     this.assignedHostels,
     this.assignedCategory,
+    this.assignedCategories,
     this.assignedBranch,
     this.assignedBranches,
     this.email,
@@ -38,6 +40,7 @@ class StaffMember {
       'assignedHostel': assignedHostel,
       'assignedHostels': assignedHostels,
       'assignedCategory': assignedCategory,
+      'assignedCategories': assignedCategories,
       'assignedBranch': assignedBranch,
       'assignedBranches': assignedBranches,
       'email': email,
@@ -55,6 +58,7 @@ class StaffMember {
       assignedHostel: map['assignedHostel'],
       assignedHostels: map['assignedHostels'] != null ? List<String>.from(map['assignedHostels']) : null,
       assignedCategory: map['assignedCategory'],
+      assignedCategories: map['assignedCategories'] != null ? List<String>.from(map['assignedCategories']) : null,
       assignedBranch: map['assignedBranch'],
       assignedBranches: map['assignedBranches'] != null ? List<String>.from(map['assignedBranches']) : null,
       email: map['email'],

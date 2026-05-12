@@ -17,6 +17,7 @@ class _StudentDirectoryScreenState extends State<StudentDirectoryScreen> {
 
   // Filter States
   String _selectedHostel = "All";
+  String _selectedCategory = "All";
   String _selectedBranch = "All";
   final String _selectedYear = "All";
   bool _showPending = false; // Toggle for pending students
@@ -158,24 +159,41 @@ class _StudentDirectoryScreenState extends State<StudentDirectoryScreen> {
                   ),
                 ),
                 const SizedBox(height: 16),
-                Row(
-                  children: [
-                    _buildDropdown(
-                      "Hostel",
-                      _selectedHostel,
-                      ["All", ...AppConfig.hostels],
-                      Icons.apartment,
-                      (val) => setState(() => _selectedHostel = val!),
-                    ),
-                    const SizedBox(width: 12),
-                    _buildDropdown(
-                      "Branch",
-                      _selectedBranch,
-                      ["All", ...AppConfig.allBranches],
-                      Icons.school,
-                      (val) => setState(() => _selectedBranch = val!),
-                    ),
-                  ],
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  child: Row(
+                    children: [
+                      _buildDropdown(
+                        "Hostel",
+                        _selectedHostel,
+                        ["All", ...AppConfig.hostels],
+                        Icons.apartment,
+                        (val) => setState(() => _selectedHostel = val!),
+                      ),
+                      const SizedBox(width: 12),
+                      _buildDropdown(
+                        "Category",
+                        _selectedCategory,
+                        ["All", "Degree", "Diploma", "Pharmacy"],
+                        Icons.category,
+                        (val) => setState(() {
+                          _selectedCategory = val!;
+                          _selectedBranch = "All"; // Reset branch when category changes
+                        }),
+                      ),
+                      const SizedBox(width: 12),
+                      _buildDropdown(
+                        "Branch",
+                        _selectedBranch,
+                        _selectedCategory == "All"
+                            ? ["All", ...AppConfig.allBranches]
+                            : ["All", ...AppConfig.getBranchesForCategory(_selectedCategory)],
+                        Icons.school,
+                        (val) => setState(() => _selectedBranch = val!),
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ),
@@ -242,7 +260,14 @@ class _StudentDirectoryScreenState extends State<StudentDirectoryScreen> {
                     if (branch.toLowerCase() != _selectedBranch.toLowerCase()) return false;
                   }
 
-                  // 4. Year Filter
+                  // 4. Category Filter
+                  if (_selectedCategory != "All") {
+                    final cat = (data['category'] ?? '').toString().trim();
+                    if (cat.isEmpty) return false;
+                    if (cat.toLowerCase() != _selectedCategory.toLowerCase()) return false;
+                  }
+
+                  // 5. Year Filter
                   final year = data['year'] ?? '1'; // Default/Mock
                   if (_selectedYear != "All" &&
                       year.toString() != _selectedYear) {
@@ -280,13 +305,15 @@ class _StudentDirectoryScreenState extends State<StudentDirectoryScreen> {
           ),
           ],
         ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _showAddStudentDialog,
-        icon: const Icon(Icons.add),
-        label: const Text('Add Student', style: TextStyle(fontWeight: FontWeight.bold)),
-        backgroundColor: const Color(0xFF0052CC), // Bright blue
-        foregroundColor: Colors.white,
-      ),
+      floatingActionButton: _showPending
+          ? FloatingActionButton.extended(
+              onPressed: _showAddStudentDialog,
+              icon: const Icon(Icons.add),
+              label: const Text('Add Student', style: TextStyle(fontWeight: FontWeight.bold)),
+              backgroundColor: const Color(0xFF0052CC), // Bright blue
+              foregroundColor: Colors.white,
+            )
+          : null,
     );
   }
 
@@ -408,15 +435,15 @@ class _StudentDirectoryScreenState extends State<StudentDirectoryScreen> {
     IconData icon,
     ValueChanged<String?> onChanged,
   ) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: DropdownButtonHideUnderline(
-          child: DropdownButton<String>(
+    return Container(
+      constraints: const BoxConstraints(minWidth: 120, maxWidth: 180),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<String>(
             isExpanded: true,
             itemHeight: null, // Allow dynamic height for wrapping text
             value: validValue,
@@ -462,7 +489,6 @@ class _StudentDirectoryScreenState extends State<StudentDirectoryScreen> {
               );
             }).toList(),
             onChanged: onChanged,
-          ),
         ),
       ),
     );
@@ -720,7 +746,7 @@ class _StudentDirectoryScreenState extends State<StudentDirectoryScreen> {
                       value: selectedCategory,
                       isDense: true,
                       hint: const Text("Select Category"),
-                      items: ['Degree', 'Diploma']
+                      items: ['Degree', 'Diploma', 'Pharmacy']
                           .map((c) => DropdownMenuItem(value: c, child: Text(c)))
                           .toList(),
                       onChanged: (val) {
@@ -896,7 +922,7 @@ class _StudentDirectoryScreenState extends State<StudentDirectoryScreen> {
     
     String? selectedGender = ['Male', 'Female', 'Other'].contains(currentData['gender']) ? currentData['gender'] : null;
     String? selectedBloodGroup = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'].contains(currentData['bloodGroup']) ? currentData['bloodGroup'] : null;
-    String? selectedCategory = ['Degree', 'Diploma'].contains(currentData['category']) ? currentData['category'] : null;
+    String? selectedCategory = ['Degree', 'Diploma', 'Pharmacy'].contains(currentData['category']) ? currentData['category'] : null;
     String? selectedYear = ['1', '2', '3', '4'].contains(currentData['year']) ? currentData['year'] : null;
     
     // Determine existing hostel value (ensure it's a valid short code)
@@ -960,7 +986,7 @@ class _StudentDirectoryScreenState extends State<StudentDirectoryScreen> {
                       value: selectedCategory,
                       isDense: true,
                       hint: const Text("Select Category"),
-                      items: ['Degree', 'Diploma'].map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
+                      items: ['Degree', 'Diploma', 'Pharmacy'].map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
                       onChanged: (val) => setState(() => selectedCategory = val),
                     ),
                   ),

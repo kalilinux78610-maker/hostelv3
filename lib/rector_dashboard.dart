@@ -109,7 +109,7 @@ class _RectorDashboardState extends State<RectorDashboard> {
                     child: DropdownButton<String>(
                       value: selectedCategory,
                       isDense: true,
-                      items: ['Degree', 'Diploma']
+                      items: ['Degree', 'Diploma', 'Pharmacy']
                           .map((c) => DropdownMenuItem(value: c, child: Text(c)))
                           .toList(),
                       onChanged: (val) => setState(() => selectedCategory = val),

@@ -253,16 +253,13 @@ class StaffListScreen extends StatefulWidget {
 }
 
 class _StaffListScreenState extends State<StaffListScreen> {
-  List<String> _getAvailableBranches(String? category) {
-    final branches = [
-      ...(category == null
-          ? <String>[]
-          : AppConfig.getBranchesForCategory(category)),
-    ];
-    if (category == 'Degree' && !branches.contains('Mechanical Engineering')) {
-      branches.add('Mechanical Engineering');
+  List<String> _getAvailableBranches(List<String> categories) {
+    if (categories.isEmpty) return [];
+    Set<String> branches = {};
+    for (var cat in categories) {
+      branches.addAll(AppConfig.getBranchesForCategory(cat));
     }
-    return branches;
+    return branches.toList()..sort();
   }
 
   // Reuse the Add/Edit Dialog here for the specific role
@@ -271,7 +268,10 @@ class _StaffListScreenState extends State<StaffListScreen> {
     final mobileController = TextEditingController(text: staff?.mobile ?? '');
     final emailController = TextEditingController(text: staff?.email ?? '');
     String role = staff?.role ?? widget.role; // Default to this screen's role
-    String? category = staff?.assignedCategory;
+    List<String> assignedCategories = staff?.assignedCategories?.toList() ?? [];
+    if (assignedCategories.isEmpty && staff?.assignedCategory != null) {
+      assignedCategories.add(staff!.assignedCategory!);
+    }
     List<String> assignedBranches = staff?.assignedBranches?.toList() ?? [];
     if (assignedBranches.isEmpty && staff?.assignedBranch != null) {
       assignedBranches.add(staff!.assignedBranch!);
@@ -281,6 +281,7 @@ class _StaffListScreenState extends State<StaffListScreen> {
       assignedHostels.add(staff!.assignedHostel!);
     }
     bool isLoading = false;
+    final List<String> _categories = ['Degree', 'Diploma', 'Pharmacy'];
 
     showDialog(
       context: context,
@@ -313,18 +314,37 @@ class _StaffListScreenState extends State<StaffListScreen> {
                 ),
                 const SizedBox(height: 12),
                 if (role.toUpperCase() == 'HOD' || role.toUpperCase() == 'WARDEN') ...[
-                  DropdownButtonFormField<String>(
-                    initialValue: category,
-                    decoration: const InputDecoration(labelText: 'Category'),
-                    items: ['Degree', 'Diploma']
-                        .map((c) => DropdownMenuItem(value: c, child: Text(c)))
-                        .toList(),
-                    onChanged: (val) {
-                      setDialogState(() {
-                        category = val;
-                        assignedBranches = []; // Reset branches when category changes
-                      });
-                    },
+                  const Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      'Categories Handled',
+                      style: TextStyle(fontSize: 12, color: Colors.grey),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 4,
+                    children: _categories.map((c) {
+                      return FilterChip(
+                        label: Text(c),
+                        selected: assignedCategories.contains(c),
+                        selectedColor: const Color(0xFF002244).withValues(alpha: 0.2),
+                        checkmarkColor: const Color(0xFF002244),
+                        onSelected: (bool selected) {
+                          setDialogState(() {
+                            if (selected) {
+                              assignedCategories.add(c);
+                            } else {
+                              assignedCategories.remove(c);
+                            }
+                            // Refresh branches when categories change
+                            final available = _getAvailableBranches(assignedCategories);
+                            assignedBranches.removeWhere((b) => !available.contains(b));
+                          });
+                        },
+                      );
+                    }).toList(),
                   ),
                   const SizedBox(height: 12),
                   const Align(
@@ -338,7 +358,7 @@ class _StaffListScreenState extends State<StaffListScreen> {
                   Wrap(
                     spacing: 8,
                     runSpacing: 4,
-                    children: _getAvailableBranches(category).map((String b) {
+                    children: _getAvailableBranches(assignedCategories).map((String b) {
                       return FilterChip(
                         label: Text(b),
                         selected: assignedBranches.contains(b),
@@ -400,7 +420,7 @@ class _StaffListScreenState extends State<StaffListScreen> {
 
                       try {
                         final canonicalBranches = assignedBranches
-                            .map((b) => CanonicalNames.canonicalizeBranch(b, category))
+                            .map((b) => CanonicalNames.canonicalizeBranch(b, assignedCategories.isNotEmpty ? assignedCategories.first : null))
                             .toSet()
                             .toList();
                         final canonicalBranch =
@@ -416,7 +436,8 @@ class _StaffListScreenState extends State<StaffListScreen> {
                           isActive: true, // Default active
                           assignedHostel: assignedHostels.isNotEmpty ? assignedHostels.first : null,
                           assignedHostels: assignedHostels,
-                          assignedCategory: category,
+                          assignedCategory: assignedCategories.isNotEmpty ? assignedCategories.first : null,
+                          assignedCategories: assignedCategories,
                           assignedBranch: canonicalBranch,
                           assignedBranches: canonicalBranches,
                         );
@@ -456,8 +477,9 @@ class _StaffListScreenState extends State<StaffListScreen> {
                                   'role': userRole,
                                   'assignedHostel': assignedHostels.isNotEmpty ? assignedHostels.first : null,
                                   'assignedHostels': assignedHostels,
-                                  'category': category,
-                                  'assignedCategory': category,
+                                  'category': assignedCategories.isNotEmpty ? assignedCategories.first : null,
+                                  'assignedCategory': assignedCategories.isNotEmpty ? assignedCategories.first : null,
+                                  'assignedCategories': assignedCategories,
                                   'branch': canonicalBranch,
                                   'assignedBranch': canonicalBranch,
                                   'branches': canonicalBranches,

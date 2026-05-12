@@ -54,6 +54,7 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
     final nameController = TextEditingController(text: widget.data['name']);
     final roomController = TextEditingController(text: widget.data['room']);
     final mobileController = TextEditingController(text: widget.data['mobile']);
+    final programController = TextEditingController(text: widget.data['program'] ?? '');
     String? selectedHostel =
         widget.data['assignedHostel']; // Use consistent key
     String? selectedBranch = widget.data['branch'];
@@ -100,6 +101,13 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
                       labelText: 'Mobile Number',
                     ),
                     keyboardType: TextInputType.phone,
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: programController,
+                    decoration: const InputDecoration(
+                      labelText: 'Program (e.g. B.Tech, B.Voc, Diploma)',
+                    ),
                   ),
                   const SizedBox(height: 12),
 
@@ -186,6 +194,7 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
                           'name': nameController.text.trim(),
                           'room': roomController.text.trim(),
                           'mobile': mobileController.text.trim(),
+                          'program': programController.text.trim(),
                           'assignedHostel': selectedHostel,
                           'hostel': AppConfig.getFullHostelName(selectedHostel),
                           'branch': selectedBranch,

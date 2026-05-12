@@ -15,8 +15,7 @@ class OutStudentsScreen extends StatelessWidget {
       body: StreamBuilder<QuerySnapshot>(
         stream: FirebaseFirestore.instance
             .collection('leave_requests')
-            .where('actualOutTime', isNull: false)
-            .where('actualInTime', isNull: true)
+            .where('status', isEqualTo: 'out')
             .orderBy('actualOutTime', descending: true)
             .snapshots(),
         builder: (context, snapshot) {

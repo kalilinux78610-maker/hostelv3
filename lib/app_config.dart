@@ -101,6 +101,8 @@ class AppConfig {
     'Mechanical Engineering',
     // ── M.Sc. ────────────────────────────────────
     'M.Sc. IT',
+    // ── Pharmacy ─────────────────────────────────
+    'B Pharm',
     // ── Management ─────────────────────────────
     'Integrated MBA (5 Years)',
     // ── B.Voc ────────────────────────────────────
@@ -111,6 +113,11 @@ class AppConfig {
     'B.Voc - Software Development',
     'B.Voc - Solar & Renewable Energy',
     'B.Voc - Wealth Management',
+  ];
+
+  /// Pharmacy branches
+  static const List<String> pharmacyBranches = [
+    'B Pharm',
   ];
 
   /// Diploma branches — NGPP
@@ -134,6 +141,8 @@ class AppConfig {
     'Mechanical Engineering',
     // ── M.Sc. (Degree only) ───────────────────────
     'M.Sc. IT',
+    // ── Pharmacy (Degree only) ────────────────────
+    'B Pharm',
     // ── Management (Degree only) ──────────────────
     'Integrated MBA (5 Years)',
     // ── B.Voc (Degree only) ───────────────────────
@@ -149,6 +158,7 @@ class AppConfig {
   /// Returns the correct branch list based on category
   static List<String> getBranchesForCategory(String? category) {
     if (category == 'Diploma') return diplomaBranches;
+    if (category == 'Pharmacy') return pharmacyBranches;
     return degreeBranches; // Default to Degree
   }
 

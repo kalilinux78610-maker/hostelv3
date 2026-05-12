@@ -113,8 +113,7 @@ class _ReportsTabState extends State<ReportsTab> {
   Widget _buildLiveStatsGrid() {
     Query outQuery = FirebaseFirestore.instance
         .collection('leave_requests')
-        .where('actualOutTime', isNull: false)
-        .where('actualInTime', isNull: true);
+        .where('status', isEqualTo: 'out');
 
     Query pendingQuery = FirebaseFirestore.instance
         .collection('leave_requests')
@@ -128,28 +127,32 @@ class _ReportsTabState extends State<ReportsTab> {
         .collection('leave_requests')
         .where('status', isEqualTo: 'approved');
 
+    Query homeOutQuery = FirebaseFirestore.instance
+        .collection('leave_requests')
+        .where('type', isEqualTo: 'Home')
+        .where('status', isEqualTo: 'out');
+
+    Query outingOutQuery = FirebaseFirestore.instance
+        .collection('leave_requests')
+        .where('type', isEqualTo: 'Outing')
+        .where('status', isEqualTo: 'out');
+
+    Query gateHistoryQuery = FirebaseFirestore.instance
+        .collection('leave_requests')
+        .orderBy('actualOutTime', descending: true);
+
     if (_selectedHostel != null) {
       final code = AppConfig.getHostelCode(_selectedHostel!);
       outQuery = outQuery.where('hostelId', isEqualTo: code);
       pendingQuery = pendingQuery.where('hostelId', isEqualTo: code);
-      complaintsQuery = complaintsQuery.where(
-        'hostelId',
-        isEqualTo: code,
-      );
-      approvedQuery = approvedQuery.where(
-        'hostelId',
-        isEqualTo: code,
-      );
+      complaintsQuery = complaintsQuery.where('hostelId', isEqualTo: code);
+      approvedQuery = approvedQuery.where('hostelId', isEqualTo: code);
+      homeOutQuery = homeOutQuery.where('hostelId', isEqualTo: code);
+      outingOutQuery = outingOutQuery.where('hostelId', isEqualTo: code);
+      gateHistoryQuery = gateHistoryQuery.where('hostelId', isEqualTo: code);
     } else {
-      // Exclude passed records if necessary, though status handles it
-      outQuery = outQuery.where(
-        'hostelId',
-        isNotEqualTo: null,
-      );
-      pendingQuery = pendingQuery.where(
-        'hostelId',
-        isNotEqualTo: null,
-      );
+      outQuery = outQuery.where('hostelId', isNotEqualTo: null);
+      pendingQuery = pendingQuery.where('hostelId', isNotEqualTo: null);
     }
 
     return GridView.count(
@@ -186,6 +189,29 @@ class _ReportsTabState extends State<ReportsTab> {
           Colors.green,
           Icons.check_circle,
           onTap: (ctx) => _showDetailsSheet(ctx, "Approved Requests", approvedQuery.snapshots(), 'leave'),
+          todayOnly: true,
+        ),
+        _buildStatCard(
+          "Home (OUT)",
+          homeOutQuery.snapshots(),
+          Colors.indigo,
+          Icons.home,
+          onTap: (ctx) => _showDetailsSheet(ctx, "Students Home (OUT)", homeOutQuery.snapshots(), 'leave'),
+        ),
+        _buildStatCard(
+          "Outing (OUT)",
+          outingOutQuery.snapshots(),
+          Colors.purple,
+          Icons.explore,
+          onTap: (ctx) => _showDetailsSheet(ctx, "Students Outing (OUT)", outingOutQuery.snapshots(), 'leave'),
+        ),
+        _buildStatCard(
+          "Gate History",
+          gateHistoryQuery.snapshots(),
+          Colors.blueGrey,
+          Icons.history,
+          onTap: (ctx) => _showDetailsSheet(ctx, "Gate Scan History", gateHistoryQuery.snapshots(), 'leave'),
+          todayOnly: true,
         ),
       ],
     );
@@ -208,7 +234,9 @@ class _ReportsTabState extends State<ReportsTab> {
             final now = DateTime.now();
             count = snapshot.data!.docs.where((doc) {
               final data = doc.data() as Map<String, dynamic>;
-              final ts = (data['startDate'] as Timestamp?) ?? (data['createdAt'] as Timestamp?);
+              final ts = (data['actualOutTime'] as Timestamp?) ?? 
+                         (data['startDate'] as Timestamp?) ?? 
+                         (data['createdAt'] as Timestamp?);
               if (ts == null) return false;
               final date = ts.toDate();
               return date.year == now.year && date.month == now.month && date.day == now.day;
@@ -304,19 +332,22 @@ class _ReportsTabState extends State<ReportsTab> {
                     final now = DateTime.now();
                     docs = docs.where((doc) {
                       final data = doc.data() as Map<String, dynamic>;
-                      final ts = (data['startDate'] as Timestamp?) ?? (data['createdAt'] as Timestamp?);
+                      // Use actualOutTime for gate history today filter if available
+                      final ts = (data['actualOutTime'] as Timestamp?) ?? 
+                                 (data['startDate'] as Timestamp?) ?? 
+                                 (data['createdAt'] as Timestamp?);
                       if (ts == null) return false;
                       final date = ts.toDate();
                       return date.year == now.year && date.month == now.month && date.day == now.day;
                     }).toList();
                   }
 
-                  // Sort by createdAt descending
+                  // Sort by most recent activity
                   docs.sort((a, b) {
                     final aData = a.data() as Map<String, dynamic>;
                     final bData = b.data() as Map<String, dynamic>;
-                    final aTs = aData['createdAt'] as Timestamp?;
-                    final bTs = bData['createdAt'] as Timestamp?;
+                    final aTs = (aData['actualOutTime'] as Timestamp?) ?? (aData['createdAt'] as Timestamp?);
+                    final bTs = (bData['actualOutTime'] as Timestamp?) ?? (bData['createdAt'] as Timestamp?);
                     if (aTs == null || bTs == null) return 0;
                     return bTs.compareTo(aTs);
                   });
@@ -334,20 +365,37 @@ class _ReportsTabState extends State<ReportsTab> {
                       if (type == 'leave') {
                         final email = data['email']?.toString() ?? 'Unknown';
                         final name = data['name']?.toString() ?? email.split('@')[0];
-                        final reason = data['reason']?.toString() ?? 'No reason provided';
+                        final reqType = data['type']?.toString() ?? 'Leave';
+                        final outTime = (data['actualOutTime'] as Timestamp?)?.toDate();
+                        final inTime = (data['actualInTime'] as Timestamp?)?.toDate();
                         final status = data['status']?.toString().toUpperCase() ?? 'UNKNOWN';
+
                         Color statusColor = Colors.grey;
                         if (status == 'APPROVED') statusColor = Colors.green;
                         if (status == 'PENDING') statusColor = Colors.orange;
                         if (status == 'REJECTED') statusColor = Colors.red;
+                        if (status == 'OUT') statusColor = Colors.blue;
+
+                        String timeInfo = "No scan data";
+                        if (outTime != null) {
+                          timeInfo = "OUT: ${_formatTime(outTime)}";
+                          if (inTime != null) {
+                            timeInfo += " | IN: ${_formatTime(inTime)}";
+                          }
+                        } else {
+                          timeInfo = data['reason']?.toString() ?? 'No reason provided';
+                        }
 
                         return ListTile(
                           leading: CircleAvatar(
-                            backgroundColor: Colors.blue.shade50,
-                            child: const Icon(Icons.person, color: Colors.blue),
+                            backgroundColor: reqType == 'Home' ? Colors.indigo.shade50 : Colors.purple.shade50,
+                            child: Icon(
+                              reqType == 'Home' ? Icons.home : Icons.explore,
+                              color: reqType == 'Home' ? Colors.indigo : Colors.purple,
+                            ),
                           ),
                           title: Text(name, style: const TextStyle(fontWeight: FontWeight.bold)),
-                          subtitle: Text(reason, maxLines: 1, overflow: TextOverflow.ellipsis),
+                          subtitle: Text("$reqType: $timeInfo", maxLines: 1, overflow: TextOverflow.ellipsis),
                           trailing: Container(
                             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                             decoration: BoxDecoration(
@@ -372,6 +420,49 @@ class _ReportsTabState extends State<ReportsTab> {
                           title: Text(titleStr, style: const TextStyle(fontWeight: FontWeight.bold)),
                           subtitle: Text("$cat - $desc", maxLines: 1, overflow: TextOverflow.ellipsis),
                           trailing: const Icon(Icons.arrow_forward_ios, size: 14),
+                          onTap: () {
+                            showDialog(
+                              context: context,
+                              builder: (ctx) => AlertDialog(
+                                title: Text(titleStr),
+                                content: SingleChildScrollView(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Text("Category: $cat", style: const TextStyle(fontWeight: FontWeight.bold)),
+                                      const SizedBox(height: 8),
+                                      Text("Student: ${data['studentName'] ?? data['name'] ?? 'Unknown'}"),
+                                      Text("Email: ${data['userEmail'] ?? data['email'] ?? 'N/A'}"),
+                                      Text("Hostel: ${data['hostelId'] ?? 'N/A'}"),
+                                      const SizedBox(height: 12),
+                                      const Text("Description:", style: TextStyle(fontWeight: FontWeight.bold)),
+                                      Text(desc),
+                                      if (data['imageUrl'] != null && data['imageUrl'].toString().isNotEmpty) ...[
+                                        const SizedBox(height: 16),
+                                        ClipRRect(
+                                          borderRadius: BorderRadius.circular(8),
+                                          child: Image.network(
+                                            data['imageUrl'],
+                                            height: 150,
+                                            width: double.infinity,
+                                            fit: BoxFit.cover,
+                                            errorBuilder: (_, __, ___) => const Text("Could not load image"),
+                                          ),
+                                        ),
+                                      ],
+                                    ],
+                                  ),
+                                ),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () => Navigator.pop(ctx),
+                                    child: const Text("Close"),
+                                  ),
+                                ],
+                              ),
+                            );
+                          },
                         );
                       }
                       return const SizedBox();
@@ -478,8 +569,7 @@ class _ReportsTabState extends State<ReportsTab> {
     // Fetch Data with Filtering
     Query outQuery = FirebaseFirestore.instance
         .collection('leave_requests')
-        .where('actualOutTime', isNull: false)
-        .where('actualInTime', isNull: true);
+        .where('status', isEqualTo: 'out');
 
     Query pendingQuery = FirebaseFirestore.instance
         .collection('leave_requests')
@@ -507,11 +597,9 @@ class _ReportsTabState extends State<ReportsTab> {
     final approvedSnapshot = await approvedQuery.get();
 
     pdf.addPage(
-      pw.Page(
+      pw.MultiPage(
         build: (pw.Context context) {
-          return pw.Column(
-            crossAxisAlignment: pw.CrossAxisAlignment.start,
-            children: [
+          return [
               pw.Header(level: 0, child: pw.Text("Hostel Operations Report")),
               pw.SizedBox(height: 10),
               pw.Text(
@@ -614,8 +702,7 @@ class _ReportsTabState extends State<ReportsTab> {
                 ),
                 pw.SizedBox(height: 15),
               ],
-            ],
-          );
+          ];
         },
       ),
     );
@@ -679,5 +766,12 @@ class _ReportsTabState extends State<ReportsTab> {
         ),
       ),
     );
+  }
+
+  String _formatTime(DateTime dt) {
+    final h = dt.hour > 12 ? dt.hour - 12 : (dt.hour == 0 ? 12 : dt.hour);
+    final m = dt.minute.toString().padLeft(2, '0');
+    final p = dt.hour >= 12 ? "PM" : "AM";
+    return "$h:$m $p";
   }
 }

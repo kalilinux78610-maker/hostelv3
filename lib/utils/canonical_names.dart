@@ -15,6 +15,7 @@ class CanonicalNames {
     final lower = category.trim().toLowerCase();
 
     if (lower == 'diploma') return 'Diploma';
+    if (lower == 'pharmacy') return 'Pharmacy';
 
     // Everything else → Degree
     // Covers: degree, btech, b.tech, be, b.e, b.voc, bvoc,
@@ -86,6 +87,13 @@ class CanonicalNames {
           lower == 'm sc it' ||
           lower == 'mscit') {
         return 'M.Sc. IT';
+      }
+      // Pharmacy
+      if (lower == 'pharmacy' ||
+          lower == 'bpharm' ||
+          lower == 'b.pharm' ||
+          lower == 'bachelor of pharmacy') {
+        return 'Pharmacy';
       }
       // Integrated MBA (5 Years)
       if (lower == 'bba' ||

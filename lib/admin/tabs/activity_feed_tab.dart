@@ -1,7 +1,9 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../services/auth_service.dart';
+import '../../repositories/notification_repository.dart';
 
 class ActivityFeedTab extends StatefulWidget {
   const ActivityFeedTab({super.key});
@@ -12,6 +14,7 @@ class ActivityFeedTab extends StatefulWidget {
 
 class _ActivityFeedTabState extends State<ActivityFeedTab> {
   String _selectedFilter = 'all'; // 'all', 'approved', 'pending', 'rejected'
+  int _limit = 20; // Pagination limit
 
   @override
   Widget build(BuildContext context) {
@@ -47,7 +50,11 @@ class _ActivityFeedTabState extends State<ActivityFeedTab> {
                   padding: const EdgeInsets.symmetric(vertical: 16.0),
                   child: Center(
                     child: TextButton(
-                      onPressed: () {},
+                      onPressed: () {
+                        setState(() {
+                          _limit += 20;
+                        });
+                      },
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
@@ -282,6 +289,7 @@ class _ActivityFeedTabState extends State<ActivityFeedTab> {
       onTap: () {
         setState(() {
           _selectedFilter = filterValue;
+          _limit = 20; // Reset pagination when changing filter
         });
       },
       child: Container(
@@ -369,10 +377,10 @@ class _ActivityFeedTabState extends State<ActivityFeedTab> {
     return StreamBuilder<QuerySnapshot>(
       stream: query
           .orderBy('createdAt', descending: true)
-          .limit(20)
+          .limit(_limit)
           .snapshots(),
       builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
+        if (snapshot.connectionState == ConnectionState.waiting && !snapshot.hasData) {
           return const Padding(
             padding: EdgeInsets.all(40.0),
             child: Center(child: CircularProgressIndicator()),
@@ -389,6 +397,7 @@ class _ActivityFeedTabState extends State<ActivityFeedTab> {
         return Column(
           children: snapshot.data!.docs.map((doc) {
             final data = doc.data() as Map<String, dynamic>;
+            data['id'] = doc.id; // Inject ID for admin actions
             return _buildActivityCard(data);
           }).toList(),
         );
@@ -398,7 +407,7 @@ class _ActivityFeedTabState extends State<ActivityFeedTab> {
 
   Widget _buildActivityCard(Map<String, dynamic> data) {
     final email = data['email'] ?? 'Unknown User';
-    final nameStr = email.split('@')[0];
+    final nameStr = data['name'] ?? data['studentName'] ?? email.split('@')[0];
 
     DateTime createdAt = DateTime.now();
     if (data['createdAt'] is Timestamp) {
@@ -462,7 +471,28 @@ class _ActivityFeedTabState extends State<ActivityFeedTab> {
       badgeBg = Colors.teal[50]!;
       tag = "Hostel Check-In";
     } else if (status == 'pending') {
-      action = "request is pending";
+      final typeStr = (data['type'] ?? '').toString();
+      final isHome = typeStr == 'Home';
+      final isOuting = typeStr.toLowerCase().contains('outing');
+
+      if (isHome) {
+        if (data['wardenStatus'] == 'approved') {
+          action = "approved by Warden (pending Rector)";
+        } else if (data['hodStatus'] == 'approved') {
+          action = "approved by HOD (pending Warden)";
+        } else {
+          action = "is pending HOD approval";
+        }
+      } else if (isOuting) {
+        action = "is pending Rector approval";
+      } else {
+        if (data['hodStatus'] == 'approved') {
+          action = "approved by HOD (pending Warden)";
+        } else {
+          action = "is pending HOD approval";
+        }
+      }
+
       actionColor = Colors.orange[600]!;
       icon = Icons.access_time_filled;
       iconColor = Colors.orange[500]!;
@@ -472,10 +502,13 @@ class _ActivityFeedTabState extends State<ActivityFeedTab> {
       badgeBg = Colors.orange[50]!;
     }
 
-    return Container(
-      margin: const EdgeInsets.only(left: 20, right: 20, bottom: 12),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-      decoration: BoxDecoration(
+    return InkWell(
+      onTap: () => _showActivityDetails(context, data),
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        margin: const EdgeInsets.only(left: 20, right: 20, bottom: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: Colors.grey[100]!),
@@ -578,6 +611,360 @@ class _ActivityFeedTabState extends State<ActivityFeedTab> {
             ],
           ),
         ],
+      ),
+      ),
+    );
+  }
+
+  void _showActivityDetails(BuildContext context, Map<String, dynamic> data) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (context) {
+        final email = data['email'] ?? 'Unknown';
+        final name = data['name'] ?? email.split('@')[0];
+        final type = data['type'] ?? 'Unknown Type';
+        final reason = data['reason'] ?? 'No reason provided';
+        final status = data['status'] ?? 'pending';
+        final rejectionReason = data['rejectionReason'] ?? '';
+        final rejectedBy = data['rejectedBy'] ?? '';
+        final category = data['category'] ?? 'N/A';
+        final branch = data['branch'] ?? 'N/A';
+        final hostel = data['hostel'] ?? data['hostelId'] ?? 'N/A';
+        final room = data['room'] ?? 'N/A';
+        
+        DateTime? outDate;
+        DateTime? inDate;
+        if (data['startDate'] != null) {
+          outDate = (data['startDate'] as Timestamp).toDate();
+        } else if (data['outDate'] != null) {
+          outDate = (data['outDate'] as Timestamp).toDate();
+        }
+
+        if (data['endDate'] != null) {
+          inDate = (data['endDate'] as Timestamp).toDate();
+        } else if (data['inDate'] != null) {
+          inDate = (data['inDate'] as Timestamp).toDate();
+        }
+
+        final actualOut = data['actualOutTime'] as Timestamp?;
+        final actualIn = data['actualInTime'] as Timestamp?;
+
+        return SingleChildScrollView(
+          physics: const ClampingScrollPhysics(),
+          child: Padding(
+            padding: EdgeInsets.only(
+              left: 20.0,
+              right: 20.0,
+              top: 16.0,
+              bottom: MediaQuery.of(context).viewInsets.bottom + 20.0,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 32,
+                    height: 3,
+                    decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(4)),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text("Request Details", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.blueGrey[900])),
+                    IconButton(
+                      icon: const Icon(Icons.close, color: Colors.blueGrey, size: 20),
+                      onPressed: () => Navigator.pop(context),
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                    ),
+                  ],
+                ),
+              const SizedBox(height: 4),
+              _buildDetailRow(Icons.person, "Student", name),
+              _buildDetailRow(Icons.email, "Email", email),
+              Row(
+                children: [
+                  Expanded(child: _buildDetailRow(Icons.school, "Category", category)),
+                  Expanded(child: _buildDetailRow(Icons.account_tree, "Branch", branch)),
+                ],
+              ),
+              _buildDetailRow(Icons.meeting_room, "Hostel & Room", "$hostel (Room: $room)"),
+              const Divider(height: 16),
+              _buildDetailRow(Icons.category, "Request Type", type),
+              _buildDetailRow(Icons.subject, "Reason", reason),
+              if (outDate != null)
+                _buildDetailRow(Icons.event_busy, "Requested Out", DateFormat('d MMM, hh:mm a').format(outDate)),
+              if (inDate != null)
+                _buildDetailRow(Icons.event_available, "Requested In", DateFormat('d MMM, hh:mm a').format(inDate)),
+              
+              if (actualOut != null || actualIn != null) ...[
+                const Divider(height: 16, thickness: 0.5),
+                const Text("Gate Scan Info", style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.blueGrey)),
+                const SizedBox(height: 8),
+                if (actualOut != null)
+                  _buildDetailRow(Icons.logout, "Actual Out", DateFormat('d MMM, hh:mm a').format(actualOut.toDate()), color: Colors.blue[700]),
+                if (actualIn != null)
+                  _buildDetailRow(Icons.login, "Actual In", DateFormat('d MMM, hh:mm a').format(actualIn.toDate()), color: Colors.green[700]),
+              ],
+              const Divider(height: 16),
+              
+              // Granular Status
+              const Text("Approval Workflow", style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.blueGrey)),
+              const SizedBox(height: 12),
+              _buildHorizontalWorkflow(data),
+              const Divider(height: 16),
+
+              _buildDetailRow(
+                Icons.info_outline,
+                "Current Status",
+                status.toString().toUpperCase(),
+                color: status == 'approved' ? Colors.green : (status == 'rejected' ? Colors.red : Colors.orange),
+              ),
+              if (status == 'rejected' && rejectionReason.isNotEmpty)
+                Container(
+                  margin: const EdgeInsets.only(top: 12),
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(color: Colors.red[50], borderRadius: BorderRadius.circular(8)),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Icon(Icons.cancel, color: Colors.red, size: 20),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          "Rejected by $rejectedBy: $rejectionReason",
+                          style: TextStyle(color: Colors.red[900], fontSize: 13),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              
+              // Contact Details Section
+              const SizedBox(height: 12),
+              const Text("Contact Details", style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.blueGrey)),
+              const SizedBox(height: 8),
+              FutureBuilder<DocumentSnapshot>(
+                future: FirebaseFirestore.instance.collection('users').doc(data['uid'] ?? '').get(),
+                builder: (context, userSnapshot) {
+                  if (userSnapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+                  if (!userSnapshot.hasData || !userSnapshot.data!.exists) {
+                    return const Text("Contact details not available.", style: TextStyle(color: Colors.grey));
+                  }
+                  
+                  final userData = userSnapshot.data!.data() as Map<String, dynamic>?;
+                  final mobile = userData?['mobile'] ?? 'N/A';
+                  final parentMobile = userData?['fatherMobile'] ?? userData?['motherMobile'] ?? userData?['parentContact'] ?? 'N/A';
+
+                  return Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: () async {
+                            if (mobile != 'N/A') {
+                              final Uri url = Uri.parse('tel:$mobile');
+                              if (await canLaunchUrl(url)) {
+                                await launchUrl(url);
+                              } else {
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Could not launch dialer for $mobile")));
+                                }
+                              }
+                            } else {
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("No student phone number available.")));
+                              }
+                            }
+                          },
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: Colors.blue[700],
+                            side: BorderSide(color: Colors.blue[300]!),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 12),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Icon(Icons.phone, size: 18),
+                              const SizedBox(width: 6),
+                              Flexible(
+                                child: Text(
+                                  mobile != 'N/A' ? "Student" : "N/A",
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(fontSize: 14),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: () async {
+                            if (parentMobile != 'N/A') {
+                              final Uri url = Uri.parse('tel:$parentMobile');
+                              if (await canLaunchUrl(url)) {
+                                await launchUrl(url);
+                              } else {
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Could not launch dialer for $parentMobile")));
+                                }
+                              }
+                            } else {
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("No parent phone number available.")));
+                              }
+                            }
+                          },
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: Colors.teal[700],
+                            side: BorderSide(color: Colors.teal[300]!),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 12),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Icon(Icons.family_restroom, size: 18),
+                              const SizedBox(width: 6),
+                              Flexible(
+                                child: Text(
+                                  parentMobile != 'N/A' ? "Parent" : "N/A",
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(fontSize: 14),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  );
+                },
+              ),
+              
+              const SizedBox(height: 12),
+              // Admin Action Section
+              if (status == 'pending' || status == 'approved') ...[
+                const Divider(height: 16),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: () => _showAdminCancelDialog(context, data['id'], data),
+                    icon: const Icon(Icons.cancel_outlined, size: 18),
+                    label: const Text("CANCEL REQUEST (ADMIN)"),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.red[700],
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                    ),
+                  ),
+                ),
+              ],
+              const SizedBox(height: 8),
+            ],
+          ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildDetailRow(IconData icon, String label, String value, {Color? color}) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6.0),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, size: 18, color: Colors.blueGrey[400]),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(label, style: TextStyle(fontSize: 11, color: Colors.blueGrey[400])),
+                const SizedBox(height: 1),
+                Text(value, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: color ?? Colors.blueGrey[800])),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHorizontalWorkflow(Map<String, dynamic> data) {
+    final String type = (data['type'] ?? '').toString();
+    final bool isOuting = type.toLowerCase().contains('outing');
+    final bool isHome = type == 'Home';
+
+    if (isOuting) {
+      return Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          _buildWorkflowStep("Rector", data['rectorStatus'] ?? 'pending'),
+        ],
+      );
+    }
+
+    return Row(
+      children: [
+        _buildWorkflowStep("HOD", data['hodStatus'] ?? 'pending'),
+        _buildWorkflowDivider(data['hodStatus'] ?? 'pending'),
+        _buildWorkflowStep("Warden", data['wardenStatus'] ?? 'pending'),
+        if (isHome) ...[
+          _buildWorkflowDivider(data['wardenStatus'] ?? 'pending'),
+          _buildWorkflowStep("Rector", data['rectorStatus'] ?? 'pending'),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildWorkflowStep(String role, String status) {
+    Color color = Colors.orange;
+    IconData icon = Icons.access_time;
+    if (status == 'approved') {
+      color = Colors.green;
+      icon = Icons.check;
+    } else if (status == 'rejected') {
+      color = Colors.red;
+      icon = Icons.close;
+    }
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.1),
+            shape: BoxShape.circle,
+            border: Border.all(color: color, width: 2),
+          ),
+          child: Icon(icon, size: 16, color: color),
+        ),
+        const SizedBox(height: 8),
+        Text(role, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.blueGrey[800])),
+      ],
+    );
+  }
+
+  Widget _buildWorkflowDivider(String prevStatus) {
+    Color color = prevStatus == 'approved' ? Colors.green : Colors.grey[300]!;
+    return Expanded(
+      child: Container(
+        height: 2,
+        color: color,
+        margin: const EdgeInsets.symmetric(horizontal: 4).copyWith(bottom: 24),
       ),
     );
   }
@@ -687,5 +1074,84 @@ class _ActivityFeedTabState extends State<ActivityFeedTab> {
         ),
       ),
     );
+  }
+
+  void _showAdminCancelDialog(BuildContext context, String? docId, Map<String, dynamic> data) async {
+    if (docId == null) return;
+    
+    final reasonController = TextEditingController();
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text("Cancel Request?"),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text("You are about to cancel this request as an Administrator. This will override all previous approvals."),
+            const SizedBox(height: 16),
+            TextField(
+              controller: reasonController,
+              decoration: const InputDecoration(
+                labelText: "Cancellation Reason",
+                hintText: "Enter why you are cancelling...",
+                border: OutlineInputBorder(),
+              ),
+              maxLines: 2,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text("Back")),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            child: const Text("Confirm Cancel"),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && context.mounted) {
+      final reason = reasonController.text.trim();
+      if (reason.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Please provide a reason for cancellation.")));
+        return;
+      }
+      
+      _adminCancelRequest(context, docId, data, reason);
+    }
+  }
+
+  Future<void> _adminCancelRequest(BuildContext context, String docId, Map<String, dynamic> data, String reason) async {
+    try {
+      await FirebaseFirestore.instance.collection('leave_requests').doc(docId).update({
+        'status': 'cancelled',
+        'rejectedBy': 'Admin',
+        'rejectionReason': reason,
+      });
+
+      final studentUid = data['uid'];
+      if (studentUid != null) {
+        await NotificationRepository().sendNotification(
+          title: "Request Cancelled by Admin ❌",
+          message: "Your request was cancelled by the Administrator. Reason: $reason",
+          receiverUid: studentUid,
+          type: 'leave_request',
+          relatedRequestId: docId,
+        );
+      }
+
+      if (context.mounted) {
+        Navigator.pop(context); // Close details sheet
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text("Request cancelled successfully."),
+          backgroundColor: Colors.green,
+        ));
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error: $e")));
+      }
+    }
   }
 }

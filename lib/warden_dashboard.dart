@@ -102,10 +102,10 @@ class WardenHomeTab extends StatefulWidget {
 class _WardenHomeTabState extends State<WardenHomeTab> {
   static const Color _primaryColor = Color(0xFF002244);
   List<String> _assignedHostels = [];
+  List<String> _wardenCategories = [];
   bool _isLoading = true;
   String _selectedCategory = 'Degree';
   String _selectedHostel = 'All';
-  String? _wardenCategory;
 
   @override
   void initState() {
@@ -127,9 +127,16 @@ class _WardenHomeTabState extends State<WardenHomeTab> {
             if (_assignedHostels.isEmpty && data['assignedHostel'] != null) {
               _assignedHostels.add(data['assignedHostel']);
             }
-            _wardenCategory = data['assignedCategory'] ?? data['category'];
-            if (_wardenCategory == 'Degree' || _wardenCategory == 'Diploma') {
-              _selectedCategory = _wardenCategory!;
+            if (data['assignedCategories'] != null) {
+              _wardenCategories = List<String>.from(data['assignedCategories']);
+            }
+            if (_wardenCategories.isEmpty) {
+              final cat = data['assignedCategory'] ?? data['category'];
+              if (cat != null) _wardenCategories.add(cat);
+            }
+            
+            if (_wardenCategories.isNotEmpty) {
+              _selectedCategory = _wardenCategories.first;
             }
             _isLoading = false;
           });
@@ -202,7 +209,10 @@ class _WardenHomeTabState extends State<WardenHomeTab> {
       builder: (context, snapshot) {
         int totalPending = 0;
         final docs = snapshot.data?.docs ?? [];
-        Map<String, Map<String, int>> counts = {'Degree': {}, 'Diploma': {}};
+        Map<String, Map<String, int>> counts = {};
+        for (var cat in _wardenCategories) {
+          counts[cat] = {};
+        }
 
         for (var doc in docs) {
           final data = doc.data() as Map<String, dynamic>;
@@ -241,7 +251,13 @@ class _WardenHomeTabState extends State<WardenHomeTab> {
           {'name': 'Civil Engineering', 'icon': Icons.architecture},
         ];
 
-        final currentDepts = _selectedCategory == 'Degree' ? degreeDepts : diplomaDepts;
+        final pharmacyDepts = [
+          {'name': 'Pharmacy', 'icon': Icons.local_pharmacy},
+        ];
+
+        final currentDepts = _selectedCategory == 'Degree' 
+            ? degreeDepts 
+            : (_selectedCategory == 'Diploma' ? diplomaDepts : pharmacyDepts);
 
         return Column(
           children: [
@@ -314,7 +330,7 @@ class _WardenHomeTabState extends State<WardenHomeTab> {
                         ),
                       ),
                     // Toggle
-                    if (_wardenCategory == null || _wardenCategory == 'Both')
+                    if (_wardenCategories.length > 1)
                       Container(
                         padding: const EdgeInsets.all(2),
                         decoration: BoxDecoration(
@@ -324,13 +340,10 @@ class _WardenHomeTabState extends State<WardenHomeTab> {
                         ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
-                          children: [
-                            _buildToggleBtn('Degree'),
-                            _buildToggleBtn('Diploma'),
-                          ],
+                          children: _wardenCategories.map((cat) => _buildToggleBtn(cat)).toList(),
                         ),
                       )
-                    else
+                    else if (_wardenCategories.isNotEmpty)
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
                         decoration: BoxDecoration(
@@ -338,7 +351,7 @@ class _WardenHomeTabState extends State<WardenHomeTab> {
                           borderRadius: BorderRadius.circular(20),
                         ),
                         child: Text(
-                          _wardenCategory!,
+                          _wardenCategories.first,
                           style: const TextStyle(
                             color: Colors.white,
                             fontWeight: FontWeight.bold,
@@ -611,9 +624,11 @@ String _getWardenDisplayGroup(String canonicalBranch, String category) {
     if (canonicalBranch == 'BBA' || canonicalBranch == 'MBA') return 'BBA & MBA';
     if (canonicalBranch == 'Chemical Engineering') return 'Chemical';
     if (canonicalBranch == 'Electrical Engineering') return 'Electrical';
-    if (canonicalBranch == 'Pharmacy') return 'Pharmacy';
+    if (canonicalBranch == 'Pharmacy' || canonicalBranch == 'B Pharm') return 'Pharmacy';
     if (canonicalBranch == 'Civil Engineering') return 'Civil Engineering';
     if (canonicalBranch == 'Mechanical Engineering') return 'Mechanical';
+  } else if (category == 'Pharmacy') {
+    return 'Pharmacy';
   } else {
     // Diploma
     if (canonicalBranch == 'Computer Engineering') return 'Computer Engineering';
@@ -1115,7 +1130,6 @@ class _WardenDepartmentRequestsScreenState
   }
 
   void _showApproveDialog(BuildContext context, String docId, Map<String, dynamic> data) {
-    final TextEditingController reasonController = TextEditingController();
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -1139,23 +1153,12 @@ class _WardenDepartmentRequestsScreenState
             const SizedBox(height: 12),
             const Text("Reason:", style: TextStyle(fontWeight: FontWeight.bold)),
             Text(data['reason'] ?? 'N/A', style: const TextStyle(fontStyle: FontStyle.italic)),
-            const SizedBox(height: 16),
-            TextField(
-              controller: reasonController,
-              decoration: InputDecoration(
-                labelText: "Rejection Reason (Optional)",
-                hintText: "Enter reason if rejecting...",
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                isDense: true,
-              ),
-              maxLines: 2,
-            ),
             const SizedBox(height: 24),
             Row(
               children: [
                 Expanded(
                   child: OutlinedButton(
-                    onPressed: () => _updateStatus(context, docId, data, 'rejected', reason: reasonController.text.trim()),
+                    onPressed: () => _updateStatus(context, docId, data, 'rejected'),
                     style: OutlinedButton.styleFrom(
                       foregroundColor: Colors.red,
                       side: const BorderSide(color: Colors.red),
