@@ -86,20 +86,6 @@ hostelv3/
     flutter run
     ```
 
-### Release Build Setup (Android)
-To generate a release build (APK/AAB), ensure you have the `key.properties` file configured in the `android/` directory with your signing keystore details:
-```properties
-storePassword=your_store_password
-keyPassword=your_key_password
-keyAlias=your_key_alias
-storeFile=your_keystore_path.jks
-```
-Then run:
-```bash
-flutter build appbundle
-# or
-flutter build apk --release
-```
 
 ## 📜 License
 This project is licensed under the [MIT License](LICENSE).
