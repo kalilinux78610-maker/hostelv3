@@ -911,7 +911,6 @@ class _WardenDepartmentRequestsScreenState
       duration: const Duration(seconds: 2),
     ));
 
-    final String reason = reasonController.text.trim();
     int successCount = 0;
     for (final doc in docs) {
       try {

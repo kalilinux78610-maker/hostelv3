@@ -33,6 +33,22 @@ class _GuardVerifyScreenState extends State<GuardVerifyScreen>
   late Animation<double> _pulseAnim;
 
   bool get _isCheckOut => widget.status == 'approved';
+  DateTime? get _expectedReturnAt =>
+      (widget.data['endDate'] as Timestamp?)?.toDate();
+
+  bool get _isLateReturn {
+    if (_isCheckOut) return false;
+    final expected = _expectedReturnAt;
+    if (expected == null) return false;
+    return DateTime.now().isAfter(expected);
+  }
+
+  int get _lateByMinutes {
+    if (!_isLateReturn) return 0;
+    final expected = _expectedReturnAt!;
+    final diff = DateTime.now().difference(expected);
+    return diff.inMinutes < 0 ? 0 : diff.inMinutes;
+  }
 
   @override
   void initState() {
@@ -121,12 +137,20 @@ class _GuardVerifyScreenState extends State<GuardVerifyScreen>
           'actualOutTime': FieldValue.serverTimestamp(),
         });
       } else {
+        final expected = _expectedReturnAt;
+        final now = DateTime.now();
+        final isLate = expected != null && now.isAfter(expected);
+        final lateByMinutes =
+            (isLate && expected != null) ? now.difference(expected).inMinutes : 0;
+
         await FirebaseFirestore.instance
             .collection('leave_requests')
             .doc(widget.docId)
             .update({
           'status': 'completed',
           'actualInTime': FieldValue.serverTimestamp(),
+          'returnStatus': isLate ? 'late' : 'on_time',
+          'lateByMinutes': isLate ? lateByMinutes : 0,
         });
       }
 
@@ -251,6 +275,37 @@ class _GuardVerifyScreenState extends State<GuardVerifyScreen>
               isCheckOut: _isCheckOut,
               pulseAnim: _pulseAnim,
             ),
+
+            if (_isLateReturn)
+              Container(
+                width: double.infinity,
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                decoration: BoxDecoration(
+                  color: Colors.red.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: Colors.red.withValues(alpha: 0.25)),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.report_gmailerrorred_rounded,
+                        color: Colors.red, size: 18),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        _lateByMinutes > 0
+                            ? 'LATE RETURN • ${_lateByMinutes} min late'
+                            : 'LATE RETURN',
+                        style: const TextStyle(
+                          color: Colors.red,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 0.4,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
 
             // ── Student card ────────────────────────────────────────
             _StudentCard(

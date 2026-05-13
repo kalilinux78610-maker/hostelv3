@@ -95,15 +95,18 @@ class CanonicalNames {
           lower == 'bachelor of pharmacy') {
         return 'Pharmacy';
       }
-      // Integrated MBA (5 Years)
+      // BBA — Bachelor of Business Administration
       if (lower == 'bba' ||
-          lower == 'mba' ||
+          lower == 'bachelor of business administration') {
+        return 'BBA';
+      }
+      // Integrated MBA (5 Years)
+      if (lower == 'mba' ||
           lower == 'bba mba' ||
           lower == 'bba & mba' ||
           lower == 'integrated mba' ||
           lower == 'integrated mba 5 years' ||
           lower == 'integrated mba (5 years)' ||
-          lower == 'bachelor of business administration' ||
           lower == 'master of business administration') {
         return 'Integrated MBA (5 Years)';
       }
