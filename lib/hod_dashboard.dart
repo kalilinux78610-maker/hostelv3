@@ -106,6 +106,7 @@ class _HodHomeTabState extends State<HodHomeTab> {
   static const Color _accentGreen = Color(0xFF27AE60);
 
   String? _category;
+  List<String> _assignedCategories = [];
   String? _branch;
   List<String> _branches = [];
   String? _photoUrl;
@@ -135,6 +136,19 @@ class _HodHomeTabState extends State<HodHomeTab> {
 
           String currentCategory = CanonicalNames.canonicalizeCategory(originalCategory);
           String currentBranch = CanonicalNames.canonicalizeBranch(originalBranch, currentCategory);
+          
+          final rawAssignedCategories = data?['assignedCategories'];
+          final currentCategories = (rawAssignedCategories is List)
+              ? rawAssignedCategories
+                  .map((c) => CanonicalNames.canonicalizeCategory(c?.toString()))
+                  .where((c) => c.isNotEmpty)
+                  .toSet()
+                  .toList()
+              : <String>[];
+          if (!currentCategories.contains(currentCategory) && currentCategory.isNotEmpty) {
+            currentCategories.insert(0, currentCategory);
+          }
+
           final currentBranches = (rawAssignedBranches is List)
               ? rawAssignedBranches
                   .map((b) => CanonicalNames.canonicalizeBranch(b?.toString(), currentCategory))
@@ -153,6 +167,7 @@ class _HodHomeTabState extends State<HodHomeTab> {
           if (mounted) {
             setState(() {
               _category = currentCategory;
+              _assignedCategories = currentCategories;
               _branch = currentBranch;
               _branches = currentBranches;
               _photoUrl = data?['photoUrl'];
@@ -167,6 +182,7 @@ class _HodHomeTabState extends State<HodHomeTab> {
                 .update({
                   'branch': currentBranch,
                   'category': currentCategory,
+                  'assignedCategories': currentCategories,
                   'branches': currentBranches,
                   'assignedBranches': currentBranches,
                 });
@@ -181,11 +197,16 @@ class _HodHomeTabState extends State<HodHomeTab> {
   }
 
   bool _matchesAssignedBranch(String docBranch, String? docCategory) {
-    // First check category matches
-    if (_category != null && _category!.isNotEmpty && docCategory != _category) {
+    // First check category matches against the array
+    if (_assignedCategories.isNotEmpty) {
+      if (docCategory == null || docCategory.isEmpty || !_assignedCategories.contains(docCategory)) {
+        return false;
+      }
+    } else if (_category != null && _category!.isNotEmpty && docCategory != _category) {
       return false;
     }
-    // Then check branch
+    
+    // Then check branch against the array
     if (_branches.isNotEmpty) {
       return _branches.contains(docBranch);
     }
@@ -812,11 +833,17 @@ class _HodHomeTabState extends State<HodHomeTab> {
 
           // Only filter by category when BOTH HOD and request have a non-empty category
           // This avoids hiding requests from older records that may not have category saved
-          final hodHasCategory = _category != null && _category!.isNotEmpty;
+          final hodHasCategory = _assignedCategories.isNotEmpty || (_category != null && _category!.isNotEmpty);
           final requestHasCategory = docCategory.isNotEmpty;
-          final categoryMatch = !hodHasCategory ||
-              !requestHasCategory ||
-              docCategory.toLowerCase() == _category!.toLowerCase();
+          
+          bool categoryMatch = true;
+          if (hodHasCategory && requestHasCategory) {
+             if (_assignedCategories.isNotEmpty) {
+               categoryMatch = _assignedCategories.contains(docCategory);
+             } else {
+               categoryMatch = docCategory.toLowerCase() == _category!.toLowerCase();
+             }
+          }
 
           final branchMatch = _matchesAssignedBranch(docBranch, docCategory);
           final nameMatch = data['name']?.toString().toLowerCase().contains(_searchQuery.toLowerCase()) ?? false;
