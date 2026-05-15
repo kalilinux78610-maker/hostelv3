@@ -744,6 +744,7 @@ class _StudentDirectoryScreenState extends State<StudentDirectoryScreen> {
                   child: DropdownButtonHideUnderline(
                     child: DropdownButton<String>(
                       value: selectedCategory,
+                      isExpanded: true,
                       isDense: true,
                       hint: const Text("Select Category"),
                       items: ['Degree', 'Diploma', 'Pharmacy']
@@ -764,6 +765,7 @@ class _StudentDirectoryScreenState extends State<StudentDirectoryScreen> {
                   child: DropdownButtonHideUnderline(
                     child: DropdownButton<String>(
                       value: selectedBranch,
+                      isExpanded: true,
                       isDense: true,
                       hint: const Text("Select Branch"),
                       items: AppConfig.getBranchesForCategory(selectedCategory)
@@ -781,6 +783,7 @@ class _StudentDirectoryScreenState extends State<StudentDirectoryScreen> {
                   child: DropdownButtonHideUnderline(
                     child: DropdownButton<String>(
                       value: selectedHostel,
+                      isExpanded: true,
                       isDense: true,
                       hint: const Text("Select Hostel"),
                       items: AppConfig.hostelCodes.values
@@ -803,6 +806,7 @@ class _StudentDirectoryScreenState extends State<StudentDirectoryScreen> {
                   child: DropdownButtonHideUnderline(
                     child: DropdownButton<String>(
                       value: selectedYear,
+                      isExpanded: true,
                       isDense: true,
                       hint: const Text("Select Year"),
                       items: ['1', '2', '3', '4']
@@ -823,6 +827,7 @@ class _StudentDirectoryScreenState extends State<StudentDirectoryScreen> {
                   child: DropdownButtonHideUnderline(
                     child: DropdownButton<String>(
                       value: selectedFeeStatus,
+                      isExpanded: true,
                       isDense: true,
                       hint: const Text("Select Fee Status"),
                       items: ['Paid', 'Scholarship']
@@ -954,6 +959,7 @@ class _StudentDirectoryScreenState extends State<StudentDirectoryScreen> {
                   child: DropdownButtonHideUnderline(
                     child: DropdownButton<String>(
                       value: selectedGender,
+                      isExpanded: true,
                       isDense: true,
                       hint: const Text("Select Gender"),
                       items: ['Male', 'Female', 'Other'].map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
@@ -967,6 +973,7 @@ class _StudentDirectoryScreenState extends State<StudentDirectoryScreen> {
                   child: DropdownButtonHideUnderline(
                     child: DropdownButton<String>(
                       value: selectedBloodGroup,
+                      isExpanded: true,
                       isDense: true,
                       hint: const Text("Select Blood Group"),
                       items: ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'].map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
@@ -984,6 +991,7 @@ class _StudentDirectoryScreenState extends State<StudentDirectoryScreen> {
                   child: DropdownButtonHideUnderline(
                     child: DropdownButton<String>(
                       value: selectedCategory,
+                      isExpanded: true,
                       isDense: true,
                       hint: const Text("Select Category"),
                       items: ['Degree', 'Diploma', 'Pharmacy'].map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
@@ -999,6 +1007,7 @@ class _StudentDirectoryScreenState extends State<StudentDirectoryScreen> {
                   child: DropdownButtonHideUnderline(
                     child: DropdownButton<String>(
                       value: selectedYear,
+                      isExpanded: true,
                       isDense: true,
                       hint: const Text("Select Year"),
                       items: ['1', '2', '3', '4'].map((y) => DropdownMenuItem(value: y, child: Text("Year $y"))).toList(),
@@ -1012,6 +1021,7 @@ class _StudentDirectoryScreenState extends State<StudentDirectoryScreen> {
                   child: DropdownButtonHideUnderline(
                     child: DropdownButton<String>(
                       value: selectedHostel,
+                      isExpanded: true,
                       isDense: true,
                       hint: const Text("Select Hostel"),
                       items: AppConfig.hostelCodes.values

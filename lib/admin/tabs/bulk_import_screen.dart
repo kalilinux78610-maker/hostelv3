@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:csv/csv.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import '../../app_config.dart';
 import '../../utils/canonical_names.dart';
@@ -34,19 +35,25 @@ class _BulkImportScreenState extends State<BulkImportScreen> {
       if (result != null) {
         String csvString;
 
-        // Use path on mobile/desktop (more reliable than bytes in some cases)
-        if (result.files.first.path != null) {
-          final file = File(result.files.first.path!);
-          csvString = await file.readAsString();
-        } else if (result.files.first.bytes != null) {
-          // Fallback for Web or if path is null
-          csvString = const Utf8Decoder().convert(result.files.first.bytes!);
+        if (kIsWeb) {
+          // On Web, path is unavailable, so we use bytes
+          if (result.files.first.bytes != null) {
+            csvString = const Utf8Decoder().convert(result.files.first.bytes!);
+          } else {
+            setState(() => _statusMessage = "Error: File content is empty (No bytes)");
+            return;
+          }
         } else {
-          setState(
-            () => _statusMessage =
-                "Error: Could not read file content (No path or bytes)",
-          );
-          return;
+          // On Mobile/Desktop, path is preferred but fallback to bytes if needed
+          if (result.files.first.path != null) {
+            final file = File(result.files.first.path!);
+            csvString = await file.readAsString();
+          } else if (result.files.first.bytes != null) {
+            csvString = const Utf8Decoder().convert(result.files.first.bytes!);
+          } else {
+            setState(() => _statusMessage = "Error: Could not read file content (No path or bytes)");
+            return;
+          }
         }
 
         // Normalize Newlines (Handle \r\n, \r, and \n)
@@ -62,9 +69,10 @@ class _BulkImportScreenState extends State<BulkImportScreen> {
 
         int originalCount = csvTable.length;
 
-        // Check for Google Forms Export ("Timestamp" column)
+        // Check for Google Forms Export ("Timestamp" column) or leading empty column
         if (csvTable.isNotEmpty && csvTable[0].isNotEmpty) {
-          if (csvTable[0][0].toString().toLowerCase().contains('timestamp')) {
+          final firstCell = csvTable[0][0].toString().toLowerCase();
+          if (firstCell.isEmpty || firstCell.contains('timestamp')) {
             // Remove the first column from EVERY row to shift the data
             for (int i = 0; i < csvTable.length; i++) {
               if (csvTable[i].isNotEmpty) {

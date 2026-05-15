@@ -299,6 +299,9 @@ class _HodHomeTabState extends State<HodHomeTab> {
           receiverUid: 'warden',
           type: 'leave_request',
           relatedRequestId: docId,
+          targetCategory: CanonicalNames.canonicalizeCategory(requestData['category']?.toString() ?? ''),
+          targetBranch: CanonicalNames.canonicalizeBranch(requestData['branch']?.toString() ?? '', CanonicalNames.canonicalizeCategory(requestData['category']?.toString() ?? '')),
+          targetHostelId: requestData['hostelId']?.toString(),
         );
       } else {
         final reason = rejectionReason!.isNotEmpty ? rejectionReason : 'No reason provided';
@@ -554,6 +557,9 @@ class _HodHomeTabState extends State<HodHomeTab> {
             receiverUid: 'warden',
             type: 'leave_request',
             relatedRequestId: doc.id,
+            targetCategory: CanonicalNames.canonicalizeCategory(data['category']?.toString() ?? ''),
+            targetBranch: CanonicalNames.canonicalizeBranch(data['branch']?.toString() ?? '', CanonicalNames.canonicalizeCategory(data['category']?.toString() ?? '')),
+            targetHostelId: data['hostelId']?.toString(),
           );
         } else {
           final reason = bulkRejectionReason.isNotEmpty ? bulkRejectionReason : 'No reason provided';

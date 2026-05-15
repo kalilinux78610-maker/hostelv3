@@ -171,6 +171,9 @@ class _FileComplaintScreenState extends ConsumerState<FileComplaintScreen>
         receiverUid: 'rector',
         type: 'complaint',
         relatedRequestId: id,
+        targetCategory: CanonicalNames.canonicalizeCategory(userCategory?.toString() ?? ''),
+        targetBranch: CanonicalNames.canonicalizeBranch(userBranch?.toString() ?? '', CanonicalNames.canonicalizeCategory(userCategory?.toString() ?? '')),
+        targetHostelId: hostelId?.toString(),
       );
       await NotificationRepository().sendNotification(
         title: 'New Complaint',
@@ -178,6 +181,9 @@ class _FileComplaintScreenState extends ConsumerState<FileComplaintScreen>
         receiverUid: 'warden',
         type: 'complaint',
         relatedRequestId: id,
+        targetCategory: CanonicalNames.canonicalizeCategory(userCategory?.toString() ?? ''),
+        targetBranch: CanonicalNames.canonicalizeBranch(userBranch?.toString() ?? '', CanonicalNames.canonicalizeCategory(userCategory?.toString() ?? '')),
+        targetHostelId: hostelId?.toString(),
       );
 
       if (mounted) {

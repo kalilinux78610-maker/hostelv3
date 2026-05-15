@@ -13,26 +13,16 @@ class NotificationRepository {
     required String receiverUid, // 'warden', 'rector', or specific user UID
     required String type, // 'leave_request', 'system', etc.
     String? relatedRequestId,
+    String? targetCategory,
+    String? targetBranch,
+    String? targetHostelId,
   }) async {
     try {
-      // 1. Save to Firestore (In-App Notification)
-      await _firestore.collection('notifications').add({
-        'title': title,
-        'message': message,
-        'receiverUid': receiverUid,
-        'type': type,
-        'relatedRequestId': relatedRequestId,
-        'isRead': false,
-        'createdAt': FieldValue.serverTimestamp(),
-      });
-
-      // 2. Send Push Notification (FCM)
+      List<String> targetUids = [];
       List<String> tokens = [];
 
       if (['warden', 'rector', 'student', 'hod'].contains(receiverUid)) {
-        // Broadcast to role
-        // Note: For 'student', we usually don't broadcast to ALL students in this app context,
-        // but 'warden' or 'rector' might be valid broadcast targets.
+        // Broadcast to role, filtered by targets if provided
         final roleQuery = await _firestore
             .collection('users')
             .where('role', isEqualTo: receiverUid)
@@ -40,12 +30,51 @@ class NotificationRepository {
 
         for (var doc in roleQuery.docs) {
           final data = doc.data();
-          if (data.containsKey('fcmToken') && data['fcmToken'] != null) {
-            tokens.add(data['fcmToken']);
+          bool matches = true;
+
+          // Check Category
+          if (targetCategory != null && targetCategory.isNotEmpty) {
+            final cat = data['category'] as String?;
+            final catList = (data['assignedCategories'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? [];
+            if (catList.isNotEmpty) {
+              if (!catList.contains(targetCategory)) matches = false;
+            } else if (cat != null && cat.isNotEmpty) {
+              if (cat != targetCategory) matches = false;
+            }
+          }
+
+          // Check Branch
+          if (targetBranch != null && targetBranch.isNotEmpty && matches) {
+            final br = data['branch'] as String?;
+            final brList = (data['assignedBranches'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? [];
+            if (brList.isNotEmpty) {
+              if (!brList.contains(targetBranch)) matches = false;
+            } else if (br != null && br.isNotEmpty) {
+              if (br != targetBranch) matches = false;
+            }
+          }
+
+          // Check Hostel
+          if (targetHostelId != null && targetHostelId.isNotEmpty && matches) {
+            final host = data['assignedHostel'] as String?;
+            final hostList = (data['assignedHostels'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? [];
+            if (hostList.isNotEmpty) {
+              if (!hostList.contains(targetHostelId) && !hostList.contains('All')) matches = false;
+            } else if (host != null && host.isNotEmpty) {
+              if (host != targetHostelId && host != 'All') matches = false;
+            }
+          }
+
+          if (matches) {
+            targetUids.add(doc.id);
+            if (data.containsKey('fcmToken') && data['fcmToken'] != null) {
+              tokens.add(data['fcmToken']);
+            }
           }
         }
       } else {
         // Specific User
+        targetUids.add(receiverUid);
         final userDoc = await _firestore
             .collection('users')
             .doc(receiverUid)
@@ -58,8 +87,24 @@ class NotificationRepository {
         }
       }
 
+      // 1. Save to Firestore (In-App Notification) - Create one for EACH target UID
+      final batch = _firestore.batch();
+      for (String uid in targetUids) {
+        final docRef = _firestore.collection('notifications').doc();
+        batch.set(docRef, {
+          'title': title,
+          'message': message,
+          'receiverUid': uid, // Save to specific UID, not generic role
+          'type': type,
+          'relatedRequestId': relatedRequestId,
+          'isRead': false,
+          'createdAt': FieldValue.serverTimestamp(),
+        });
+      }
+      await batch.commit();
+
       debugPrint(
-        "Sending push to ${tokens.length} devices for receiver: $receiverUid",
+        "Sending push to ${tokens.length} devices for receiver: $receiverUid (Matched ${targetUids.length} users)",
       );
 
       for (var token in tokens) {

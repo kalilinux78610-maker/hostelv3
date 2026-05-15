@@ -950,6 +950,9 @@ class _WardenDepartmentRequestsScreenState
               receiverUid: 'rector',
               type: 'leave_request',
               relatedRequestId: doc.id,
+              targetCategory: CanonicalNames.canonicalizeCategory(data['category']?.toString() ?? ''),
+              targetBranch: CanonicalNames.canonicalizeBranch(data['branch']?.toString() ?? '', CanonicalNames.canonicalizeCategory(data['category']?.toString() ?? '')),
+              targetHostelId: data['hostelId']?.toString(),
             );
           } else {
             final reason = (bulkRejectionReason != null && bulkRejectionReason.isNotEmpty)
@@ -1230,6 +1233,9 @@ class _WardenDepartmentRequestsScreenState
             receiverUid: 'rector',
             type: 'leave_request',
             relatedRequestId: docId,
+            targetCategory: CanonicalNames.canonicalizeCategory(data['category']?.toString() ?? ''),
+            targetBranch: CanonicalNames.canonicalizeBranch(data['branch']?.toString() ?? '', CanonicalNames.canonicalizeCategory(data['category']?.toString() ?? '')),
+            targetHostelId: data['hostelId']?.toString(),
           );
         } else {
           // Notify student: rejected

@@ -255,6 +255,10 @@ class _ApplyLeaveScreenState extends State<ApplyLeaveScreen> {
             'createdAt': FieldValue.serverTimestamp(),
           });
 
+      final String canonicalCategory = CanonicalNames.canonicalizeCategory(userData['category']);
+      final String canonicalBranch = CanonicalNames.canonicalizeBranch(userData['branch'], userData['category']);
+      final String assignedHostel = userData['assignedHostel'] ?? '';
+
       // Send Notification to the appropriate first approver
       await NotificationRepository().sendNotification(
         title: _leaveType == 'Outing' ? "New Outing Request" : "New Leave Request",
@@ -262,6 +266,9 @@ class _ApplyLeaveScreenState extends State<ApplyLeaveScreen> {
         receiverUid: notificationReceiver, 
         type: 'leave_request',
         relatedRequestId: requestRef.id,
+        targetCategory: canonicalCategory,
+        targetBranch: canonicalBranch,
+        targetHostelId: assignedHostel,
       );
 
       // Also notify the student themselves: submission receipt
