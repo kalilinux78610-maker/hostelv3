@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'student_detail_screen.dart';
 import 'room_availability_screen.dart';
 import '../../app_config.dart';
+import '../../utils/canonical_names.dart';
 
 class StudentDirectoryScreen extends StatefulWidget {
   const StudentDirectoryScreen({super.key});
@@ -918,7 +919,6 @@ class _StudentDirectoryScreenState extends State<StudentDirectoryScreen> {
     final enrollmentNoController = TextEditingController(text: currentData['enrollmentNo'] ?? '');
     final emailController = TextEditingController(text: currentData['email'] ?? '');
     final instituteController = TextEditingController(text: currentData['institute'] ?? '');
-    final departmentController = TextEditingController(text: currentData['branch'] ?? currentData['department'] ?? '');
     final roomController = TextEditingController(text: currentData['room'] ?? '');
     final floorController = TextEditingController(text: currentData['floor'] ?? '');
     final phoneController = TextEditingController(text: currentData['phone'] ?? currentData['contactNo'] ?? currentData['mobile'] ?? '');
@@ -929,6 +929,15 @@ class _StudentDirectoryScreenState extends State<StudentDirectoryScreen> {
     String? selectedBloodGroup = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'].contains(currentData['bloodGroup']) ? currentData['bloodGroup'] : null;
     String? selectedCategory = ['Degree', 'Diploma', 'Pharmacy'].contains(currentData['category']) ? currentData['category'] : null;
     String? selectedYear = ['1', '2', '3', '4'].contains(currentData['year']) ? currentData['year'] : null;
+
+    String? selectedBranch;
+    String rawBranch = currentData['branch'] ?? currentData['department'] ?? '';
+    if (rawBranch.isNotEmpty) {
+      String canonical = CanonicalNames.canonicalizeBranch(rawBranch, selectedCategory);
+      if (AppConfig.getBranchesForCategory(selectedCategory).contains(canonical)) {
+        selectedBranch = canonical;
+      }
+    }
     
     // Determine existing hostel value (ensure it's a valid short code)
     String? existingHostelRaw = currentData['assignedHostel'] ?? currentData['hostel'];
@@ -995,12 +1004,33 @@ class _StudentDirectoryScreenState extends State<StudentDirectoryScreen> {
                       isDense: true,
                       hint: const Text("Select Category"),
                       items: ['Degree', 'Diploma', 'Pharmacy'].map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
-                      onChanged: (val) => setState(() => selectedCategory = val),
+                      onChanged: (val) {
+                        setState(() {
+                          selectedCategory = val;
+                          selectedBranch = null;
+                        });
+                      },
                     ),
                   ),
                 ),
                 const SizedBox(height: 12),
-                TextField(controller: departmentController, decoration: const InputDecoration(labelText: 'Department / Branch')),
+                InputDecorator(
+                  decoration: const InputDecoration(labelText: 'Department / Branch'),
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton<String>(
+                      value: selectedBranch,
+                      isExpanded: true,
+                      isDense: true,
+                      hint: const Text("Select Branch"),
+                      items: AppConfig.getBranchesForCategory(selectedCategory)
+                          .map(
+                            (b) => DropdownMenuItem(value: b, child: Text(b)),
+                          )
+                          .toList(),
+                      onChanged: (val) => setState(() => selectedBranch = val),
+                    ),
+                  ),
+                ),
                 const SizedBox(height: 12),
                 InputDecorator(
                   decoration: const InputDecoration(labelText: 'Year'),
@@ -1066,7 +1096,7 @@ class _StudentDirectoryScreenState extends State<StudentDirectoryScreen> {
                     'assignedHostel': selectedHostel,
                     'hostel': _getLongHostelName(selectedHostel),
                     'category': selectedCategory,
-                    'branch': departmentController.text.trim(),
+                    'branch': selectedBranch,
                     'year': selectedYear,
                     'floor': floorController.text.trim(),
                     'room': roomController.text.trim(),

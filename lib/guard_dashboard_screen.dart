@@ -258,14 +258,28 @@ class _GuardDashboardScreenState extends State<GuardDashboardScreen> {
   Future<void> _processManualEntry(String id) async {
     if (id.isEmpty) return;
     try {
-      final userQ = await FirebaseFirestore.instance.collection('users').where('enrollment', isEqualTo: id).limit(1).get();
-      if (userQ.docs.isEmpty) return _showError("Student not found");
+      // 1. Find user by enrollmentNo
+      final userQ = await FirebaseFirestore.instance
+          .collection('users')
+          .where('enrollmentNo', isEqualTo: id)
+          .limit(1)
+          .get();
+      
+      if (userQ.docs.isEmpty) return _showError("Student with Enrollment ID $id not found");
       
       final uid = userQ.docs.first.id;
-      final name = userQ.docs.first['name'];
+      final name = userQ.docs.first['name'] ?? 'Unknown Student';
       
-      final passQ = await FirebaseFirestore.instance.collection('leave_requests').where('userId', isEqualTo: uid).where('status', whereIn: ['approved', 'out']).orderBy('createdAt', descending: true).limit(1).get();
-      if (passQ.docs.isEmpty) return _showError("No active pass for $name");
+      // 2. Find their active leave request (either approved or currently out)
+      final passQ = await FirebaseFirestore.instance
+          .collection('leave_requests')
+          .where('uid', isEqualTo: uid)
+          .where('status', whereIn: ['approved', 'out'])
+          .orderBy('createdAt', descending: true)
+          .limit(1)
+          .get();
+      
+      if (passQ.docs.isEmpty) return _showError("No active pass found for $name");
       
       _showVerificationDialog(passQ.docs.first.id, passQ.docs.first.data(), name, passQ.docs.first['status']);
     } catch (e) {
@@ -274,15 +288,44 @@ class _GuardDashboardScreenState extends State<GuardDashboardScreen> {
   }
 
   void _showVerificationDialog(String docId, Map<String, dynamic> data, String name, String status) {
-    bool isOut = status == 'approved';
+    // If status is 'approved', it means they are checking OUT
+    // If status is 'out', it means they are checking IN
+    bool isCheckingOut = status == 'approved';
+    
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text(isOut ? "Check-Out?" : "Check-In?"),
-        content: Text("Student: $name\nReason: ${data['reason']}"),
+        title: Text(isCheckingOut ? "Manual Check-Out" : "Manual Check-In"),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text("Student: $name", style: const TextStyle(fontWeight: FontWeight.bold)),
+            const SizedBox(height: 8),
+            Text("Type: ${data['type'] ?? 'N/A'}"),
+            Text("Reason: ${data['reason'] ?? 'N/A'}"),
+            const SizedBox(height: 12),
+            Text(
+              isCheckingOut 
+                ? "Are you sure you want to manually mark this student as OUT?" 
+                : "Are you sure you want to manually mark this student as IN (Returned)?",
+              style: const TextStyle(fontSize: 13, color: Colors.blueGrey),
+            ),
+          ],
+        ),
         actions: [
           TextButton(onPressed: () => Navigator.pop(context), child: const Text("CANCEL")),
-          ElevatedButton(onPressed: () { Navigator.pop(context); _updatePass(docId, isOut); }, child: Text(isOut ? "OUT" : "IN")),
+          ElevatedButton(
+            onPressed: () { 
+              Navigator.pop(context); 
+              _updatePass(docId, isCheckingOut); 
+            }, 
+            style: ElevatedButton.styleFrom(
+              backgroundColor: isCheckingOut ? Colors.red : Colors.green,
+              foregroundColor: Colors.white,
+            ),
+            child: Text(isCheckingOut ? "MARK OUT" : "MARK IN"),
+          ),
         ],
       ),
     );

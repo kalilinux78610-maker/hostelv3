@@ -29,6 +29,8 @@ class _StudentProfileDesignV2State extends State<StudentProfileDesignV2> {
   final bool _isEditing = false;
   bool _isEditingEnrollment = false;
   bool _isEditingYear = false;
+  bool _isEditingBranch = false;
+  String? _selectedBranch;
 
   @override
   void dispose() {
@@ -145,7 +147,21 @@ class _StudentProfileDesignV2State extends State<StudentProfileDesignV2> {
                           _divider(),
                           _row(Icons.school, 'Category', category),
                           _divider(),
-                          _row(Icons.menu_book, 'Department / Branch', branch),
+                          _isEditingBranch
+                              ? _editableBranchDropdown(Icons.menu_book, 'Department / Branch', category, branch, (val) async {
+                                  if (val != null) {
+                                    await FirebaseFirestore.instance.collection('users').doc(user?.uid).update({
+                                      'branch': val,
+                                    });
+                                  }
+                                  setState(() => _isEditingBranch = false);
+                                })
+                              : _row(Icons.menu_book, 'Department / Branch', branch, onEdit: () {
+                                  setState(() {
+                                    _selectedBranch = branch == 'N/A' ? null : branch;
+                                    _isEditingBranch = true;
+                                  });
+                                }),
                           _divider(),
                           _isEditingYear
                               ? _editableRowInput(Icons.calendar_today, 'Year', _yearCtrl, () async {
@@ -517,6 +533,67 @@ class _StudentProfileDesignV2State extends State<StudentProfileDesignV2> {
   }
 
   Widget _divider() => Divider(height: 1, color: Colors.grey[100]);
+
+  Widget _editableBranchDropdown(IconData icon, String label, String category, String? currentValue, ValueChanged<String?> onSave) {
+    List<String> branches = AppConfig.getBranchesForCategory(category);
+    // Ensure the current value exists in the list or pick first/null
+    String? initialValue = branches.contains(_selectedBranch) ? _selectedBranch : (branches.isNotEmpty ? branches.first : null);
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        children: [
+          Icon(icon, size: 20, color: _primary.withValues(alpha: 0.7)),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: TextStyle(fontSize: 11, color: Colors.grey[500]),
+                ),
+                const SizedBox(height: 4),
+                SizedBox(
+                  height: 40,
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButtonFormField<String>(
+                      value: initialValue,
+                      isExpanded: true,
+                      decoration: InputDecoration(
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 0),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide: const BorderSide(color: _primary, width: 1.5),
+                        ),
+                      ),
+                      items: branches.map((b) => DropdownMenuItem(
+                        value: b,
+                        child: Text(b, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                      )).toList(),
+                      onChanged: (val) {
+                        setState(() {
+                          _selectedBranch = val;
+                        });
+                      },
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 12),
+          IconButton(
+            icon: const Icon(Icons.check_circle, size: 28, color: Colors.green),
+            onPressed: () => onSave(_selectedBranch ?? initialValue),
+            constraints: const BoxConstraints(),
+            padding: EdgeInsets.zero,
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 // ── Profile Avatar with upload ───────────────────────────────
