@@ -104,6 +104,7 @@ class AppConfig {
     // ── Pharmacy ─────────────────────────────────
     'B Pharm',
     // ── Management ─────────────────────────────
+    'BBA',
     'Integrated MBA (5 Years)',
     // ── B.Voc ────────────────────────────────────
     'B.Voc - Industrial Chemistry',
@@ -144,6 +145,7 @@ class AppConfig {
     // ── Pharmacy (Degree only) ────────────────────
     'B Pharm',
     // ── Management (Degree only) ──────────────────
+    'BBA',
     'Integrated MBA (5 Years)',
     // ── B.Voc (Degree only) ───────────────────────
     'B.Voc - Industrial Chemistry',

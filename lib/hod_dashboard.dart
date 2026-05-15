@@ -809,7 +809,7 @@ class _HodHomeTabState extends State<HodHomeTab> {
             data['branch']?.toString() ?? '',
             docCategory,
           );
-          
+
           // Only filter by category when BOTH HOD and request have a non-empty category
           // This avoids hiding requests from older records that may not have category saved
           final hodHasCategory = _category != null && _category!.isNotEmpty;

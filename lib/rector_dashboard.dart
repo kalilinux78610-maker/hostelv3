@@ -1317,6 +1317,11 @@ class _HistoryTabState extends State<HistoryTab> {
                   final data = docs[index].data() as Map<String, dynamic>;
                   final status = data['status'];
                   final isApproved = status == 'approved';
+                  final returnStatus = (data['returnStatus'] ?? '').toString();
+                  final isLate = returnStatus == 'late';
+                  final lateByMinutes = (data['lateByMinutes'] is num)
+                      ? (data['lateByMinutes'] as num).toInt()
+                      : 0;
 
                   final actualOut = data['actualOutTime'] != null
                       ? (data['actualOutTime'] as Timestamp).toDate()
@@ -1379,6 +1384,31 @@ class _HistoryTabState extends State<HistoryTab> {
                             trailing: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
+                                if (isLate)
+                                  Container(
+                                    margin: const EdgeInsets.only(right: 8),
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 10, vertical: 6),
+                                    decoration: BoxDecoration(
+                                      color: Colors.red.withValues(alpha: 0.10),
+                                      borderRadius: BorderRadius.circular(999),
+                                      border: Border.all(
+                                        color:
+                                            Colors.red.withValues(alpha: 0.25),
+                                      ),
+                                    ),
+                                    child: Text(
+                                      lateByMinutes > 0
+                                          ? "LATE • ${lateByMinutes}m"
+                                          : "LATE",
+                                      style: const TextStyle(
+                                        color: Colors.red,
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w800,
+                                        letterSpacing: 0.3,
+                                      ),
+                                    ),
+                                  ),
                                 Text(
                                   _formatDate(data['createdAt']),
                                   style: TextStyle(
@@ -2341,7 +2371,7 @@ class OutStudentsListWidget extends StatelessWidget {
                               : null,
                           child: data['photoUrl'] == null
                               ? Text(
-                                  (data['email'] ?? 'U')[0].toUpperCase(),
+                                  (data['name'] ?? data['email'] ?? 'U')[0].toUpperCase(),
                                   style: TextStyle(
                                     color: isOverdue
                                         ? Colors.red
@@ -2357,7 +2387,7 @@ class OutStudentsListWidget extends StatelessWidget {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                data['email'] ?? 'Unknown',
+                                data['name'] ?? data['email'] ?? 'Unknown',
                                 style: const TextStyle(
                                   fontWeight: FontWeight.bold,
                                   fontSize: 16,
