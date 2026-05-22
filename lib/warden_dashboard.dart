@@ -128,15 +128,24 @@ class _WardenHomeTabState extends State<WardenHomeTab> {
               _assignedHostels.add(data['assignedHostel']);
             }
             if (data['assignedCategories'] != null) {
-              _wardenCategories = List<String>.from(data['assignedCategories']);
+              _wardenCategories = List<String>.from(data['assignedCategories'])
+                  .map((c) {
+                    final cat = CanonicalNames.canonicalizeCategory(c);
+                    return cat == 'Pharmacy' ? 'Degree' : cat;
+                  })
+                  .toSet()
+                  .toList();
             }
             if (_wardenCategories.isEmpty) {
               final cat = data['assignedCategory'] ?? data['category'];
-              if (cat != null) _wardenCategories.add(cat);
+              if (cat != null) {
+                final canonicalCat = CanonicalNames.canonicalizeCategory(cat);
+                _wardenCategories.add(canonicalCat == 'Pharmacy' ? 'Degree' : canonicalCat);
+              }
             }
             
             if (_wardenCategories.isNotEmpty) {
-              _selectedCategory = _wardenCategories.first;
+              _selectedCategory = CanonicalNames.canonicalizeCategory(_wardenCategories.first);
             }
             _isLoading = false;
           });
@@ -149,9 +158,11 @@ class _WardenHomeTabState extends State<WardenHomeTab> {
   }
 
   Widget _buildToggleBtn(String title) {
-    bool isSel = _selectedCategory == title;
+    final String canonicalTitle = CanonicalNames.canonicalizeCategory(title);
+    final String canonicalSel = CanonicalNames.canonicalizeCategory(_selectedCategory);
+    bool isSel = canonicalSel == canonicalTitle;
     return GestureDetector(
-      onTap: () => setState(() => _selectedCategory = title),
+      onTap: () => setState(() => _selectedCategory = canonicalTitle),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
         decoration: BoxDecoration(
@@ -211,12 +222,15 @@ class _WardenHomeTabState extends State<WardenHomeTab> {
         final docs = snapshot.data?.docs ?? [];
         Map<String, Map<String, int>> counts = {};
         for (var cat in _wardenCategories) {
-          counts[cat] = {};
+          counts[CanonicalNames.canonicalizeCategory(cat)] = {};
         }
 
         for (var doc in docs) {
           final data = doc.data() as Map<String, dynamic>;
-          final cat = CanonicalNames.canonicalizeCategory(data['category']);
+          var cat = CanonicalNames.canonicalizeCategory(data['category']);
+          if (cat == 'Pharmacy') {
+            cat = 'Degree';
+          }
           final branch = CanonicalNames.canonicalizeBranch(data['branch'], cat);
           final groupName = _getWardenDisplayGroup(branch, cat);
 
@@ -226,7 +240,7 @@ class _WardenHomeTabState extends State<WardenHomeTab> {
         }
         
         // Calculate total pending only for the currently selected category
-        counts[_selectedCategory]?.values.forEach((deptCount) {
+        counts[CanonicalNames.canonicalizeCategory(_selectedCategory)]?.values.forEach((deptCount) {
           totalPending += deptCount;
         });
 
@@ -255,9 +269,9 @@ class _WardenHomeTabState extends State<WardenHomeTab> {
           {'name': 'Pharmacy', 'icon': Icons.local_pharmacy},
         ];
 
-        final currentDepts = _selectedCategory == 'Degree' 
+        final currentDepts = CanonicalNames.canonicalizeCategory(_selectedCategory) == 'Degree' 
             ? degreeDepts 
-            : (_selectedCategory == 'Diploma' ? diplomaDepts : pharmacyDepts);
+            : (CanonicalNames.canonicalizeCategory(_selectedCategory) == 'Diploma' ? diplomaDepts : pharmacyDepts);
 
         return Column(
           children: [
@@ -304,6 +318,7 @@ class _WardenHomeTabState extends State<WardenHomeTab> {
                                   child: DropdownButton<String>(
                                     dropdownColor: _primaryColor,
                                     isDense: true,
+                                    isExpanded: true,
                                     icon: const Icon(Icons.arrow_drop_down, color: Colors.white70),
                                     value: _selectedHostel,
                                     items: ['All', ..._assignedHostels].map((h) {
@@ -312,6 +327,8 @@ class _WardenHomeTabState extends State<WardenHomeTab> {
                                         child: Text(
                                           h == 'All' ? 'All Hostels' : AppConfig.getFullHostelName(h),
                                           style: const TextStyle(color: Colors.white70, fontSize: 13),
+                                          overflow: TextOverflow.ellipsis,
+                                          maxLines: 1,
                                         ),
                                       );
                                     }).toList(),
@@ -522,10 +539,33 @@ class _WardenHomeTabState extends State<WardenHomeTab> {
 
             const SizedBox(height: 60),
 
+            // Subtle indicator that more departments exist at the bottom
+            if (currentDepts.length > 6)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.unfold_more, size: 14, color: _primaryColor.withValues(alpha: 0.6)),
+                    const SizedBox(width: 4),
+                    Text(
+                      "Scroll to view all ${currentDepts.length} departments",
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        color: _primaryColor.withValues(alpha: 0.6),
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
             // ── Grid of Departments ──────────────────────────────────
             Expanded(
               child: GridView.builder(
                 padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
+                physics: const BouncingScrollPhysics(), // Premium smooth bounce
                 itemCount: currentDepts.length,
                 gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                   crossAxisCount: 2,
@@ -537,7 +577,7 @@ class _WardenHomeTabState extends State<WardenHomeTab> {
                   final dept = currentDepts[index];
                   final String name = dept['name'] as String;
                   final IconData icon = dept['icon'] as IconData;
-                  final int pendingCount = counts[_selectedCategory]?[name] ?? 0;
+                  final int pendingCount = counts[CanonicalNames.canonicalizeCategory(_selectedCategory)]?[name] ?? 0;
 
                   return GestureDetector(
                     onTap: () {
@@ -546,7 +586,7 @@ class _WardenHomeTabState extends State<WardenHomeTab> {
                         MaterialPageRoute(
                           builder: (_) => WardenDepartmentRequestsScreen(
                             branch: name,
-                            category: _selectedCategory,
+                            category: CanonicalNames.canonicalizeCategory(_selectedCategory),
                             assignedHostels: hostelsToQuery,
                           ),
                         ),
@@ -621,7 +661,7 @@ String _getWardenDisplayGroup(String canonicalBranch, String category) {
     if (canonicalBranch == 'Information Technology' || canonicalBranch == 'M.Sc. IT') return 'IT & MSC-IT';
     if (canonicalBranch.startsWith('B.Voc')) return 'B.VOC';
     if (canonicalBranch == 'Computer Science & Engineering') return 'CSE';
-    if (canonicalBranch == 'BBA' || canonicalBranch == 'MBA') return 'BBA & MBA';
+    if (canonicalBranch == 'BBA' || canonicalBranch == 'MBA' || canonicalBranch == 'Integrated MBA (5 Years)') return 'BBA & MBA';
     if (canonicalBranch == 'Chemical Engineering') return 'Chemical';
     if (canonicalBranch == 'Electrical Engineering') return 'Electrical';
     if (canonicalBranch == 'Pharmacy' || canonicalBranch == 'B Pharm') return 'Pharmacy';
@@ -1007,7 +1047,10 @@ class _WardenDepartmentRequestsScreenState
           // Filter matching branch & category properly using CanonicalNames
           var filteredDocs = docs.where((doc) {
             final data = doc.data() as Map<String, dynamic>;
-            final docCat = CanonicalNames.canonicalizeCategory(data['category']);
+            var docCat = CanonicalNames.canonicalizeCategory(data['category']);
+            if (docCat == 'Pharmacy') {
+              docCat = 'Degree';
+            }
             final docBranch =
                 CanonicalNames.canonicalizeBranch(data['branch'], docCat);
             final docGroup = _getWardenDisplayGroup(docBranch, docCat);
