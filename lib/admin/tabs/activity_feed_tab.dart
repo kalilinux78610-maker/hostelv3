@@ -15,6 +15,15 @@ class ActivityFeedTab extends StatefulWidget {
 class _ActivityFeedTabState extends State<ActivityFeedTab> {
   String _selectedFilter = 'all'; // 'all', 'approved', 'pending', 'rejected'
   int _limit = 20; // Pagination limit
+  String _searchQuery = '';
+  bool _isSearching = false;
+  final TextEditingController _searchController = TextEditingController();
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -355,12 +364,76 @@ class _ActivityFeedTabState extends State<ActivityFeedTab> {
         children: [
           Icon(Icons.rss_feed, color: Colors.blue[600], size: 22),
           const SizedBox(width: 10),
-          const Text(
-            'Live Activity Feed',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w700,
-              color: Color(0xFF0F172A), // Slate 900
+          // Title — hidden when search is open
+          if (!_isSearching)
+            const Expanded(
+              child: Text(
+                'Live Activity Feed',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF0F172A),
+                ),
+              ),
+            ),
+          // Expanded search field
+          if (_isSearching)
+            Expanded(
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                height: 40,
+                decoration: BoxDecoration(
+                  color: Colors.grey[100],
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.blue.shade200),
+                ),
+                child: TextField(
+                  controller: _searchController,
+                  autofocus: true,
+                  style: const TextStyle(fontSize: 14),
+                  decoration: InputDecoration(
+                    hintText: 'Search by name or branch...',
+                    hintStyle: TextStyle(color: Colors.grey[400], fontSize: 13),
+                    border: InputBorder.none,
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    isDense: true,
+                  ),
+                  onChanged: (val) {
+                    setState(() => _searchQuery = val.trim().toLowerCase());
+                  },
+                ),
+              ),
+            ),
+          const SizedBox(width: 8),
+          // Search / Clear icon button
+          GestureDetector(
+            onTap: () {
+              setState(() {
+                if (_isSearching) {
+                  // Close search
+                  _isSearching = false;
+                  _searchQuery = '';
+                  _searchController.clear();
+                } else {
+                  _isSearching = true;
+                }
+              });
+            },
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: _isSearching ? Colors.blue[50] : Colors.grey[100],
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(
+                  color: _isSearching ? Colors.blue.shade300 : Colors.grey.shade300,
+                ),
+              ),
+              child: Icon(
+                _isSearching ? Icons.close : Icons.search,
+                size: 20,
+                color: _isSearching ? Colors.blue[700] : Colors.grey[600],
+              ),
             ),
           ),
         ],
@@ -394,8 +467,38 @@ class _ActivityFeedTabState extends State<ActivityFeedTab> {
           );
         }
 
+        // Apply client-side search filter
+        var docs = snapshot.data!.docs;
+        if (_searchQuery.isNotEmpty) {
+          docs = docs.where((doc) {
+            final data = doc.data() as Map<String, dynamic>;
+            final name = (data['name'] ?? data['studentName'] ?? '').toString().toLowerCase();
+            final branch = (data['branch'] ?? '').toString().toLowerCase();
+            final email = (data['email'] ?? '').toString().toLowerCase();
+            return name.contains(_searchQuery) ||
+                branch.contains(_searchQuery) ||
+                email.contains(_searchQuery);
+          }).toList();
+        }
+
+        if (docs.isEmpty) {
+          return Padding(
+            padding: const EdgeInsets.all(40.0),
+            child: Column(
+              children: [
+                Icon(Icons.search_off, size: 48, color: Colors.grey[300]),
+                const SizedBox(height: 12),
+                Text(
+                  'No results for "$_searchQuery"',
+                  style: TextStyle(color: Colors.grey[500], fontSize: 14),
+                ),
+              ],
+            ),
+          );
+        }
+
         return Column(
-          children: snapshot.data!.docs.map((doc) {
+          children: docs.map((doc) {
             final data = doc.data() as Map<String, dynamic>;
             data['id'] = doc.id; // Inject ID for admin actions
             return _buildActivityCard(data);

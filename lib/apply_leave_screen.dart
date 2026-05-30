@@ -238,7 +238,7 @@ class _ApplyLeaveScreenState extends State<ApplyLeaveScreen> {
             'uid': user.uid,
             'email': user.email,
             'name': userData['name'] ?? 'Unknown',
-            'hostelId': userData['assignedHostel'],
+            'hostelId': userData['assignedHostel'] ?? userData['hostel'],
             'room': userData['room'],
             'parentContact': userData['parentContact'],
             'category': CanonicalNames.canonicalizeCategory(userData['category']),
@@ -257,7 +257,7 @@ class _ApplyLeaveScreenState extends State<ApplyLeaveScreen> {
 
       final String canonicalCategory = CanonicalNames.canonicalizeCategory(userData['category']);
       final String canonicalBranch = CanonicalNames.canonicalizeBranch(userData['branch'], userData['category']);
-      final String assignedHostel = userData['assignedHostel'] ?? '';
+      final String assignedHostel = userData['assignedHostel'] ?? userData['hostel'] ?? '';
 
       // Send Notification to the appropriate first approver
       await NotificationRepository().sendNotification(

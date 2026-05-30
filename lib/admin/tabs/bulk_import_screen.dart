@@ -8,6 +8,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import '../../app_config.dart';
 import '../../utils/canonical_names.dart';
+import '../../services/push_notification_service.dart';
 
 class BulkImportScreen extends StatefulWidget {
   const BulkImportScreen({super.key});
@@ -23,6 +24,20 @@ class _BulkImportScreenState extends State<BulkImportScreen> {
   int _successCount = 0;
   int _failCount = 0;
   List<String> _errorLogs = []; // State for error logs
+
+  // Global Broadcast values
+  final _broadcastFormKey = GlobalKey<FormState>();
+  final _broadcastTitleController = TextEditingController();
+  final _broadcastBodyController = TextEditingController();
+  String _broadcastTarget = 'all'; // 'all', 'student', 'staff'
+  bool _isBroadcasting = false;
+
+  @override
+  void dispose() {
+    _broadcastTitleController.dispose();
+    _broadcastBodyController.dispose();
+    super.dispose();
+  }
 
   Future<void> _pickFile() async {
     try {
@@ -302,6 +317,23 @@ class _BulkImportScreenState extends State<BulkImportScreen> {
           updateData['assignedHostel'] = _getShortHostelCode(hostelName);
           updateData['floor']        = row.length > 12 ? row[12].toString().trim() : '';
           updateData['room']         = row.length > 13 ? row[13].toString().trim() : '';
+        } else {
+          // Old 7-column format: Name, Email, Hostel, Room, Branch, Year, Category
+          updateData['name'] = row[0].toString().trim();
+          
+          final String hostelName = row.length > 2 ? row[2].toString().trim() : '';
+          updateData['hostel'] = hostelName;
+          updateData['assignedHostel'] = _getShortHostelCode(hostelName);
+          
+          updateData['room'] = row.length > 3 ? row[3].toString().trim() : '';
+          
+          final String cat = row.length > 6 ? row[6].toString().trim() : 'Degree';
+          updateData['category'] = cat;
+          
+          final String rawBranch = row.length > 4 ? row[4].toString().trim() : '';
+          updateData['branch'] = CanonicalNames.canonicalizeBranch(rawBranch, cat);
+          
+          updateData['year'] = row.length > 5 ? row[5].toString().trim() : '';
         }
 
         if (updateData.isEmpty) continue;
@@ -556,8 +588,290 @@ class _BulkImportScreenState extends State<BulkImportScreen> {
               ),
             ),
           ],
+
+          const SizedBox(height: 24),
+          const Divider(),
+          const SizedBox(height: 16),
+
+          // 📢 GLOBAL BROADCAST PANEL CARD
+          _buildSectionHeader('Global Broadcast Panel', Icons.campaign),
+          Card(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            elevation: 2,
+            color: Colors.white,
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Form(
+                key: _broadcastFormKey,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Send immediate high-priority push and in-app notifications to users.',
+                      style: TextStyle(fontSize: 12, color: Colors.grey),
+                    ),
+                    const SizedBox(height: 16),
+                    
+                    // Target Dropdown
+                    DropdownButtonFormField<String>(
+                      initialValue: _broadcastTarget,
+                      decoration: InputDecoration(
+                        labelText: 'Target Audience',
+                        prefixIcon: const Icon(Icons.people, color: Color(0xFF002244)),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(14),
+                          borderSide: BorderSide(color: Colors.grey.shade300),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(14),
+                          borderSide: const BorderSide(color: Color(0xFF002244), width: 1.5),
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                      ),
+                      items: const [
+                        DropdownMenuItem(value: 'all', child: Text('All Registered Users')),
+                        DropdownMenuItem(value: 'student', child: Text('Students Only')),
+                        DropdownMenuItem(value: 'staff', child: Text('Staff Only')),
+                      ],
+                      onChanged: (val) {
+                        if (val != null) {
+                          setState(() => _broadcastTarget = val);
+                        }
+                      },
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Title Textfield
+                    TextFormField(
+                      controller: _broadcastTitleController,
+                      decoration: InputDecoration(
+                        labelText: 'Broadcast Title',
+                        prefixIcon: const Icon(Icons.title, color: Color(0xFF002244)),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(14),
+                          borderSide: BorderSide(color: Colors.grey.shade300),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(14),
+                          borderSide: const BorderSide(color: Color(0xFF002244), width: 1.5),
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                      ),
+                      validator: (val) {
+                        if (val == null || val.trim().isEmpty) {
+                          return 'Title is required';
+                        }
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Message Textfield
+                    TextFormField(
+                      controller: _broadcastBodyController,
+                      maxLines: 3,
+                      decoration: InputDecoration(
+                        labelText: 'Broadcast Message',
+                        prefixIcon: const Icon(Icons.message, color: Color(0xFF002244)),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(14),
+                          borderSide: BorderSide(color: Colors.grey.shade300),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(14),
+                          borderSide: const BorderSide(color: Color(0xFF002244), width: 1.5),
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                      ),
+                      validator: (val) {
+                        if (val == null || val.trim().isEmpty) {
+                          return 'Message body is required';
+                        }
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 20),
+
+                    // Send Button
+                    SizedBox(
+                      width: double.infinity,
+                      height: 48,
+                      child: ElevatedButton(
+                        onPressed: _isBroadcasting ? null : _sendBroadcast,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFFE11D48), // Rose 600
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: _isBroadcasting
+                            ? const Center(
+                                child: SizedBox(
+                                  width: 24,
+                                  height: 24,
+                                  child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                                ),
+                              )
+                            : const Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(Icons.send_rounded, size: 20),
+                                  SizedBox(width: 8),
+                                  Text(
+                                    'Send Broadcast',
+                                    style: TextStyle(fontWeight: FontWeight.bold),
+                                  ),
+                                ],
+                              ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 24),
         ],
       ),
     );
+  }
+
+  Widget _buildSectionHeader(String title, IconData icon) {
+    return Padding(
+      padding: const EdgeInsets.only(left: 4.0, bottom: 8.0),
+      child: Row(
+        children: [
+          Icon(icon, color: const Color(0xFF002244), size: 20),
+          const SizedBox(width: 8),
+          Text(
+            title,
+            style: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF002244),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _sendBroadcast() async {
+    if (!_broadcastFormKey.currentState!.validate()) return;
+
+    setState(() => _isBroadcasting = true);
+
+    final title = _broadcastTitleController.text.trim();
+    final message = _broadcastBodyController.text.trim();
+    final firestore = FirebaseFirestore.instance;
+
+    try {
+      // 1. Fetch target users from Firestore
+      Query query = firestore.collection('users');
+
+      if (_broadcastTarget == 'student') {
+        query = query.where('role', isEqualTo: 'student');
+      } else if (_broadcastTarget == 'staff') {
+        query = query.where('role', whereIn: ['warden', 'rector', 'hod', 'guard', 'mess_manager', 'admin']);
+      }
+
+      final querySnapshot = await query.get();
+      final usersDocs = querySnapshot.docs;
+
+      if (usersDocs.isEmpty) {
+        throw 'No registered users found matching target group.';
+      }
+
+      List<String> targetUids = [];
+      List<String> tokens = [];
+
+      for (var doc in usersDocs) {
+        final data = doc.data() as Map<String, dynamic>;
+        targetUids.add(doc.id);
+        final token = data['fcmToken'] as String?;
+        if (token != null && token.isNotEmpty) {
+          tokens.add(token);
+        }
+      }
+
+      // 2. Batched write to 'notifications' collection for in-app feeds
+      final batch = firestore.batch();
+      for (final uid in targetUids) {
+        final docRef = firestore.collection('notifications').doc();
+        batch.set(docRef, {
+          'title': title,
+          'message': message,
+          'receiverUid': uid,
+          'type': 'system_broadcast',
+          'isRead': false,
+          'createdAt': FieldValue.serverTimestamp(),
+        });
+      }
+      await batch.commit();
+
+      // 3. Send Push Notifications via PushNotificationService
+      final pushService = PushNotificationService();
+      int successCount = 0;
+      for (final token in tokens) {
+        try {
+          await pushService.sendNotification(
+            title: title,
+            body: message,
+            toToken: token,
+          );
+          successCount++;
+        } catch (e) {
+          debugPrint('Error sending push to token: $e');
+        }
+      }
+
+      // Clear fields
+      _broadcastTitleController.clear();
+      _broadcastBodyController.clear();
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.check_circle, color: Colors.white),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Broadcast complete! Logged in-app for ${targetUids.length} users and pushed to $successCount devices.',
+                  ),
+                ),
+              ],
+            ),
+            backgroundColor: Colors.green,
+            behavior: SnackBarBehavior.floating,
+            duration: const Duration(seconds: 5),
+          ),
+        );
+      }
+    } catch (e) {
+      debugPrint('Error sending broadcast: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to broadcast: $e'),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } finally {
+      setState(() => _isBroadcasting = false);
+    }
   }
 }

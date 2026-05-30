@@ -80,24 +80,31 @@ class _StudentProfileDesignV2State extends State<StudentProfileDesignV2> {
             });
           }
 
+          String _val(dynamic v, [String fallback = 'N/A']) {
+            if (v == null) return fallback;
+            final str = v.toString().trim();
+            return str.isEmpty ? fallback : str;
+          }
+
           // ── Extract all CSV fields ──────────────────────────
-          final name = data?['name'] ?? user?.displayName ?? 'Student';
-          final email = data?['email'] ?? user?.email ?? 'No Email';
+          final name = _val(data?['name'], user?.displayName ?? 'Student');
+          final email = _val(data?['email'], user?.email ?? 'No Email');
           final photoUrl = data?['photoUrl'];
           final enrollmentNo = AppConfig.formatEnrollmentNo(data?['enrollmentNo']);
-          final gender = data?['gender'] ?? 'N/A';
-          final bloodGroup = data?['bloodGroup'] ?? 'N/A';
-          final institute = data?['institute'] ?? 'N/A';
-          final category = data?['category'] ?? 'N/A';
-          final branch = data?['branch'] ?? 'N/A';
-          final year = data?['year']?.toString() ?? 'N/A';
-          final rawHostel = data?['assignedHostel'] ?? data?['hostel'] ?? 'N/A';
+          final gender = _val(data?['gender']);
+          final bloodGroup = _val(data?['bloodGroup']);
+          final institute = _val(data?['institute']);
+          final category = _val(data?['category']);
+          final branch = _val(data?['branch']);
+          final year = _val(data?['year']);
+          
+          final rawHostel = _val(data?['assignedHostel'], _val(data?['hostel']));
           final hostel = rawHostel != 'N/A' ? AppConfig.getFullHostelName(rawHostel) : 'N/A';
-          final floor = data?['floor']?.toString() ?? 'N/A';
-          final room = data?['room'] ?? 'N/A';
-          final mobile = data?['mobile'] ?? data?['studentMobile'] ?? 'Not set';
-          final fatherMobile = data?['fatherMobile'] ?? data?['parentContact'] ?? 'Not set';
-          final motherMobile = data?['motherMobile'] ?? 'Not set';
+          final floor = _val(data?['floor']);
+          final room = _val(data?['room']);
+          final mobile = _val(data?['mobile'], _val(data?['studentMobile'], 'Not set'));
+          final fatherMobile = _val(data?['fatherMobile'], _val(data?['parentContact'], 'Not set'));
+          final motherMobile = _val(data?['motherMobile'], 'Not set');
 
           return SingleChildScrollView(
             child: Column(

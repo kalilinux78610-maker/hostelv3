@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'tabs/activity_feed_tab.dart';
 import 'tabs/reports_tab.dart';
 import 'tabs/student_directory_screen.dart';
 import 'tabs/staff_management_screen.dart';
 import 'tabs/bulk_import_screen.dart';
+import 'tabs/app_settings_tab.dart';
 import '../services/auth_service.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
@@ -16,16 +18,23 @@ class AdminDashboardScreen extends StatefulWidget {
 class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   int _selectedIndex = 0;
   final Color _primaryColor = const Color(0xFF002244);
+  final String? _userEmail = FirebaseAuth.instance.currentUser?.email;
 
-  static final List<Widget> _widgetOptions = <Widget>[
-    ActivityFeedTab(),
-    StudentDirectoryScreen(),
-    StaffManagementScreen(),
-    ReportsTab(),
-    BulkImportScreen(),
-  ];
+  bool get _isOwner => _userEmail?.toLowerCase() == 'karanchaudhary9170@gmail.com';
+
+  List<Widget> get _widgetOptions {
+    return [
+      ActivityFeedTab(),
+      StudentDirectoryScreen(),
+      StaffManagementScreen(),
+      ReportsTab(),
+      BulkImportScreen(),
+      if (_isOwner) const AppSettingsTab(),
+    ];
+  }
 
   void _onItemTapped(int index) {
+    if (index == 5 && !_isOwner) return;
     setState(() {
       _selectedIndex = index;
     });
@@ -35,7 +44,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF3F4F6),
-      appBar: (_selectedIndex == 0 || _selectedIndex == 1 || _selectedIndex == 2 || _selectedIndex == 4)
+      appBar: (_selectedIndex == 0 || _selectedIndex == 1 || _selectedIndex == 2 || _selectedIndex == 4 || (_selectedIndex == 5 && _isOwner))
           ? null
           : AppBar(
               title: const Text('Admin Dashboard'),
@@ -76,6 +85,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             _buildNavItem(Icons.badge, 'Staff', 2),
             _buildNavItem(Icons.bar_chart, 'Reports', 3),
             _buildNavItem(Icons.upload_file, 'Import', 4),
+            if (_isOwner) _buildNavItem(Icons.settings, 'Settings', 5),
           ],
           currentIndex: _selectedIndex,
           selectedItemColor: const Color(0xFF1E3A8A), // Match design dark blue
